@@ -96,7 +96,7 @@ export default function Home() {
             </a>
           </div>
           <p className="text-sm text-gray-500">
-            © {new Date().getFullYear()} Power Platform Tool Box. Open source under MIT License.
+            © {new Date().getFullYear()} Power Platform Tool Box. Open source under GPL-3.0 License.
           </p>
         </div>
       </footer>
