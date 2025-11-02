@@ -1,30 +1,53 @@
 import DownloadButton from '@/components/DownloadButton';
 import Features from '@/components/Features';
+import Image from 'next/image';
 
 export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 py-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
+      <section className="relative bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 py-20 px-4 overflow-hidden">
+        {/* Animated background grid */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 opacity-20 dark:opacity-10">
+            <div className="absolute inset-0 bg-grid-pattern animate-grid-move"></div>
+          </div>
+          {/* Floating shapes animation */}
+          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl animate-float"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl animate-float-delayed"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto text-center relative z-10">
           <div className="mb-8">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+            {/* Logo */}
+            <div className="flex justify-center mb-8 animate-fade-in">
+              <Image
+                src="/logo.png"
+                alt="Power Platform Tool Box Logo"
+                width={120}
+                height={120}
+                priority
+                className="drop-shadow-lg"
+              />
+            </div>
+            
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 animate-fade-in-up">
               Power Platform Tool Box
             </h1>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-4 max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-4 max-w-3xl mx-auto animate-fade-in-up animation-delay-200">
               The ultimate desktop application for Power Platform developers
             </p>
-            <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-12">
+            <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-12 animate-fade-in-up animation-delay-400">
               Streamline your development workflow with powerful tools for solution management, 
               code generation, environment switching, and more.
             </p>
           </div>
 
-          <div className="mb-12">
+          <div className="mb-12 animate-fade-in-up animation-delay-600">
             <DownloadButton />
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600 dark:text-gray-400 animate-fade-in-up animation-delay-800">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
