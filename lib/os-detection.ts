@@ -6,17 +6,27 @@ export function detectOS(): OperatingSystem {
   }
 
   const userAgent = window.navigator.userAgent.toLowerCase();
-  const platform = window.navigator.platform.toLowerCase();
-
-  if (userAgent.indexOf('win') !== -1 || platform.indexOf('win') !== -1) {
+  
+  // Check userAgentData first (modern approach)
+  if ('userAgentData' in window.navigator && window.navigator.userAgentData) {
+    const platform = (window.navigator.userAgentData as { platform?: string }).platform?.toLowerCase();
+    if (platform) {
+      if (platform.includes('win')) return 'windows';
+      if (platform.includes('mac')) return 'mac';
+      if (platform.includes('linux')) return 'linux';
+    }
+  }
+  
+  // Fallback to userAgent for broader compatibility
+  if (userAgent.indexOf('win') !== -1) {
     return 'windows';
   }
   
-  if (userAgent.indexOf('mac') !== -1 || platform.indexOf('mac') !== -1) {
+  if (userAgent.indexOf('mac') !== -1) {
     return 'mac';
   }
   
-  if (userAgent.indexOf('linux') !== -1 || platform.indexOf('linux') !== -1) {
+  if (userAgent.indexOf('linux') !== -1) {
     return 'linux';
   }
 
