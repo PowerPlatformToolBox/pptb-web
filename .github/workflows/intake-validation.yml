@@ -131,6 +131,9 @@ jobs:
             const checkmark = '✅';
             const cross = '❌';
             const warning = '⚠️';
+
+            // Define the labels we want to check for and potentially remove
+            const targetLabels = ['ready-for-review', 'needs-changes', 'pending-review'];
             
             let body = '## Automated Validation Results\n\n';
             body += `${exists ? checkmark : cross} **npm Package**: \`${{ steps.package.outputs.name }}\`\n`;
@@ -138,26 +141,31 @@ jobs:
             body += `${secure ? checkmark : warning} **Security**: ${secure ? 'No issues' : 'Review needed'}\n`;
             body += `${licenseOk ? checkmark : cross} **License**: ${{ steps.validate.outputs.license }}\n\n`;
 
-            const labelsOnIssues = await github.rest.issues.listLabelsOnIssue({
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            console.log(labelsOnIssues);
+            console.log(`Current labels: ${labels.map(l => l.name).join(', ')}`);
 
-            await github.rest.issues.removeLabel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              name: 'needs-changes'
-            });
-            await github.rest.issues.removeLabel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              name: 'ready-for-review'
-            });
-            
+            const currentLabelNames = currentLabels.map(l => l.name);
+            console.log(`Current labels: ${currentLabelNames.join(', ')}`);
+
+            const labelsToRemove = targetLabels.filter(labelName => 
+              currentLabelNames.includes(labelName)
+            );
+
+            for (const labelName of labelsToRemove) {
+                console.log(`Attempting to remove "${labelName}"...`);
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number,
+                  name: labelName,
+                });
+                console.log(`"${labelName}" removed.`);
+              }
+
             if (exists && secure && licenseOk) {
                 body += '### ✅ All checks passed!\n\n';
                 body += '@${context.repo.owner}/maintainers will review your submission for final approval.\n';
