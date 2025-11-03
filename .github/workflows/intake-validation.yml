@@ -138,6 +138,13 @@ jobs:
             body += `${secure ? checkmark : warning} **Security**: ${secure ? 'No issues' : 'Review needed'}\n`;
             body += `${licenseOk ? checkmark : cross} **License**: ${{ steps.validate.outputs.license }}\n\n`;
 
+            const labelsOnIssues = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            console.log(labelsOnIssues);
+
             await github.rest.issues.removeLabel({
               owner: context.repo.owner,
               repo: context.repo.repo,
