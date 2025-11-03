@@ -79,8 +79,6 @@ jobs:
           tar -czf ../${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz \
             package.json \
             dist/ \
-            assets/ \
-            node_modules/ \
             --exclude=node_modules/.bin
           
           cd ..
