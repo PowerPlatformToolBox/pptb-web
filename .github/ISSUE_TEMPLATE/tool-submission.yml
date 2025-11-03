@@ -38,7 +38,7 @@ body:
       placeholder: "This tool helps you..."
     validations:
       required: true
-  
+
   - type: input
     id: author
     attributes:
@@ -56,7 +56,16 @@ body:
       placeholder: "https://github.com/username/tool-name"
     validations:
       required: true
-  
+
+  - type: input
+    id: readme_url
+    attributes:
+      label: README URL
+      description: URL to the tool's RAW README file
+      placeholder: "https://raw.githubusercontent.com/username/tool-name/main/README.md"
+    validations:
+      required: true
+
   - type: dropdown
     id: category
     attributes:

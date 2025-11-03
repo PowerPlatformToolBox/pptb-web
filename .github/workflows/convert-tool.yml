@@ -33,13 +33,15 @@ jobs:
           DESCRIPTION=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.description')
           AUTHOR=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.author')
           CATEGORY=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.category')
+          README_URL=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.readme_url')
           
           echo "package=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "name=$DISPLAY_NAME" >> $GITHUB_OUTPUT
           echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
           echo "category=$CATEGORY" >> $GITHUB_OUTPUT
-      
+          echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
+
       - name: Download and build tool
         id: build
         run: |
@@ -122,6 +124,7 @@ jobs:
              --arg author "${{ steps.tool.outputs.author }}" \
              --arg version "${{ steps.build.outputs.version }}" \
              --arg url "$DOWNLOAD_URL" \
+             --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
              --arg checksum "${{ steps.checksum.outputs.checksum }}" \
              --arg size "${{ steps.checksum.outputs.size }}" \
              --arg category "${{ steps.tool.outputs.category }}" \
@@ -133,6 +136,7 @@ jobs:
                author: $author,
                version: $version,
                downloadUrl: $url,
+               readme: $readme_url,
                checksum: $checksum,
                size: ($size | tonumber),
                publishedAt: $published,
