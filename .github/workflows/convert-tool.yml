@@ -8,6 +8,8 @@ jobs:
   convert:
     if: github.event.label.name == 'approved'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout repository
@@ -106,8 +108,6 @@ jobs:
             
             Submitted via issue #${{ github.event.issue.number }}
           files: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Update registry.json
         run: |
