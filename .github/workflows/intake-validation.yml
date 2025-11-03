@@ -158,9 +158,9 @@ jobs:
             for (const labelName of labelsToRemove) {
                 console.log(`Attempting to remove "${labelName}"...`);
                 await github.rest.issues.removeLabel({
-                  owner,
-                  repo,
-                  issue_number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
                   name: labelName,
                 });
                 console.log(`"${labelName}" removed.`);
