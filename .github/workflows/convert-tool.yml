@@ -78,7 +78,6 @@ jobs:
           # Create archive
           tar -czf ../${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz \
             package.json \
-            index.html \
             dist/ \
             assets/ \
             node_modules/ \
@@ -156,6 +155,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const creator = context.payload.sender.login
+                        
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -164,7 +165,7 @@ jobs:
                     `**Tool ID**: \`${{ steps.build.outputs.id }}\`\n` +
                     `**Version**: ${{ steps.build.outputs.version }}\n` +
                     `**Download URL**: ${{ steps.upload.outputs.url }}\n\n` +
-                    `Your tool is now available in the Power Platform Tool Box marketplace!`
+                    `@${creator} your tool is now available in the Power Platform Tool Box marketplace!`
             });
             
             await github.rest.issues.update({
