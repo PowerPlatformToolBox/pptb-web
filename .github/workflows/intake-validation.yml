@@ -141,12 +141,11 @@ jobs:
             body += `${secure ? checkmark : warning} **Security**: ${secure ? 'No issues' : 'Review needed'}\n`;
             body += `${licenseOk ? checkmark : cross} **License**: ${{ steps.validate.outputs.license }}\n\n`;
 
-            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            console.log(`Current labels: ${labels.map(l => l.name).join(', ')}`);
 
             const currentLabelNames = currentLabels.map(l => l.name);
             console.log(`Current labels: ${currentLabelNames.join(', ')}`);
@@ -154,6 +153,7 @@ jobs:
             const labelsToRemove = targetLabels.filter(labelName => 
               currentLabelNames.includes(labelName)
             );
+            console.log(`Labels to remove: ${labelsToRemove.join(', ')}`);
 
             for (const labelName of labelsToRemove) {
                 console.log(`Attempting to remove "${labelName}"...`);
