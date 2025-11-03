@@ -1,0 +1,132 @@
+name: Tool Intake Validation
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  validate:
+    if: contains(github.event.issue.labels.*.name, 'tool-intake')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Parse issue form
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+      
+      - name: Extract package name
+        id: package
+        run: |
+          PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.npm_package')
+          echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Validate npm package
+        id: validate
+        run: |
+          # Check if package exists
+          if npm view ${{ steps.package.outputs.name }} version; then
+            echo "✅ Package exists on npm"
+            echo "exists=true" >> $GITHUB_OUTPUT
+            
+            # Get package info
+            VERSION=$(npm view ${{ steps.package.outputs.name }} version)
+            LICENSE=$(npm view ${{ steps.package.outputs.name }} license)
+            
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "license=$LICENSE" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Package not found on npm"
+            echo "exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      
+      - name: Run security audit
+        id: audit
+        continue-on-error: true
+        run: |
+          npm pack ${{ steps.package.outputs.name }}
+          tar -xzf *.tgz
+          cd package
+          npm audit --production --audit-level=moderate > audit.txt 2>&1
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ No security vulnerabilities found"
+            echo "secure=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Security issues detected"
+            echo "secure=false" >> $GITHUB_OUTPUT
+          fi
+          
+          cat audit.txt
+      
+      - name: Check license
+        id: license
+        run: |
+          LICENSE="${{ steps.validate.outputs.license }}"
+          
+          # List of approved open source licenses
+          APPROVED="MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|GPL-3.0|LGPL-3.0|ISC"
+          
+          if echo "$LICENSE" | grep -E "$APPROVED"; then
+            echo "✅ License approved: $LICENSE"
+            echo "approved=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ License not in approved list: $LICENSE"
+            echo "approved=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Comment validation results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const exists = '${{ steps.validate.outputs.exists }}' === 'true';
+            const secure = '${{ steps.audit.outputs.secure }}' === 'true';
+            const licenseOk = '${{ steps.license.outputs.approved }}' === 'true';
+            
+            const checkmark = '✅';
+            const cross = '❌';
+            const warning = '⚠️';
+            
+            let body = '## Automated Validation Results\n\n';
+            body += `${exists ? checkmark : cross} **npm Package**: \`${{ steps.package.outputs.name }}\`\n`;
+            body += `${exists ? checkmark : cross} **Version**: ${{ steps.validate.outputs.version }}\n`;
+            body += `${secure ? checkmark : warning} **Security**: ${secure ? 'No issues' : 'Review needed'}\n`;
+            body += `${licenseOk ? checkmark : cross} **License**: ${{ steps.validate.outputs.license }}\n\n`;
+            
+            if (exists && secure && licenseOk) {
+                body += '### ✅ All checks passed!\n\n';
+                body += 'A maintainer will review your submission for final approval.\n';
+                
+                // Add label for manual review
+                await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['ready-for-review']
+                });
+            } else {
+                body += '### ❌ Some checks failed\n\n';
+                body += 'Please address the issues above and update your submission.\n';
+                
+                await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-changes']
+                });
+            }
+            
+            await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+            });
