@@ -8,9 +8,7 @@ jobs:
   validate:
     if: contains(github.event.issue.labels.*.name, 'tool-intake')
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
+    permissions: write-all
     
     steps:
       - name: Checkout repository
@@ -36,7 +34,7 @@ jobs:
         run: |
           # Check if package exists
           if npm view ${{ steps.package.outputs.name }} version; then
-            echo "✅ Package exists on npm"
+            echo "✅ Package ${{ steps.package.outputs.name }} exists on npm"
             echo "exists=true" >> $GITHUB_OUTPUT
             
             # Get package info
@@ -55,6 +53,7 @@ jobs:
         id: audit
         continue-on-error: true
         run: |
+          echo "Running security scan on ${{ steps.package.outputs.name }}"
           npm pack ${{ steps.package.outputs.name }}
           tar -xzf *.tgz
           cd package
@@ -76,7 +75,7 @@ jobs:
           LICENSE="${{ steps.validate.outputs.license }}"
           
           # List of approved open source licenses
-          APPROVED="MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|GPL-3.0|LGPL-3.0|ISC"
+          APPROVED="MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|GPL-2.0|GPL-3.0|LGPL-3.0|ISC"
           
           if echo "$LICENSE" | grep -E "$APPROVED"; then
             echo "✅ License approved: $LICENSE"
@@ -110,20 +109,20 @@ jobs:
                 
                 // Add label for manual review
                 await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels: ['ready-for-review']
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['ready-for-review']
                 });
             } else {
                 body += '### ❌ Some checks failed\n\n';
                 body += 'Please address the issues above and update your submission.\n';
                 
                 await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels: ['needs-changes']
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['needs-changes']
                 });
             }
             
