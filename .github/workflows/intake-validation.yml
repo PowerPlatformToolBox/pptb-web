@@ -168,7 +168,7 @@ jobs:
 
             if (exists && secure && licenseOk) {
                 body += '### ✅ All checks passed!\n\n';
-                body += '@${context.repo.owner}/maintainers will review your submission for final approval.\n';
+                body += `@${context.repo.owner}/maintainers will review your submission for final approval.\n`;
                 
                 // Add label for manual review
                 await github.rest.issues.addLabels({
@@ -179,7 +179,7 @@ jobs:
                 });
             } else {
                 body += '### ❌ Some checks failed\n\n';
-                body += '@${creator} Please address the issues above and update your submission.\n';
+                body += `@${creator} Please address the issues above and update your submission.\n`;
                 
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
