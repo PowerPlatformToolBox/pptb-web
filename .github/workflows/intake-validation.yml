@@ -126,6 +126,7 @@ jobs:
             const exists = '${{ steps.validate.outputs.exists }}' === 'true';
             const secure = '${{ steps.audit.outputs.secure }}' === 'true';
             const licenseOk = '${{ steps.license.outputs.approved }}' === 'true';
+            const creator = context.payload.sender.login
             
             const checkmark = '✅';
             const cross = '❌';
@@ -136,10 +137,17 @@ jobs:
             body += `${exists ? checkmark : cross} **Version**: ${{ steps.validate.outputs.version }}\n`;
             body += `${secure ? checkmark : warning} **Security**: ${secure ? 'No issues' : 'Review needed'}\n`;
             body += `${licenseOk ? checkmark : cross} **License**: ${{ steps.validate.outputs.license }}\n\n`;
+
+            await github.rest.issues.removeLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-changes','ready-for-review']
+            });
             
             if (exists && secure && licenseOk) {
                 body += '### ✅ All checks passed!\n\n';
-                body += 'A maintainer will review your submission for final approval.\n';
+                body += '@maintainers will review your submission for final approval.\n';
                 
                 // Add label for manual review
                 await github.rest.issues.addLabels({
@@ -150,7 +158,7 @@ jobs:
                 });
             } else {
                 body += '### ❌ Some checks failed\n\n';
-                body += 'Please address the issues above and update your submission.\n';
+                body += '@${creator} Please address the issues above and update your submission.\n';
                 
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
