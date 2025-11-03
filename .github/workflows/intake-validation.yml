@@ -58,15 +58,17 @@ jobs:
           tar -xzf *.tgz
           cd package
           npm audit --production --audit-level=moderate > audit.txt 2>&1
+          npm audit --production --audit-level=moderate > ../audit.txt 2>&1 || AUDIT_EXIT=$?
           
-          if [ $? -eq 0 ]; then
+          if [ "${AUDIT_EXIT:-0}" -eq 0 ]; then
             echo "✅ No security vulnerabilities found"
             echo "secure=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ Security issues detected"
+            echo "⚠️ Security issues detected (exit code: ${AUDIT_EXIT:-0})"
             echo "secure=false" >> $GITHUB_OUTPUT
           fi
           
+          cd ..
           cat audit.txt
       
       - name: Check license
