@@ -57,7 +57,6 @@ jobs:
           npm pack ${{ steps.package.outputs.name }}
           tar -xzf *.tgz
           cd package
-          npm audit --production --audit-level=moderate > audit.txt 2>&1
           npm audit --production --audit-level=moderate > ../audit.txt 2>&1 || AUDIT_EXIT=$?
           
           if [ "${AUDIT_EXIT:-0}" -eq 0 ]; then
