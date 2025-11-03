@@ -26,7 +26,7 @@ jobs:
       - name: Extract package name
         id: package
         run: |
-          PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r 'npm_package_name')
+          PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.npm_package_name')
           echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
       
       - name: Validate npm package
