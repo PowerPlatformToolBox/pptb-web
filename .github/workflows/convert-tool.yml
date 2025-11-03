@@ -1,0 +1,178 @@
+name: Convert and Publish Tool
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  convert:
+    if: github.event.label.name == 'approved'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Parse issue form
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+      
+      - name: Extract tool info
+        id: tool
+        run: |
+          PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.npm_package')
+          DISPLAY_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.display_name')
+          DESCRIPTION=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.description')
+          AUTHOR=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.author')
+          CATEGORY=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.category')
+          
+          echo "package=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "name=$DISPLAY_NAME" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+          echo "category=$CATEGORY" >> $GITHUB_OUTPUT
+      
+      - name: Download and build tool
+        id: build
+        run: |
+          # Download from npm
+          npm pack ${{ steps.tool.outputs.package }}
+          
+          # Extract
+          tar -xzf *.tgz
+          cd package
+          
+          # Get version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Install production dependencies
+          npm install --production --no-optional
+          
+          # Run build if script exists
+          if npm run --if-present build; then
+            echo "✅ Build completed"
+          fi
+          
+          # Create tool ID (kebab-case)
+          TOOL_ID=$(echo "${{ steps.tool.outputs.package }}" | sed 's/@//g' | sed 's/\//-/g')
+          echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
+          
+          cd ..
+      
+      - name: Create distribution archive
+        run: |
+          cd package
+          
+          # Remove unnecessary files
+          rm -rf .git .github node_modules/*/test node_modules/*/tests
+          rm -rf node_modules/*/*.md node_modules/*/.npmignore
+          find . -name "*.map" -delete
+          find . -name "*.ts" ! -name "*.d.ts" -delete
+          
+          # Create archive
+          tar -czf ../${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz \
+            package.json \
+            index.html \
+            dist/ \
+            assets/ \
+            node_modules/ \
+            --exclude=node_modules/.bin
+          
+          cd ..
+      
+      - name: Generate checksum
+        id: checksum
+        run: |
+          CHECKSUM=$(sha256sum ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz | awk '{print $1}')
+          SIZE=$(stat -f%z ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz 2>/dev/null || stat -c%s ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz)
+          
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "size=$SIZE" >> $GITHUB_OUTPUT
+      
+      - name: Upload to GitHub Release
+        id: upload
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}
+          name: ${{ steps.tool.outputs.name }} v${{ steps.build.outputs.version }}
+          body: |
+            Tool: ${{ steps.tool.outputs.name }}
+            npm package: ${{ steps.tool.outputs.package }}
+            Version: ${{ steps.build.outputs.version }}
+            Author: ${{ steps.tool.outputs.author }}
+            
+            Submitted via issue #${{ github.event.issue.number }}
+          files: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update registry.json
+        run: |
+          # Get download URL from release
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+          
+          # Update registry.json
+          jq --arg id "${{ steps.build.outputs.id }}" \
+             --arg name "${{ steps.tool.outputs.name }}" \
+             --arg desc "${{ steps.tool.outputs.description }}" \
+             --arg author "${{ steps.tool.outputs.author }}" \
+             --arg version "${{ steps.build.outputs.version }}" \
+             --arg url "$DOWNLOAD_URL" \
+             --arg checksum "${{ steps.checksum.outputs.checksum }}" \
+             --arg size "${{ steps.checksum.outputs.size }}" \
+             --arg category "${{ steps.tool.outputs.category }}" \
+             --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '.tools += [{
+               id: $id,
+               name: $name,
+               description: $desc,
+               author: $author,
+               version: $version,
+               downloadUrl: $url,
+               checksum: $checksum,
+               size: ($size | tonumber),
+               publishedAt: $published,
+               tags: [$category]
+             }] | .updated = $published' \
+             registry.json > registry.json.tmp
+          
+          mv registry.json.tmp registry.json
+      
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add registry.json
+          git commit -m "Add tool: ${{ steps.tool.outputs.name }} v${{ steps.build.outputs.version }}"
+          git push
+      
+      - name: Close issue with success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## ✅ Tool Published Successfully!\n\n` +
+                    `**Tool ID**: \`${{ steps.build.outputs.id }}\`\n` +
+                    `**Version**: ${{ steps.build.outputs.version }}\n` +
+                    `**Download URL**: ${{ steps.upload.outputs.url }}\n\n` +
+                    `Your tool is now available in the Power Platform Tool Box marketplace!`
+            });
+            
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              labels: ['published']
+            });

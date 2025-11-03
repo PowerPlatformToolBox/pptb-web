@@ -1,0 +1,76 @@
+name: Check for Tool Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Check for updates
+        id: check
+        run: |
+          # Read current registry
+          UPDATES_FOUND=false
+          
+          # For each tool in registry
+          for row in $(jq -r '.tools[] | @base64' registry.json); do
+            _jq() {
+              echo ${row} | base64 --decode | jq -r ${1}
+            }
+            
+            TOOL_ID=$(_jq '.id')
+            CURRENT_VERSION=$(_jq '.version')
+            NPM_PACKAGE=$(_jq '.npmPackage // .id')
+            
+            # Get latest npm version
+            LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
+            
+            if [ -z "$LATEST_VERSION" ]; then
+              echo "⚠️ Could not fetch version for $TOOL_ID"
+              continue
+            fi
+            
+            # Compare versions
+            if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
+              echo "🔄 Update available for $TOOL_ID: $CURRENT_VERSION → $LATEST_VERSION"
+              echo "$TOOL_ID,$CURRENT_VERSION,$LATEST_VERSION" >> updates.txt
+              UPDATES_FOUND=true
+            fi
+          done
+          
+          echo "found=$UPDATES_FOUND" >> $GITHUB_OUTPUT
+      
+      - name: Create update PR
+        if: steps.check.outputs.found == 'true'
+        run: |
+          # Create new branch
+          git checkout -b updates-$(date +%Y%m%d)
+          
+          # Process each update
+          while IFS=',' read -r TOOL_ID CURRENT LATEST; do
+            echo "Processing update: $TOOL_ID $CURRENT → $LATEST"
+            
+            # Trigger conversion workflow via repository dispatch
+            # This will handle download, build, and registry update
+            
+          done < updates.txt
+          
+          # Create PR
+          gh pr create \
+            --title "Tool Updates - $(date +%Y-%m-%d)" \
+            --body "Automated tool updates detected" \
+            --label "automated-update"
+        env:
+          GH_TOKEN: ${{ github.token }}
