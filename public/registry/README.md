@@ -9,4 +9,4 @@ Tools are automatically synced to the Tool Box marketplace.
 Submit your tool via [GitHub Issues](../../issues/new/choose).
 
 ## Registry URL
-`https://raw.githubusercontent.com/PowerPlatformToolBox/pptb-web/main/registry/registry.json`
+`https://powerplatformtoolbox.com/registry/registry.json`
