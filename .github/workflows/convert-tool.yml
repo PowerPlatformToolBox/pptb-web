@@ -77,9 +77,9 @@ jobs:
           
           # Create archive
           tar -czf ../${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz \
+            --exclude=node_modules/.bin \
             package.json \
-            dist/ \
-            --exclude=node_modules/.bin
+            dist/
           
           cd ..
       
