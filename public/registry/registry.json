@@ -1,5 +1,20 @@
 {
-    "version": "1.0.0",
-    "updated": "2024-01-01T00:00:00Z",
-    "tools": []
+  "version": "1.0.0",
+  "updated": "2025-11-03T14:39:50Z",
+  "tools": [
+    {
+      "id": "power-maverick-tool-erd-generator",
+      "name": "Test ERD Gen",
+      "description": "erd gen",
+      "author": "Power Maverick",
+      "version": "0.1.18",
+      "downloadUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/power-maverick-tool-erd-generator-0.1.18/power-maverick-tool-erd-generator-0.1.18.tar.gz",
+      "checksum": "0aed3f74017b3832506411899046949d93af823e2015b77b3a6723af6ef5c29a",
+      "size": 824310,
+      "publishedAt": "2025-11-03T14:39:50Z",
+      "tags": [
+        "Utilities"
+      ]
+    }
+  ]
 }
