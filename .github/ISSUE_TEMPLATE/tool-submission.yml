@@ -2,6 +2,7 @@ name: Tool Submission
 description: Submit a new tool to the Power Platform Tool Box registry
 title: "[Tool Submission] "
 labels: ["tool-intake", "pending-review"]
+type: "task"
 body:
   - type: markdown
     attributes:
