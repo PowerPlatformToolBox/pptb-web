@@ -113,6 +113,8 @@ jobs:
         run: |
           # Get download URL from release
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+
+          cd public/registry
           
           # Update registry.json
           jq --arg id "${{ steps.build.outputs.id }}" \
@@ -140,6 +142,7 @@ jobs:
              registry.json > registry.json.tmp
           
           mv registry.json.tmp registry.json
+          cd ../..
       
       - name: Commit and push
         run: |
