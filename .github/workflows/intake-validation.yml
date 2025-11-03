@@ -49,6 +49,22 @@ jobs:
             exit 1
           fi
       
+      - name: Check license
+        id: license
+        run: |
+          LICENSE="${{ steps.validate.outputs.license }}"
+          
+          # List of approved open source licenses
+          APPROVED="MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|GPL-2.0|GPL-3.0|LGPL-3.0|ISC"
+          
+          if echo "$LICENSE" | grep -E "$APPROVED"; then
+            echo "✅ License approved: $LICENSE"
+            echo "approved=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ License not in approved list: $LICENSE"
+            echo "approved=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run security audit
         id: audit
         continue-on-error: true
@@ -69,22 +85,39 @@ jobs:
           
           cd ..
           cat audit.txt
-      
-      - name: Check license
-        id: license
-        run: |
-          LICENSE="${{ steps.validate.outputs.license }}"
-          
-          # List of approved open source licenses
-          APPROVED="MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|GPL-2.0|GPL-3.0|LGPL-3.0|ISC"
-          
-          if echo "$LICENSE" | grep -E "$APPROVED"; then
-            echo "✅ License approved: $LICENSE"
-            echo "approved=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ License not in approved list: $LICENSE"
-            echo "approved=false" >> $GITHUB_OUTPUT
-          fi
+
+      - name: Post security audit results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const auditResults = fs.readFileSync('audit.txt', 'utf8');
+            const isSecure = '${{ steps.audit.outputs.secure }}' === 'true';
+            
+            const emoji = isSecure ? '✅' : '⚠️';
+            const status = isSecure ? 'No security vulnerabilities found' : 'Security issues detected';
+            
+            const comment = `## ${emoji} Security Audit Results
+            
+            **Status:** ${status}
+            
+            <details>
+            <summary>View full audit report</summary>
+            
+            \`\`\`
+            ${auditResults}
+            \`\`\`
+            
+            </details>`;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
       
       - name: Comment validation results
         uses: actions/github-script@v7
