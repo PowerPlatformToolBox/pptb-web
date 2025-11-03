@@ -57,9 +57,7 @@ jobs:
           npm install --production --no-optional
           
           # Run build if script exists
-          if npm run --if-present build; then
-            echo "✅ Build completed"
-          fi
+          npm run --if-present build || echo "No build script found or build failed"
           
           # Create tool ID (kebab-case)
           TOOL_ID=$(echo "${{ steps.tool.outputs.package }}" | sed 's/@//g' | sed 's/\//-/g')
