@@ -27,7 +27,7 @@ jobs:
       - name: Extract tool info
         id: tool
         run: |
-          PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.npm_package')
+          PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.npm_package_name')
           DISPLAY_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.display_name')
           DESCRIPTION=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.description')
           AUTHOR=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.author')
