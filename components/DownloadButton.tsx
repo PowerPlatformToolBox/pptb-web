@@ -67,6 +67,16 @@ export default function DownloadButton() {
         {version && <span className="mr-3">Version: {version}</span>}
         {asset.size && <span>Size: {formatFileSize(asset.size)}</span>}
       </div>
+      {os === 'mac' && (
+        <div className="max-w-2xl mt-2 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+          <p className="mb-2">
+            <strong>macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following command in the terminal to mark the app as safe:
+          </p>
+          <code className="block bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-700 font-mono text-xs break-all">
+            xattr -cr &quot;/Applications/Power Platform Tool Box.app&quot;
+          </code>
+        </div>
+      )}
       <div className="text-xs text-gray-500">
         <a
           href="https://github.com/PowerPlatformToolBox/desktop-app/releases"
