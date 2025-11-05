@@ -72,7 +72,7 @@ export default function DownloadButton() {
           <p className="mb-2">
             <strong>macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following command in the terminal to mark the app as safe:
           </p>
-          <code className="block bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-700 font-mono text-xs break-all">
+          <code className="block bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-700 font-mono text-xs break-all" aria-label="Terminal command to remove quarantine attribute">
             xattr -cr &quot;/Applications/Power Platform Tool Box.app&quot;
           </code>
         </div>
