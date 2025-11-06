@@ -63,8 +63,11 @@ jobs:
           npm run --if-present build || echo "No build script found or build failed"
           
           # Create tool ID (kebab-case)
-          TOOL_ID=$(echo "${{ steps.tool.outputs.package }}" | sed 's/@//g' | sed 's/\//-/g')
+          #TOOL_ID=$(echo "${{ steps.tool.outputs.package }}" | sed 's/@//g' | sed 's/\//-/g')
+          TOOL_ID=$(echo "${{ steps.tool.outputs.package }}")
+          CLEAN_TOOL_ID=$(echo "${{ steps.tool.outputs.package }}" | sed 's/@//g' | sed 's/\//-/g')
           echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
+          echo "clean_id=$CLEAN_TOOL_ID" >> $GITHUB_OUTPUT
           
           cd ..
       
@@ -79,7 +82,7 @@ jobs:
           find . -name "*.ts" ! -name "*.d.ts" -delete
           
           # Create archive
-          tar -czf ../${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz \
+          tar -czf ../${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}.tar.gz \
             --exclude=node_modules/.bin \
             package.json \
             dist/
@@ -89,8 +92,8 @@ jobs:
       - name: Generate checksum
         id: checksum
         run: |
-          CHECKSUM=$(sha256sum ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz | awk '{print $1}')
-          SIZE=$(stat -f%z ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz 2>/dev/null || stat -c%s ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz)
+          CHECKSUM=$(sha256sum ${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}.tar.gz | awk '{print $1}')
+          SIZE=$(stat -f%z ${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}.tar.gz 2>/dev/null || stat -c%s ${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}.tar.gz)
           
           echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "size=$SIZE" >> $GITHUB_OUTPUT
@@ -99,7 +102,7 @@ jobs:
         id: upload
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}
+          tag_name: ${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}
           name: ${{ steps.tool.outputs.name }} v${{ steps.build.outputs.version }}
           body: |
             Tool: ${{ steps.tool.outputs.name }}
@@ -108,12 +111,12 @@ jobs:
             Author: ${{ steps.tool.outputs.author }}
             
             Submitted via issue #${{ github.event.issue.number }}
-          files: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz
+          files: ${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}.tar.gz
       
       - name: Update registry.json
         run: |
           # Get download URL from release
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.clean_id }}-${{ steps.build.outputs.version }}.tar.gz"
 
           cd public/registry
           
