@@ -25,7 +25,7 @@ jobs:
           UPDATES_FOUND=false
           
           # For each tool in registry
-          for row in $(jq -r '.tools[] | @base64' registry.json); do
+          for row in $(jq -r '.tools[] | @base64' ../public/registry/registry.json); do
             _jq() {
               echo ${row} | base64 --decode | jq -r ${1}
             }
