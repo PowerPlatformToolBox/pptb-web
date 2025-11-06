@@ -27,7 +27,7 @@ jobs:
           # For each tool in registry
           for row in $(jq -r '.tools[] | @base64' public/registry/registry.json); do
             _jq() {
-              echo ${row} | base64 --decode | jq -r ${1}
+              echo ${row} | base64 --decode | jq -r "${1}"
             }
             
             TOOL_ID=$(_jq '.id')
