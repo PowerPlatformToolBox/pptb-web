@@ -105,46 +105,52 @@ jobs:
         run: |
           ICON_URL="${{ steps.tool.outputs.icon_url }}"
           
-          if [ -n "$ICON_URL" ]; then
-            # Extract file extension from URL
-            EXTENSION="${ICON_URL##*.}"
-            # Remove query parameters if any
-            EXTENSION="${EXTENSION%%\?*}"
-            # Convert to lowercase for validation
-            EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
-            
-            # Validate extension against supported formats
-            if [[ ! "$EXTENSION" =~ ^($SUPPORTED_ICON_FORMATS)$ ]]; then
+          # Extract file extension from URL
+          EXTENSION="${ICON_URL##*.}"
+          # Remove query parameters if any
+          EXTENSION="${EXTENSION%%\?*}"
+          # Convert to lowercase for validation
+          EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
+          
+          # Validate extension against supported formats using case statement
+          case "$EXTENSION" in
+            png|jpg|jpeg|svg)
+              echo "✅ Valid icon format: $EXTENSION"
+              ;;
+            *)
               echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
               echo "Supported formats: $SUPPORTED_ICON_FORMATS"
               echo "Defaulting to png"
               EXTENSION="png"
-            fi
-            
-            # Determine icon filename
-            ICON_FILENAME="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}-icon.${EXTENSION}"
-            
-            echo "Downloading icon from: $ICON_URL"
-            if curl -L -f -o "$ICON_FILENAME" "$ICON_URL"; then
-              echo "✅ Icon downloaded successfully"
-              echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
-              echo "has_icon=true" >> $GITHUB_OUTPUT
-            else
-              echo "⚠️ Failed to download icon, continuing without it"
-              echo "has_icon=false" >> $GITHUB_OUTPUT
-            fi
+              ;;
+          esac
+          
+          # Determine icon filename
+          ICON_FILENAME="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}-icon.${EXTENSION}"
+          
+          echo "Downloading icon from: $ICON_URL"
+          if curl -L -f -o "$ICON_FILENAME" "$ICON_URL"; then
+            echo "✅ Icon downloaded successfully"
+            echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
+            echo "has_icon=true" >> $GITHUB_OUTPUT
           else
-            echo "No icon URL provided"
+            echo "⚠️ Failed to download icon, continuing without it"
             echo "has_icon=false" >> $GITHUB_OUTPUT
           fi
       
       - name: Prepare release files
         id: release_files
         run: |
+          # Start with the tar.gz file
           FILES="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+          
+          # Add icon file if present
           if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-            FILES=$(printf "%s\n%s" "$FILES" "${{ steps.icon.outputs.filename }}")
+            FILES="$FILES
+          ${{ steps.icon.outputs.filename }}"
           fi
+          
+          # Output as multiline string
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$FILES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
