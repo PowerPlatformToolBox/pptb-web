@@ -108,6 +108,16 @@ jobs:
             EXTENSION="${ICON_URL##*.}"
             # Remove query parameters if any
             EXTENSION="${EXTENSION%%\?*}"
+            # Convert to lowercase for validation
+            EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
+            
+            # Validate extension
+            if [[ ! "$EXTENSION" =~ ^(png|jpg|jpeg|svg)$ ]]; then
+              echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
+              echo "Supported formats: png, jpg, jpeg, svg"
+              echo "Defaulting to png"
+              EXTENSION="png"
+            fi
             
             # Determine icon filename
             ICON_FILENAME="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}-icon.${EXTENSION}"
@@ -126,6 +136,18 @@ jobs:
             echo "has_icon=false" >> $GITHUB_OUTPUT
           fi
       
+      - name: Prepare release files
+        id: release_files
+        run: |
+          FILES="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+          if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
+            FILES="${FILES}
+          ${{ steps.icon.outputs.filename }}"
+          fi
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
       - name: Upload to GitHub Release
         id: upload
         uses: softprops/action-gh-release@v1
@@ -139,9 +161,7 @@ jobs:
             Author: ${{ steps.tool.outputs.author }}
             
             Submitted via issue #${{ github.event.issue.number }}
-          files: |
-            ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz
-            ${{ steps.icon.outputs.filename }}
+          files: ${{ steps.release_files.outputs.files }}
       
       - name: Update registry.json
         run: |
@@ -157,64 +177,43 @@ jobs:
 
           cd public/registry
           
-          # Update registry.json
+          # Build base tool object
+          TOOL_ENTRY=$(jq -n \
+            --arg id "${{ steps.build.outputs.id }}" \
+            --arg name "${{ steps.tool.outputs.name }}" \
+            --arg desc "${{ steps.tool.outputs.description }}" \
+            --arg author "${{ steps.tool.outputs.author }}" \
+            --arg version "${{ steps.build.outputs.version }}" \
+            --arg url "$DOWNLOAD_URL" \
+            --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
+            --arg checksum "${{ steps.checksum.outputs.checksum }}" \
+            --arg size "${{ steps.checksum.outputs.size }}" \
+            --arg category "${{ steps.tool.outputs.category }}" \
+            --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              id: $id,
+              name: $name,
+              description: $desc,
+              author: $author,
+              version: $version,
+              downloadUrl: $url,
+              readme: $readme_url,
+              checksum: $checksum,
+              size: ($size | tonumber),
+              publishedAt: $published,
+              tags: [$category]
+            }')
+          
+          # Add iconUrl if present
           if [ -n "$ICON_URL" ]; then
-            # Include iconUrl in registry entry
-            jq --arg id "${{ steps.build.outputs.id }}" \
-               --arg name "${{ steps.tool.outputs.name }}" \
-               --arg desc "${{ steps.tool.outputs.description }}" \
-               --arg author "${{ steps.tool.outputs.author }}" \
-               --arg version "${{ steps.build.outputs.version }}" \
-               --arg url "$DOWNLOAD_URL" \
-               --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
-               --arg checksum "${{ steps.checksum.outputs.checksum }}" \
-               --arg size "${{ steps.checksum.outputs.size }}" \
-               --arg category "${{ steps.tool.outputs.category }}" \
-               --arg icon_url "$ICON_URL" \
-               --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-               '.tools += [{
-                 id: $id,
-                 name: $name,
-                 description: $desc,
-                 author: $author,
-                 version: $version,
-                 downloadUrl: $url,
-                 iconUrl: $icon_url,
-                 readme: $readme_url,
-                 checksum: $checksum,
-                 size: ($size | tonumber),
-                 publishedAt: $published,
-                 tags: [$category]
-               }] | .updated = $published' \
-               registry.json > registry.json.tmp
-          else
-            # Without iconUrl field
-            jq --arg id "${{ steps.build.outputs.id }}" \
-               --arg name "${{ steps.tool.outputs.name }}" \
-               --arg desc "${{ steps.tool.outputs.description }}" \
-               --arg author "${{ steps.tool.outputs.author }}" \
-               --arg version "${{ steps.build.outputs.version }}" \
-               --arg url "$DOWNLOAD_URL" \
-               --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
-               --arg checksum "${{ steps.checksum.outputs.checksum }}" \
-               --arg size "${{ steps.checksum.outputs.size }}" \
-               --arg category "${{ steps.tool.outputs.category }}" \
-               --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-               '.tools += [{
-                 id: $id,
-                 name: $name,
-                 description: $desc,
-                 author: $author,
-                 version: $version,
-                 downloadUrl: $url,
-                 readme: $readme_url,
-                 checksum: $checksum,
-                 size: ($size | tonumber),
-                 publishedAt: $published,
-                 tags: [$category]
-               }] | .updated = $published' \
-               registry.json > registry.json.tmp
+            TOOL_ENTRY=$(echo "$TOOL_ENTRY" | jq --arg icon_url "$ICON_URL" '. + {iconUrl: $icon_url}')
           fi
+          
+          # Update registry with the tool entry
+          jq --argjson tool "$TOOL_ENTRY" \
+             --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '.tools += [$tool] | .updated = $published' \
+             registry.json > registry.json.tmp
           
           mv registry.json.tmp registry.json
           cd ../..
