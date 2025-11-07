@@ -141,13 +141,10 @@ jobs:
       - name: Prepare release files
         id: release_files
         run: |
-          # Start with the tar.gz file
+          # Build files list
           FILES="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
-          
-          # Add icon file if present
           if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-            FILES="$FILES
-          ${{ steps.icon.outputs.filename }}"
+            FILES="${FILES}"$'\n'"${{ steps.icon.outputs.filename }}"
           fi
           
           # Output as multiline string
