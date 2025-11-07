@@ -66,6 +66,15 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: icon_url
+    attributes:
+      label: Icon URL
+      description: URL to the tool's icon image (PNG, SVG, or JPG, recommended size 256x256px)
+      placeholder: "https://raw.githubusercontent.com/username/tool-name/main/icon.png"
+    validations:
+      required: false
+
   - type: dropdown
     id: category
     attributes:

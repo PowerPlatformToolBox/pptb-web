@@ -9,6 +9,8 @@ jobs:
     if: github.event.label.name == 'approved'
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      SUPPORTED_ICON_FORMATS: "png|jpg|jpeg|svg"
     
     steps:
       - name: Checkout repository
@@ -34,6 +36,7 @@ jobs:
           AUTHOR=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.author')
           CATEGORY=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.category')
           README_URL=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.readme_url')
+          ICON_URL=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.icon_url // empty')
           
           echo "package=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "name=$DISPLAY_NAME" >> $GITHUB_OUTPUT
@@ -41,6 +44,7 @@ jobs:
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
           echo "category=$CATEGORY" >> $GITHUB_OUTPUT
           echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
+          echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
 
       - name: Download and build tool
         id: build
@@ -95,6 +99,59 @@ jobs:
           echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "size=$SIZE" >> $GITHUB_OUTPUT
       
+      - name: Download icon
+        id: icon
+        if: steps.tool.outputs.icon_url != ''
+        run: |
+          ICON_URL="${{ steps.tool.outputs.icon_url }}"
+          
+          # Extract file extension from URL
+          EXTENSION="${ICON_URL##*.}"
+          # Remove query parameters if any
+          EXTENSION="${EXTENSION%%\?*}"
+          # Convert to lowercase for validation
+          EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
+          
+          # Validate extension against supported formats using case statement
+          case "$EXTENSION" in
+            png|jpg|jpeg|svg)
+              echo "✅ Valid icon format: $EXTENSION"
+              ;;
+            *)
+              echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
+              echo "Supported formats: $SUPPORTED_ICON_FORMATS"
+              echo "Defaulting to png"
+              EXTENSION="png"
+              ;;
+          esac
+          
+          # Determine icon filename
+          ICON_FILENAME="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}-icon.${EXTENSION}"
+          
+          echo "Downloading icon from: $ICON_URL"
+          if curl -L -f -o "$ICON_FILENAME" "$ICON_URL"; then
+            echo "✅ Icon downloaded successfully"
+            echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
+            echo "has_icon=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Failed to download icon, continuing without it"
+            echo "has_icon=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Prepare release files
+        id: release_files
+        run: |
+          # Build files list
+          FILES="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+          if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
+            FILES="${FILES}"$'\n'"${{ steps.icon.outputs.filename }}"
+          fi
+          
+          # Output as multiline string
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
       - name: Upload to GitHub Release
         id: upload
         uses: softprops/action-gh-release@v1
@@ -108,40 +165,58 @@ jobs:
             Author: ${{ steps.tool.outputs.author }}
             
             Submitted via issue #${{ github.event.issue.number }}
-          files: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz
+          files: ${{ steps.release_files.outputs.files }}
       
       - name: Update registry.json
         run: |
           # Get download URL from release
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
+          
+          # Prepare icon URL if icon was uploaded
+          if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
+            ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.icon.outputs.filename }}"
+          else
+            ICON_URL=""
+          fi
 
           cd public/registry
           
-          # Update registry.json
-          jq --arg id "${{ steps.build.outputs.id }}" \
-             --arg name "${{ steps.tool.outputs.name }}" \
-             --arg desc "${{ steps.tool.outputs.description }}" \
-             --arg author "${{ steps.tool.outputs.author }}" \
-             --arg version "${{ steps.build.outputs.version }}" \
-             --arg url "$DOWNLOAD_URL" \
-             --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
-             --arg checksum "${{ steps.checksum.outputs.checksum }}" \
-             --arg size "${{ steps.checksum.outputs.size }}" \
-             --arg category "${{ steps.tool.outputs.category }}" \
+          # Build base tool object
+          TOOL_ENTRY=$(jq -n \
+            --arg id "${{ steps.build.outputs.id }}" \
+            --arg name "${{ steps.tool.outputs.name }}" \
+            --arg desc "${{ steps.tool.outputs.description }}" \
+            --arg author "${{ steps.tool.outputs.author }}" \
+            --arg version "${{ steps.build.outputs.version }}" \
+            --arg url "$DOWNLOAD_URL" \
+            --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
+            --arg checksum "${{ steps.checksum.outputs.checksum }}" \
+            --arg size "${{ steps.checksum.outputs.size }}" \
+            --arg category "${{ steps.tool.outputs.category }}" \
+            --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              id: $id,
+              name: $name,
+              description: $desc,
+              author: $author,
+              version: $version,
+              downloadUrl: $url,
+              readme: $readme_url,
+              checksum: $checksum,
+              size: ($size | tonumber),
+              publishedAt: $published,
+              tags: [$category]
+            }')
+          
+          # Add iconUrl if present
+          if [ -n "$ICON_URL" ]; then
+            TOOL_ENTRY=$(echo "$TOOL_ENTRY" | jq --arg icon_url "$ICON_URL" '. + {iconUrl: $icon_url}')
+          fi
+          
+          # Update registry with the tool entry
+          jq --argjson tool "$TOOL_ENTRY" \
              --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-             '.tools += [{
-               id: $id,
-               name: $name,
-               description: $desc,
-               author: $author,
-               version: $version,
-               downloadUrl: $url,
-               readme: $readme_url,
-               checksum: $checksum,
-               size: ($size | tonumber),
-               publishedAt: $published,
-               tags: [$category]
-             }] | .updated = $published' \
+             '.tools += [$tool] | .updated = $published' \
              registry.json > registry.json.tmp
           
           mv registry.json.tmp registry.json
