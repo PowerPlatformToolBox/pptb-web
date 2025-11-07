@@ -102,6 +102,7 @@ jobs:
         if: steps.tool.outputs.icon_url != ''
         run: |
           ICON_URL="${{ steps.tool.outputs.icon_url }}"
+          SUPPORTED_FORMATS="png|jpg|jpeg|svg"
           
           if [ -n "$ICON_URL" ]; then
             # Extract file extension from URL
@@ -111,10 +112,10 @@ jobs:
             # Convert to lowercase for validation
             EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
             
-            # Validate extension
-            if [[ ! "$EXTENSION" =~ ^(png|jpg|jpeg|svg)$ ]]; then
+            # Validate extension against supported formats
+            if [[ ! "$EXTENSION" =~ ^($SUPPORTED_FORMATS)$ ]]; then
               echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
-              echo "Supported formats: png, jpg, jpeg, svg"
+              echo "Supported formats: $SUPPORTED_FORMATS"
               echo "Defaulting to png"
               EXTENSION="png"
             fi
@@ -141,8 +142,7 @@ jobs:
         run: |
           FILES="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
           if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-            FILES="${FILES}
-          ${{ steps.icon.outputs.filename }}"
+            FILES="$FILES"$'\n'"${{ steps.icon.outputs.filename }}"
           fi
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$FILES" >> $GITHUB_OUTPUT
