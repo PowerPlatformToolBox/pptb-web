@@ -9,6 +9,8 @@ jobs:
     if: github.event.label.name == 'approved'
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      SUPPORTED_ICON_FORMATS: "png|jpg|jpeg|svg"
     
     steps:
       - name: Checkout repository
@@ -102,7 +104,6 @@ jobs:
         if: steps.tool.outputs.icon_url != ''
         run: |
           ICON_URL="${{ steps.tool.outputs.icon_url }}"
-          SUPPORTED_FORMATS="png|jpg|jpeg|svg"
           
           if [ -n "$ICON_URL" ]; then
             # Extract file extension from URL
@@ -113,9 +114,9 @@ jobs:
             EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
             
             # Validate extension against supported formats
-            if [[ ! "$EXTENSION" =~ ^($SUPPORTED_FORMATS)$ ]]; then
+            if [[ ! "$EXTENSION" =~ ^($SUPPORTED_ICON_FORMATS)$ ]]; then
               echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
-              echo "Supported formats: $SUPPORTED_FORMATS"
+              echo "Supported formats: $SUPPORTED_ICON_FORMATS"
               echo "Defaulting to png"
               EXTENSION="png"
             fi
@@ -142,7 +143,7 @@ jobs:
         run: |
           FILES="${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
           if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-            FILES="$FILES"$'\n'"${{ steps.icon.outputs.filename }}"
+            FILES=$(printf "%s\n%s" "$FILES" "${{ steps.icon.outputs.filename }}")
           fi
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$FILES" >> $GITHUB_OUTPUT
