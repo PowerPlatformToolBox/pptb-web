@@ -1,0 +1,145 @@
+name: Convert and Update Tool
+
+on:
+  workflow_dispatch:
+    inputs:
+      tool_id:
+        description: 'Tool ID (npm package name)'
+        required: true
+        type: string
+      version:
+        description: 'Version to convert'
+        required: true
+        type: string
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Get tool metadata from registry
+        id: metadata
+        run: |
+          # Read existing tool metadata from registry
+          TOOL_ID=$(echo "${{ inputs.tool_id }}" | sed 's/@//g' | sed 's/\//-/g')
+          
+          TOOL_NAME=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .name // "${{ inputs.tool_id }}"' public/registry/registry.json)
+          TOOL_DESC=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .description // "Power Platform Tool"' public/registry/registry.json)
+          TOOL_AUTHOR=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .author // "Unknown"' public/registry/registry.json)
+          TOOL_CATEGORY=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .tags[0] // "General"' public/registry/registry.json)
+          README_URL=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .readme // ""' public/registry/registry.json)
+          
+          echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
+          echo "name=$TOOL_NAME" >> $GITHUB_OUTPUT
+          echo "description=$TOOL_DESC" >> $GITHUB_OUTPUT
+          echo "author=$TOOL_AUTHOR" >> $GITHUB_OUTPUT
+          echo "category=$TOOL_CATEGORY" >> $GITHUB_OUTPUT
+          echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
+
+      - name: Download and build tool
+        id: build
+        run: |
+          # Download specific version from npm
+          npm pack ${{ inputs.tool_id }}@${{ inputs.version }}
+          
+          # Extract
+          tar -xzf *.tgz
+          cd package
+          
+          # Verify version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Install production dependencies
+          npm install --production --no-optional
+          
+          # Run build if script exists
+          npm run --if-present build || echo "No build script found or build failed"
+          
+          cd ..
+      
+      - name: Create distribution archive
+        run: |
+          cd package
+          
+          # Remove unnecessary files
+          rm -rf .git .github node_modules/*/test node_modules/*/tests
+          rm -rf node_modules/*/*.md node_modules/*/.npmignore
+          find . -name "*.map" -delete
+          find . -name "*.ts" ! -name "*.d.ts" -delete
+          
+          # Create archive
+          tar -czf ../${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz \
+            --exclude=node_modules/.bin \
+            .
+          
+          cd ..
+      
+      - name: Generate checksum
+        id: checksum
+        run: |
+          CHECKSUM=$(sha256sum ${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz | awk '{print $1}')
+          SIZE=$(stat -f%z ${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz 2>/dev/null || stat -c%s ${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz)
+          
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "size=$SIZE" >> $GITHUB_OUTPUT
+      
+      - name: Upload to GitHub Release
+        id: upload
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.metadata.outputs.id }}-${{ inputs.version }}
+          name: ${{ steps.metadata.outputs.name }} v${{ inputs.version }}
+          body: |
+            Tool: ${{ steps.metadata.outputs.name }}
+            npm package: ${{ inputs.tool_id }}
+            Version: ${{ inputs.version }}
+            Author: ${{ steps.metadata.outputs.author }}
+            
+            Automated update from update checker.
+          files: ${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz
+      
+      - name: Update registry.json
+        run: |
+          # Get download URL from release
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz"
+
+          cd public/registry
+          
+          # Update registry.json - update existing tool version
+          jq --arg id "${{ steps.metadata.outputs.id }}" \
+             --arg version "${{ inputs.version }}" \
+             --arg url "$DOWNLOAD_URL" \
+             --arg checksum "${{ steps.checksum.outputs.checksum }}" \
+             --arg size "${{ steps.checksum.outputs.size }}" \
+             --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '(.tools[] | select(.id == $id)) |= (
+               .version = $version |
+               .downloadUrl = $url |
+               .checksum = $checksum |
+               .size = ($size | tonumber) |
+               .publishedAt = $published
+             ) | .updated = $published' \
+             registry.json > registry.json.tmp
+          
+          mv registry.json.tmp registry.json
+          cd ../..
+      
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/registry/registry.json
+          git commit -m "Update tool: ${{ steps.metadata.outputs.name }} v${{ inputs.version }}"
+          git push

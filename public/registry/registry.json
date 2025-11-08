@@ -4,6 +4,7 @@
   "tools": [
     {
       "id": "power-maverick-tool-erd-generator",
+      "packageName": "@power-maverick/tool-erd-generator",
       "name": "ERD Generator",
       "description": "Generate Entity Relationship Diagrams for Dataverse",
       "author": "Power Maverick",
@@ -19,6 +20,7 @@
     },
     {
       "id": "pptb-standard-sample-tool",
+      "packageName": "pptb-standard-sample-tool",
       "name": "Sample Standard Tool",
       "description": "A sample HTML tool that showcases various features provided by the Tool Box",
       "author": "PPTB Creator",

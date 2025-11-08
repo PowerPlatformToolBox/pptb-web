@@ -27,12 +27,12 @@ jobs:
           # For each tool in registry
           for row in $(jq -r '.tools[] | @base64' public/registry/registry.json); do
             _jq() {
-              echo ${row} | base64 --decode | jq -r ${1}
+              echo ${row} | base64 --decode | jq -r "${1}"
             }
             
             TOOL_ID=$(_jq '.id')
             CURRENT_VERSION=$(_jq '.version')
-            NPM_PACKAGE=$(_jq '.npmPackage // .id')
+            NPM_PACKAGE=$(_jq '.packageName // .id')
             
             # Get latest npm version
             LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
@@ -64,6 +64,9 @@ jobs:
             
             # Trigger conversion workflow via repository dispatch
             # This will handle download, build, and registry update
+            gh workflow run update-convert-tool.yml \
+              -f tool_id="$TOOL_ID" \
+              -f version="$LATEST"
             
           done < updates.txt
           
