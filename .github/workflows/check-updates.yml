@@ -59,8 +59,21 @@ jobs:
       - name: Create update PR
         if: steps.check.outputs.found == 'true'
         run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
           # Create new branch
-          git checkout -b updates-$(date +%Y%m%d)
+          BRANCH_NAME="updates-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $BRANCH_NAME
+          
+          # Create a placeholder commit to establish the branch
+          echo "# Tool Updates - $(date +%Y-%m-%d)" > .update-tracker.md
+          git add .update-tracker.md
+          git commit -m "Track updates for $(date +%Y-%m-%d)"
+          
+          # Push the branch
+          git push -u origin $BRANCH_NAME
           
           # Process each update
           while IFS=',' read -r TOOL_ID CURRENT LATEST; do
