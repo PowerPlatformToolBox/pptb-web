@@ -16,6 +16,8 @@ jobs:
   convert:
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      SUPPORTED_ICON_FORMATS: "png|jpg|jpeg|svg"
     
     steps:
       - name: Checkout repository
@@ -39,6 +41,7 @@ jobs:
           TOOL_AUTHOR=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .author // "Unknown"' public/registry/registry.json)
           TOOL_CATEGORY=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .tags[0] // "General"' public/registry/registry.json)
           README_URL=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .readme // ""' public/registry/registry.json)
+          ICON_URL=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .iconUrl // empty' public/registry/registry.json)
           
           echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
           echo "name=$TOOL_NAME" >> $GITHUB_OUTPUT
@@ -46,6 +49,7 @@ jobs:
           echo "author=$TOOL_AUTHOR" >> $GITHUB_OUTPUT
           echo "category=$TOOL_CATEGORY" >> $GITHUB_OUTPUT
           echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
+          echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
 
       - name: Download and build tool
         id: build
@@ -94,6 +98,59 @@ jobs:
           
           echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
           echo "size=$SIZE" >> $GITHUB_OUTPUT
+
+      - name: Download icon
+        id: icon
+        if: steps.metadata.outputs.icon_url != ''
+        run: |
+          ICON_URL="${{ steps.metadata.outputs.icon_url }}"
+          
+          # Extract file extension from URL
+          EXTENSION="${ICON_URL##*.}"
+          # Remove query parameters if any
+          EXTENSION="${EXTENSION%%\?*}"
+          # Convert to lowercase for validation
+          EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
+          
+          # Validate extension against supported formats using case statement
+          case "$EXTENSION" in
+            png|jpg|jpeg|svg)
+              echo "✅ Valid icon format: $EXTENSION"
+              ;;
+            *)
+              echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
+              echo "Supported formats: $SUPPORTED_ICON_FORMATS"
+              echo "Defaulting to png"
+              EXTENSION="png"
+              ;;
+          esac
+          
+          # Determine icon filename
+          ICON_FILENAME="${{ steps.metadata.outputs.id }}-${{ inputs.version }}-icon.${EXTENSION}"
+          
+          echo "Downloading icon from: $ICON_URL"
+          if curl -L -f -o "$ICON_FILENAME" "$ICON_URL"; then
+            echo "✅ Icon downloaded successfully"
+            echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
+            echo "has_icon=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Failed to download icon, continuing without it"
+            echo "has_icon=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare release files
+        id: release_files
+        run: |
+          # Build files list
+          FILES="${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz"
+          if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
+            FILES="${FILES}"$'\n'"${{ steps.icon.outputs.filename }}"
+          fi
+          
+          # Output as multiline string
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Upload to GitHub Release
         id: upload
@@ -108,12 +165,19 @@ jobs:
             Author: ${{ steps.metadata.outputs.author }}
             
             Automated update from update checker.
-          files: ${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz
+          files: ${{ steps.release_files.outputs.files }}
       
       - name: Update registry.json
         run: |
           # Get download URL from release
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz"
+
+          # Prepare icon URL if icon was uploaded
+          if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
+            ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.icon.outputs.filename }}"
+          else
+            ICON_URL=""
+          fi
 
           cd public/registry
           
@@ -124,12 +188,14 @@ jobs:
              --arg checksum "${{ steps.checksum.outputs.checksum }}" \
              --arg size "${{ steps.checksum.outputs.size }}" \
              --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             --arg iconUrl "$ICON_URL" \
              '(.tools[] | select(.id == $id)) |= (
                .version = $version |
                .downloadUrl = $url |
                .checksum = $checksum |
                .size = ($size | tonumber) |
-               .publishedAt = $published
+               .publishedAt = $published |
+               (if $iconUrl != "" then .iconUrl = $iconUrl else . end)
              ) | .updated = $published' \
              registry.json > registry.json.tmp
           
