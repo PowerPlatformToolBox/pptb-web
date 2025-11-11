@@ -1,23 +1,37 @@
-import { Analytics } from '@vercel/analytics/next';
-import type { Metadata } from "next";
-import "./globals.css";
+import clsx from "clsx";
+import { type Metadata } from "next";
+import { Inter, Lexend } from "next/font/google";
+
+import { ScrollToTop } from "@/components/ScrollToTop";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Power Platform Tool Box",
-  description: "Download and use Power Platform Tool Box to enhance your Power Platform development workflow",
+    title: {
+        template: "%s - PPTB",
+        default: "PPTB - The ultimate desktop application for Power Platform",
+    },
+    description: "Streamline your development workflow with powerful set of tools for Power Platform developers.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body className="antialiased">
-        {children}
-        <Analytics />
-      </body>
-    </html>
-  );
+const inter = Inter({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-inter",
+});
+
+const lexend = Lexend({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-lexend",
+});
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <html lang="en" className={clsx("h-full scroll-smooth bg-white antialiased", inter.variable, lexend.variable)}>
+            <body className="flex h-full flex-col">
+                {children}
+                <ScrollToTop />
+            </body>
+        </html>
+    );
 }

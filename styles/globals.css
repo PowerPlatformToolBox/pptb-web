@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@plugin '@tailwindcss/forms';
+
+@theme {
+    --text-*: initial;
+    --text-xs: 0.75rem;
+    --text-xs--line-height: 1rem;
+    --text-sm: 0.875rem;
+    --text-sm--line-height: 1.5rem;
+    --text-base: 1rem;
+    --text-base--line-height: 1.75rem;
+    --text-lg: 1.125rem;
+    --text-lg--line-height: 2rem;
+    --text-xl: 1.25rem;
+    --text-xl--line-height: 2rem;
+    --text-2xl: 1.5rem;
+    --text-2xl--line-height: 2rem;
+    --text-3xl: 2rem;
+    --text-3xl--line-height: 2.5rem;
+    --text-4xl: 2.5rem;
+    --text-4xl--line-height: 3.5rem;
+    --text-5xl: 3rem;
+    --text-5xl--line-height: 3.5rem;
+    --text-6xl: 3.75rem;
+    --text-6xl--line-height: 1;
+    --text-7xl: 4.5rem;
+    --text-7xl--line-height: 1.1;
+    --text-8xl: 6rem;
+    --text-8xl--line-height: 1;
+    --text-9xl: 8rem;
+    --text-9xl--line-height: 1;
+
+    --radius-4xl: 2rem;
+
+    --font-sans: var(--font-inter);
+    --font-display: var(--font-lexend);
+
+    --container-2xl: 40rem;
+
+    /* Custom PPTB Colors */
+    --color-blue: #0078d4;
+    --color-purple: #8a3ffc;
+    --color-dark: #0f172a;
+    --color-mid: #1e293b;
+    --color-light: #475569;
+    --color-background: #f8fafc;
+    --color-surface: #ffffff;
+
+    /* Custom Shadows */
+    --shadow-fluent: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-glow: 0 0 20px rgba(138, 63, 252, 0.3);
+}
+
+/* ===============================
+   Power Platform Tool Box Theme
+   Inspired by Microsoft Fluent Design
+   =============================== */
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        background-color: var(--color-background);
+        color: var(--color-mid);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: var(--color-dark);
+        font-weight: 600;
+    }
+
+    a {
+        color: var(--color-blue);
+        transition: color 0.15s;
+    }
+    a:hover {
+        color: var(--color-purple);
+    }
+
+    strong {
+        color: var(--color-dark);
+        font-weight: 600;
+    }
+}
+
+/* ===============================
+   Components Layer (Reusable UI)
+   =============================== */
+@layer components {
+    /* Fluent-style card */
+    .card {
+        background-color: var(--color-surface);
+        border-radius: 1rem;
+        box-shadow: var(--shadow-card);
+        padding: 1.25rem;
+        transition: all 0.2s;
+    }
+    .card:hover {
+        box-shadow: var(--shadow-fluent);
+    }
+
+    /* Primary gradient button */
+    .btn-primary {
+        background: linear-gradient(to right, var(--color-blue), var(--color-purple));
+        color: white;
+        font-weight: 500;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        transition: all 0.15s;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(to right, rgba(0, 120, 212, 0.9), rgba(138, 63, 252, 0.9));
+    }
+
+    /* Secondary button */
+    .btn-secondary {
+        background-color: rgb(241 245 249);
+        color: var(--color-mid);
+        font-weight: 500;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgb(226 232 240);
+    }
+    .btn-secondary:hover {
+        background-color: rgb(226 232 240);
+    }
+
+    /* Outline button */
+    .btn-outline {
+        border: 1px solid var(--color-blue);
+        color: var(--color-blue);
+        font-weight: 500;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.75rem;
+    }
+    .btn-outline:hover {
+        background-color: rgba(0, 120, 212, 0.1);
+    }
+
+    /* Section header with accent underline */
+    .section-header {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--color-dark);
+        border-bottom: 4px solid;
+        border-image: linear-gradient(to right, var(--color-blue), var(--color-purple)) 1;
+        display: inline-block;
+        padding-bottom: 0.5rem;
+    }
+
+    /* Gradient text utility */
+    .text-gradient {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        background-image: linear-gradient(to right, var(--color-blue), var(--color-purple));
+    }
+
+    /* Dark mode background card */
+    .card-dark {
+        background-color: rgb(15 23 42);
+        color: white;
+        border-radius: 1rem;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+}
+
+/* ===============================
+   Utilities Layer (Custom)
+   =============================== */
+@layer utilities {
+    .backdrop-fluent {
+        backdrop-filter: blur(12px);
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+}
