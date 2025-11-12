@@ -79,18 +79,48 @@ jobs:
           while IFS=',' read -r TOOL_ID CURRENT LATEST; do
             echo "Processing update: $TOOL_ID $CURRENT → $LATEST"
             
-            # Trigger conversion workflow via repository dispatch
-            # This will handle download, build, and registry update
+            # Trigger conversion workflow and capture the workflow run
+            # Pass the branch name so the workflow commits to the correct branch
             gh workflow run update-convert-tool.yml \
               -f tool_id="$TOOL_ID" \
-              -f version="$LATEST"
+              -f version="$LATEST" \
+              -f branch="$BRANCH_NAME"
+            
+            # Wait a moment for the workflow to start
+            sleep 10
             
           done < updates.txt
           
-          # Create PR
+          # Wait for all triggered workflows to complete
+          echo "Waiting for all update workflows to complete..."
+          MAX_WAIT=600  # Maximum 10 minutes
+          ELAPSED=0
+          POLL_INTERVAL=15
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            # Check if there are any running workflows for update-convert-tool.yml
+            RUNNING=$(gh run list --workflow=update-convert-tool.yml --branch=$BRANCH_NAME --status=in_progress --json databaseId --jq 'length')
+            
+            if [ "$RUNNING" -eq "0" ]; then
+              echo "All workflows completed"
+              break
+            fi
+            
+            echo "Still waiting... ($RUNNING workflows running)"
+            sleep $POLL_INTERVAL
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+          
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "Warning: Timeout waiting for workflows to complete"
+          fi
+          
+          # Pull the latest changes from the branch
+          git pull origin $BRANCH_NAME
+          
+          # Create PR (without label to avoid errors if label doesn't exist)
           gh pr create \
             --title "Tool Updates - $(date +%Y-%m-%d)" \
-            --body "Automated tool updates detected" \
-            --label "automated-update"
+            --body "Automated tool updates detected"
         env:
           GH_TOKEN: ${{ github.token }}
