@@ -1,138 +1,83 @@
 name: Check for Tool Updates
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Daily at midnight UTC
-  workflow_dispatch:  # Manual trigger
+    schedule:
+        - cron: "0 0 * * *" # Daily at midnight UTC
+    workflow_dispatch: # Manual trigger
 
 jobs:
-  check-updates:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Check for updates
-        id: check
-        run: |
-          # Read current registry
-          UPDATES_FOUND=false
-          
-          # For each tool in registry
-          for row in $(jq -r '.tools[] | @base64' public/registry/registry.json); do
-            _jq() {
-              echo ${row} | base64 --decode | jq -r "${1}"
-            }
-            
-            TOOL_ID=$(_jq '.id')
-            CURRENT_VERSION=$(_jq '.version')
-            NPM_PACKAGE=$(_jq '.packageName // .id')
-            
-            # Get latest npm version
-            LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
-            
-            if [ -z "$LATEST_VERSION" ]; then
-              echo "⚠️ Could not fetch version for $TOOL_ID"
-              continue
-            fi
-            
-            # Compare versions
-            if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
-              echo "🔄 Update available for $TOOL_ID: $CURRENT_VERSION → $LATEST_VERSION"
-              echo "$TOOL_ID,$CURRENT_VERSION,$LATEST_VERSION" >> updates.txt
-              UPDATES_FOUND=true
-            fi
-          done
-          
-          echo "found=$UPDATES_FOUND" >> $GITHUB_OUTPUT
-      
-      - name: Create update PR
-        if: steps.check.outputs.found == 'true'
-        run: |
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Create new branch
-          BRANCH_NAME="updates-$(date +%Y%m%d-%H%M%S)"
-          git checkout -b $BRANCH_NAME
-          
-          # Create a placeholder commit to establish the branch
-          echo "# Tool Updates - $(date +%Y-%m-%d)" > .update-tracker.md
-          git add .update-tracker.md
-          git commit -m "Track updates for $(date +%Y-%m-%d)"
-          
-          # Push the branch
-          git push -u origin $BRANCH_NAME
-          
-          # Process each update
-          while IFS=',' read -r TOOL_ID CURRENT LATEST; do
-            echo "Processing update: $TOOL_ID $CURRENT → $LATEST"
-            
-            # Trigger conversion workflow and capture the workflow run
-            # Pass the branch name so the workflow commits to the correct branch
-            gh workflow run update-convert-tool.yml \
-              -f tool_id="$TOOL_ID" \
-              -f version="$LATEST" \
-              -f branch="$BRANCH_NAME"
-            
-            # Wait a moment for the workflow to start
-            sleep 10
-            
-          done < updates.txt
-          
-          # Wait for all triggered workflows to complete
-          echo "Waiting for all update workflows to complete..."
-          MAX_WAIT=600  # Maximum 10 minutes
-          ELAPSED=0
-          POLL_INTERVAL=15
-          
-          while [ $ELAPSED -lt $MAX_WAIT ]; do
-            # Check if there are any running or queued workflows for update-convert-tool.yml
-            RUNNING=$(gh run list --workflow=update-convert-tool.yml --branch=$BRANCH_NAME --json status --jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
-            
-            if [ "$RUNNING" -eq "0" ]; then
-              echo "All workflows completed"
-              break
-            fi
-            
-            echo "Still waiting... ($RUNNING workflows running/queued)"
-            sleep $POLL_INTERVAL
-            ELAPSED=$((ELAPSED + POLL_INTERVAL))
-          done
-          
-          if [ $ELAPSED -ge $MAX_WAIT ]; then
-            echo "Warning: Timeout waiting for workflows to complete"
-          fi
-          
-          # Check for failed workflows
-          FAILED=$(gh run list --workflow=update-convert-tool.yml --branch=$BRANCH_NAME --json status,conclusion --jq '[.[] | select(.conclusion == "failure")] | length')
-          if [ "$FAILED" -gt "0" ]; then
-            echo "Warning: $FAILED workflow(s) failed"
-          fi
-          
-          # Pull the latest changes from the branch
-          git pull origin $BRANCH_NAME
-          
-          # Check if there are any changes to commit
-          if ! git diff-index --quiet HEAD --; then
-            echo "Warning: There are still uncommitted changes"
-            git status
-          fi
-          
-          # Create PR (without label to avoid errors if label doesn't exist)
-          gh pr create \
-            --title "Tool Updates - $(date +%Y-%m-%d)" \
-            --body "Automated tool updates detected"
-        env:
-          GH_TOKEN: ${{ github.token }}
+    check-updates:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+            actions: write
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Check for updates
+              id: check
+              run: |
+                  # Read current registry
+                  UPDATES_FOUND=false
+
+                  # For each tool in registry
+                  for row in $(jq -r '.tools[] | @base64' public/registry/registry.json); do
+                    _jq() {
+                      echo ${row} | base64 --decode | jq -r "${1}"
+                    }
+                    
+                    TOOL_ID=$(_jq '.id')
+                    CURRENT_VERSION=$(_jq '.version')
+                    NPM_PACKAGE=$(_jq '.packageName // .id')
+                    
+                    # Get latest npm version
+                    LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
+                    
+                    if [ -z "$LATEST_VERSION" ]; then
+                      echo "⚠️ Could not fetch version for $TOOL_ID"
+                      continue
+                    fi
+                    
+                    # Compare versions
+                    if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
+                      echo "🔄 Update available for $TOOL_ID: $CURRENT_VERSION → $LATEST_VERSION"
+                      echo "$TOOL_ID,$CURRENT_VERSION,$LATEST_VERSION" >> updates.txt
+                      UPDATES_FOUND=true
+                    fi
+                  done
+
+                  echo "found=$UPDATES_FOUND" >> $GITHUB_OUTPUT
+
+            - name: Run Update Workflow
+              if: steps.check.outputs.found == 'true'
+              run: |
+                  # Configure git
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                  # Process each update
+                  while IFS=',' read -r NPM_PACKAGE CURRENT LATEST; do
+                    echo "Processing update: $NPM_PACKAGE $CURRENT → $LATEST"
+                    
+                    # Trigger conversion workflow and capture the workflow run
+                    # Pass the branch name so the workflow commits to the correct branch
+                    gh workflow run update-convert-tool.yml \
+                      -f tool_id="$NPM_PACKAGE" \
+                      -f version="$LATEST" \
+                      -f branch="$BRANCH_NAME"
+                    
+                    # Wait a moment for the workflow to start
+                    sleep 10
+                    
+                  done < updates.txt
+
+              env:
+                  GH_TOKEN: ${{ github.token }}
