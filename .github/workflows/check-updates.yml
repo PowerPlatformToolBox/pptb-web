@@ -36,7 +36,7 @@ jobs:
                     
                     TOOL_ID=$(_jq '.id')
                     CURRENT_VERSION=$(_jq '.version')
-                    NPM_PACKAGE=$(_jq '.packageName // .id')
+                    NPM_PACKAGE=$(_jq '.packageName')
                     
                     # Get latest npm version
                     LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
@@ -48,8 +48,8 @@ jobs:
                     
                     # Compare versions
                     if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
-                      echo "🔄 Update available for $TOOL_ID: $CURRENT_VERSION → $LATEST_VERSION"
-                      echo "$TOOL_ID,$CURRENT_VERSION,$LATEST_VERSION" >> updates.txt
+                      echo "🔄 Update available for $NPM_PACKAGE: $CURRENT_VERSION → $LATEST_VERSION"
+                      echo "$NPM_PACKAGE,$CURRENT_VERSION,$LATEST_VERSION" >> updates.txt
                       UPDATES_FOUND=true
                     fi
                   done
