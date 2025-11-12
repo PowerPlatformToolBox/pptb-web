@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated": "2025-11-08T19:28:01Z",
+  "updated": "2025-11-12T03:23:40Z",
   "tools": [
     {
       "id": "power-maverick-tool-erd-generator",
@@ -8,12 +8,12 @@
       "name": "ERD Generator",
       "description": "Generate Entity Relationship Diagrams for Dataverse",
       "author": "Power Maverick",
-      "version": "0.1.18",
-      "downloadUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/power-maverick-tool-erd-generator-0.1.18/power-maverick-tool-erd-generator-0.1.18.tar.gz",
+      "version": "1.0.0",
+      "downloadUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/power-maverick-tool-erd-generator-1.0.0/power-maverick-tool-erd-generator-1.0.0.tar.gz",
       "readme": "https://raw.githubusercontent.com/Power-Maverick/DVDT-Tools/refs/heads/main/tools/erd-generator/README.md",
-      "checksum": "3f20f1924f36509f33186f151dd90ecf560d02bcb551bcd9b144b57ef5409119",
-      "size": 824310,
-      "publishedAt": "2025-11-06T01:49:29Z",
+      "checksum": "f4366d1e352cde09aa5b8e0c644e38ce0974470d856479f090783f915fd63302",
+      "size": 20867415,
+      "publishedAt": "2025-11-12T03:23:40Z",
       "tags": [
         "Utilities"
       ]
