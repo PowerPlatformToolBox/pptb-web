@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Container } from "@/components/Container";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import { FadeIn, SlideIn } from "@/components/animations";
 import { supabase } from "@/lib/supabase";
 
@@ -102,22 +100,18 @@ export default function DashboardPage() {
     const [sortBy, setSortBy] = useState<'downloads' | 'rating' | 'aum'>('downloads');
 
     useEffect(() => {
-        async function checkAuth() {
+        async function fetchData() {
             if (!supabase) {
-                // If Supabase is not configured, redirect to sign in
-                router.push('/auth/signin');
+                setLoading(false);
                 return;
             }
 
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 
-                if (!user) {
-                    router.push('/auth/signin');
-                    return;
+                if (user) {
+                    setUser(user);
                 }
-
-                setUser(user);
 
                 // Fetch tools data
                 const { data: toolsData, error } = await supabase
@@ -136,8 +130,8 @@ export default function DashboardPage() {
             }
         }
 
-        checkAuth();
-    }, [router]);
+        fetchData();
+    }, []);
 
     const handleSignOut = async () => {
         if (!supabase) return;
@@ -161,27 +155,21 @@ export default function DashboardPage() {
 
     if (loading) {
         return (
-            <>
-                <Header />
-                <main>
-                    <Container className="mt-16 sm:mt-32">
-                        <div className="text-center">
-                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                            <p className="mt-4 text-slate-600">Loading dashboard...</p>
-                        </div>
-                    </Container>
-                </main>
-                <Footer />
-            </>
+            <main>
+                <Container className="mt-16 sm:mt-32">
+                    <div className="text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                        <p className="mt-4 text-slate-600">Loading dashboard...</p>
+                    </div>
+                </Container>
+            </main>
         );
     }
 
     return (
-        <>
-            <Header />
-            <main>
-                <Container className="mt-16 sm:mt-32">
-                    <FadeIn direction="up" delay={0.2}>
+        <main>
+            <Container className="mt-16 sm:mt-32">
+                <FadeIn direction="up" delay={0.2}>
                         <div className="mx-auto max-w-2xl lg:max-w-7xl">
                             {/* Welcome Header */}
                             <header className="mb-12">
@@ -369,8 +357,6 @@ export default function DashboardPage() {
                         </div>
                     </FadeIn>
                 </Container>
-            </main>
-            <Footer />
-        </>
+        </main>
     );
 }

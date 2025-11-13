@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Container } from "@/components/Container";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import { FadeIn } from "@/components/animations";
 import { supabase } from "@/lib/supabase";
 
@@ -42,21 +40,18 @@ export default function RateToolPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        async function checkAuthAndLoadTool() {
+        async function loadTool() {
             if (!supabase) {
-                router.push('/auth/signin');
+                setLoading(false);
                 return;
             }
 
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 
-                if (!user) {
-                    router.push('/auth/signin');
-                    return;
+                if (user) {
+                    setUser(user);
                 }
-
-                setUser(user);
 
                 if (!toolId) {
                     router.push('/tools');
@@ -97,7 +92,7 @@ export default function RateToolPage() {
             }
         }
 
-        checkAuthAndLoadTool();
+        loadTool();
     }, [router, toolId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -143,18 +138,14 @@ export default function RateToolPage() {
 
     if (loading) {
         return (
-            <>
-                <Header />
-                <main>
-                    <Container className="mt-16 sm:mt-32">
-                        <div className="text-center">
-                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                            <p className="mt-4 text-slate-600">Loading...</p>
-                        </div>
-                    </Container>
-                </main>
-                <Footer />
-            </>
+            <main>
+                <Container className="mt-16 sm:mt-32">
+                    <div className="text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                        <p className="mt-4 text-slate-600">Loading...</p>
+                    </div>
+                </Container>
+            </main>
         );
     }
 
@@ -163,11 +154,9 @@ export default function RateToolPage() {
     }
 
     return (
-        <>
-            <Header />
-            <main>
-                <Container className="mt-16 sm:mt-32">
-                    <FadeIn direction="up" delay={0.2}>
+        <main>
+            <Container className="mt-16 sm:mt-32">
+                <FadeIn direction="up" delay={0.2}>
                         <div className="mx-auto max-w-2xl">
                             {/* Back button */}
                             <Link 
@@ -295,8 +284,6 @@ export default function RateToolPage() {
                         </div>
                     </FadeIn>
                 </Container>
-            </main>
-            <Footer />
-        </>
+        </main>
     );
 }

@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import { FadeIn, SlideIn } from "@/components/animations";
 import { supabase } from "@/lib/supabase";
 
@@ -117,11 +115,9 @@ export default function ToolsPage() {
         : tools.filter((t) => t.category === selectedCategory);
 
     return (
-        <>
-            <Header />
-            <main>
-                <Container className="mt-16 sm:mt-32">
-                    <FadeIn direction="up" delay={0.2}>
+        <main>
+            <Container className="mt-16 sm:mt-32">
+                <FadeIn direction="up" delay={0.2}>
                         <div className="mx-auto max-w-2xl lg:max-w-7xl">
                             <header className="max-w-2xl">
                                 <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
@@ -232,8 +228,6 @@ export default function ToolsPage() {
                         </div>
                     </FadeIn>
                 </Container>
-            </main>
-            <Footer />
-        </>
+        </main>
     );
 }

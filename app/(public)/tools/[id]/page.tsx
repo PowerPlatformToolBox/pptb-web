@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { Container } from "@/components/Container";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import { FadeIn } from "@/components/animations";
 import { supabase } from "@/lib/supabase";
 
@@ -215,18 +213,14 @@ export default function ToolDetailPage() {
 
     if (loading) {
         return (
-            <>
-                <Header />
-                <main>
-                    <Container className="mt-16 sm:mt-32">
-                        <div className="text-center">
-                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                            <p className="mt-4 text-slate-600">Loading tool details...</p>
-                        </div>
-                    </Container>
-                </main>
-                <Footer />
-            </>
+            <main>
+                <Container className="mt-16 sm:mt-32">
+                    <div className="text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                        <p className="mt-4 text-slate-600">Loading tool details...</p>
+                    </div>
+                </Container>
+            </main>
         );
     }
 
@@ -235,11 +229,9 @@ export default function ToolDetailPage() {
     }
 
     return (
-        <>
-            <Header />
-            <main>
-                <Container className="mt-16 sm:mt-32">
-                    <FadeIn direction="up" delay={0.2}>
+        <main>
+            <Container className="mt-16 sm:mt-32">
+                <FadeIn direction="up" delay={0.2}>
                         <div className="mx-auto max-w-2xl lg:max-w-5xl">
                             {/* Back button */}
                             <Link 
@@ -381,7 +373,5 @@ export default function ToolDetailPage() {
                     </FadeIn>
                 </Container>
             </main>
-            <Footer />
-        </>
     );
 }
