@@ -167,70 +167,77 @@ jobs:
                       Submitted via issue #${{ github.event.issue.number }}
                   files: ${{ steps.release_files.outputs.files }}
 
-            - name: Update registry.json
+            - name: Update Supabase database
+              env:
+                  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+                  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+              if: env.SUPABASE_URL != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
               run: |
-                  # Get download URL from release
-                  DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
-
-                  # Prepare icon URL if icon was uploaded
+                  # Prepare icon URL
                   if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
                     ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.icon.outputs.filename }}"
                   else
                     ICON_URL=""
                   fi
 
-                  cd public/registry
-
-                  # Build base tool object
-                  TOOL_ENTRY=$(jq -n \
-                    --arg id "${{ steps.build.outputs.id }}" \
+                  # Prepare SQL payload for tools table
+                  TOOL_PAYLOAD=$(jq -n \
                     --arg packageName "${{ steps.tool.outputs.package }}" \
                     --arg name "${{ steps.tool.outputs.name }}" \
-                    --arg desc "${{ steps.tool.outputs.description }}" \
+                    --arg description "${{ steps.tool.outputs.description }}" \
+                    --arg iconUrl "$ICON_URL" \
                     --arg author "${{ steps.tool.outputs.author }}" \
                     --arg version "${{ steps.build.outputs.version }}" \
-                    --arg url "$DOWNLOAD_URL" \
-                    --arg readme_url "${{ steps.tool.outputs.readme_url }}" \
-                    --arg checksum "${{ steps.checksum.outputs.checksum }}" \
-                    --arg size "${{ steps.checksum.outputs.size }}" \
                     --arg category "${{ steps.tool.outputs.category }}" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     '{
-                      id: $id,
                       packageName: $packageName,
                       name: $name,
-                      description: $desc,
+                      description: $description,
+                      iconUrl: $iconUrl,
                       author: $author,
                       version: $version,
-                      downloadUrl: $url,
-                      readme: $readme_url,
-                      checksum: $checksum,
-                      size: ($size | tonumber),
-                      publishedAt: $published,
-                      tags: [$category]
+                      category: $category,
+                      published_at: $published
                     }')
 
-                  # Add iconUrl if present
-                  if [ -n "$ICON_URL" ]; then
-                    TOOL_ENTRY=$(echo "$TOOL_ENTRY" | jq --arg icon_url "$ICON_URL" '. + {iconUrl: $icon_url}')
+                  # Insert or update tool metadata in Supabase
+                  RESPONSE=$(curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tools" \
+                    -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                    -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                    -H "Content-Type: application/json" \
+                    -H "Prefer: resolution=merge-duplicates,return=representation" \
+                    -d "$TOOL_PAYLOAD")
+
+                  echo "Supabase tools response: $RESPONSE"
+
+                  # Extract the tool_id from response
+                  TOOL_ID=$(echo "$RESPONSE" | jq -r '.[0].id // empty')
+
+                  if [ -n "$TOOL_ID" ]; then
+                    echo "Tool inserted/updated with ID: $TOOL_ID"
+                    
+                    # Initialize analytics for the tool
+                    ANALYTICS_PAYLOAD=$(jq -n \
+                      --arg tool_id "$TOOL_ID" \
+                      '{
+                        tool_id: $tool_id,
+                        downloads: 0,
+                        rating: 0.0,
+                        aum: 0
+                      }')
+
+                    curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tool_analytics" \
+                      -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                      -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                      -H "Content-Type: application/json" \
+                      -H "Prefer: resolution=merge-duplicates" \
+                      -d "$ANALYTICS_PAYLOAD"
+                    
+                    echo "Analytics initialized for tool"
+                  else
+                    echo "Warning: Could not extract tool ID from Supabase response"
                   fi
-
-                  # Update registry with the tool entry
-                  jq --argjson tool "$TOOL_ENTRY" \
-                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                     '.tools += [$tool] | .updated = $published' \
-                     registry.json > registry.json.tmp
-
-                  mv registry.json.tmp registry.json
-                  cd ../..
-
-            - name: Commit and push
-              run: |
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add public/registry/registry.json
-                  git commit -m "Add tool: ${{ steps.tool.outputs.name }} v${{ steps.build.outputs.version }}"
-                  git push
 
             - name: Close issue with success
               uses: actions/github-script@v7
