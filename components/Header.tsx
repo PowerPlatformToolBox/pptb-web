@@ -3,14 +3,25 @@
 import { Popover, PopoverBackdrop, PopoverButton, PopoverPanel } from "@headlessui/react";
 import clsx from "clsx";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
+import { supabase } from "@/lib/supabase";
 
 function MobileNavLink({ href, children }: { href: string; children: React.ReactNode }) {
     return (
         <PopoverButton as={Link} href={href} className="block w-full p-2">
+            {children}
+        </PopoverButton>
+    );
+}
+
+function MobileNavButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+    return (
+        <PopoverButton as="button" onClick={onClick} className="block w-full p-2 text-left">
             {children}
         </PopoverButton>
     );
@@ -25,7 +36,12 @@ function MobileNavIcon({ open }: { open: boolean }) {
     );
 }
 
-function MobileNavigation() {
+interface MobileNavigationProps {
+    isAuthenticated: boolean;
+    onSignOut: () => void;
+}
+
+function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps) {
     return (
         <Popover>
             <PopoverButton className="relative z-10 flex h-8 w-8 items-center justify-center focus:not-data-focus:outline-hidden" aria-label="Toggle Navigation">
@@ -36,18 +52,73 @@ function MobileNavigation() {
                 transition
                 className="absolute inset-x-0 top-full mt-4 flex origin-top flex-col rounded-2xl bg-white p-4 text-lg tracking-tight text-slate-900 shadow-xl ring-1 ring-slate-900/5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-150 data-enter:ease-out data-leave:duration-100 data-leave:ease-in"
             >
-                <MobileNavLink href="#features">Features</MobileNavLink>
+                <MobileNavLink href="/#features">Features</MobileNavLink>
                 <MobileNavLink href="/tools">Tools</MobileNavLink>
                 <MobileNavLink href="/about">About</MobileNavLink>
-                <MobileNavLink href="#faq">FAQs</MobileNavLink>
+                <MobileNavLink href="/#faq">FAQs</MobileNavLink>
                 <hr className="m-2 border-slate-300/40" />
-                <MobileNavLink href="/auth/signin">Sign in</MobileNavLink>
+                {isAuthenticated ? (
+                    <>
+                        <MobileNavLink href="/dashboard">Dashboard</MobileNavLink>
+                        <MobileNavButton onClick={onSignOut}>Sign out</MobileNavButton>
+                    </>
+                ) : (
+                    <MobileNavLink href="/auth/signin">Sign in</MobileNavLink>
+                )}
             </PopoverPanel>
         </Popover>
     );
 }
 
 export function Header() {
+    const router = useRouter();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function checkAuth() {
+            if (!supabase) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                setIsAuthenticated(!!user);
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                setIsAuthenticated(false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        checkAuth();
+
+        // Listen for auth state changes
+        if (supabase) {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+                setIsAuthenticated(!!session);
+            });
+
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
+    }, []);
+
+    const handleSignOut = async () => {
+        if (!supabase) return;
+        
+        try {
+            await supabase.auth.signOut();
+            setIsAuthenticated(false);
+            router.push('/');
+        } catch (error) {
+            console.error('Error signing out:', error);
+        }
+    };
+
     return (
         <header className="py-10">
             <Container>
@@ -64,11 +135,27 @@ export function Header() {
                         </div>
                     </div>
                     <div className="flex items-center gap-x-5 md:gap-x-8">
-                        <div className="hidden md:block">
-                            <NavLink href="/auth/signin">Sign in</NavLink>
+                        <div className="hidden md:flex md:items-center md:gap-x-6">
+                            {!loading && (
+                                <>
+                                    {isAuthenticated ? (
+                                        <>
+                                            <NavLink href="/dashboard">Dashboard</NavLink>
+                                            <button
+                                                onClick={handleSignOut}
+                                                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
+                                            >
+                                                Sign out
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <NavLink href="/auth/signin">Sign in</NavLink>
+                                    )}
+                                </>
+                            )}
                         </div>
                         <div className="-mr-1 md:hidden">
-                            <MobileNavigation />
+                            <MobileNavigation isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
                         </div>
                     </div>
                 </nav>
