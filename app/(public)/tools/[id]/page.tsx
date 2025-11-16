@@ -226,7 +226,7 @@ export default function ToolDetailPage() {
 
     return (
         <main>
-            <Container className="mt-16 sm:mt-32">
+            <Container className="mt-8 sm:mt-16">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl lg:max-w-5xl">
                         {/* Back button */}
@@ -349,7 +349,7 @@ export default function ToolDetailPage() {
                                 <div className="card p-6 text-center shadow-md hover:shadow-lg transition-shadow">
                                     <h3 className="font-semibold text-slate-900 mb-4">Rate this tool</h3>
                                     <p className="text-sm text-slate-600 mb-4">Share your experience with the community</p>
-                                    <Link href={`/rate-tool?toolId=${tool.id}`} className="btn-primary w-full">
+                                    <Link href={`/rate-tool?toolId=${tool.id}`} className="inline-block btn-primary w-full">
                                         <span className="flex items-center justify-center gap-2">
                                             Leave a Rating
                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -366,9 +366,9 @@ export default function ToolDetailPage() {
 
                                 <div className="card p-6 text-center bg-linear-to-br from-blue-50 to-purple-50 shadow-lg relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-br from-blue-300/20 to-purple-300/20 rounded-full blur-2xl"></div>
-                                    <h3 className="font-semibold text-slate-900 mb-2">Download PPTB</h3>
-                                    <p className="text-sm text-slate-600 mb-4">Get the desktop app to use this tool</p>
-                                    <Link href="/" className="btn-outline w-full">
+                                    <h3 className="font-semibold text-slate-900 mb-2 relative z-10">Download PPTB</h3>
+                                    <p className="text-sm text-slate-600 mb-4 relative z-10">Get the desktop app to use this tool</p>
+                                    <Link href="/" className="inline-block btn-outline w-full relative z-10">
                                         <span className="flex items-center justify-center gap-2">
                                             Download Now
                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

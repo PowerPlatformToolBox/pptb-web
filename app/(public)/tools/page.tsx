@@ -142,7 +142,7 @@ export default function ToolsPage() {
 
     return (
         <main>
-            <Container className="mt-16 sm:mt-32">
+            <Container className="mt-8 sm:mt-16">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl lg:max-w-7xl">
                         <header className="max-w-2xl mb-16">
@@ -234,7 +234,7 @@ export default function ToolsPage() {
                             <div className="mt-20 card-dark p-10 text-center relative overflow-hidden">
                                 <div className="absolute inset-0 bg-linear-to-br from-blue-600/10 to-purple-600/10"></div>
                                 <div className="relative z-10">
-                                    <h2 className="text-3xl font-bold">Want to contribute a tool?</h2>
+                                    <h2 className="text-3xl font-bold text-white">Want to contribute a tool?</h2>
                                     <p className="mt-4 text-slate-300 max-w-2xl mx-auto">Join our community of developers and help build the next generation of Power Platform tools.</p>
                                     <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
                                         <Link href="https://github.com/PowerPlatformToolBox" target="_blank" rel="noopener noreferrer" className="btn-primary">
