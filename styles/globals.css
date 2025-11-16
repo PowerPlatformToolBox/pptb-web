@@ -71,6 +71,11 @@
         -moz-osx-font-smoothing: grayscale;
     }
 
+    .dark body {
+        background-color: #0f172a;
+        color: #cbd5e1;
+    }
+
     h1,
     h2,
     h3,
@@ -79,6 +84,15 @@
     h6 {
         color: var(--color-dark);
         font-weight: 600;
+    }
+
+    .dark h1,
+    .dark h2,
+    .dark h3,
+    .dark h4,
+    .dark h5,
+    .dark h6 {
+        color: #f1f5f9;
     }
 
     a {
@@ -92,6 +106,10 @@
     strong {
         color: var(--color-dark);
         font-weight: 600;
+    }
+
+    .dark strong {
+        color: #f1f5f9;
     }
 }
 
@@ -175,6 +193,25 @@
         color: white;
         border-radius: 1rem;
         box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    .dark .card {
+        background-color: rgb(30 41 59);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .dark .card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .dark .btn-secondary {
+        background-color: rgb(30 41 59);
+        color: rgb(203 213 225);
+        border-color: rgb(51 65 85);
+    }
+
+    .dark .btn-secondary:hover {
+        background-color: rgb(51 65 85);
     }
 }
 

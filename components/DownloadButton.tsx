@@ -53,26 +53,26 @@ export default function DownloadButton() {
                 </svg>
                 Download for {getOSDisplayName(os)}
             </a>
-            <div className="text-sm text-light">
+            <div className="text-sm text-light dark:text-slate-400">
                 {version && (
                     <span className="mr-4 font-medium">
-                        Version: <span className="text-dark">{version}</span>
+                        Version: <span className="text-dark dark:text-slate-200">{version}</span>
                     </span>
                 )}
                 {asset.size && (
                     <span className="font-medium">
-                        Size: <span className="text-dark">{formatFileSize(asset.size)}</span>
+                        Size: <span className="text-dark dark:text-slate-200">{formatFileSize(asset.size)}</span>
                     </span>
                 )}
             </div>
             {os === "mac" && (
-                <div className="card max-w-2xl mt-2 bg-amber-50 border-2 border-amber-200">
-                    <p className="mb-3 text-dark">
-                        <strong className="text-amber-700">⚠️ macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following
+                <div className="card max-w-2xl mt-2 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700">
+                    <p className="mb-3 text-dark dark:text-slate-200">
+                        <strong className="text-amber-700 dark:text-amber-400">⚠️ macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following
                         command in Terminal:
                     </p>
                     <code
-                        className="block bg-surface p-3 rounded-lg border border-slate-200 font-mono text-xs break-all text-dark shadow-card"
+                        className="block bg-surface dark:bg-slate-700 p-3 rounded-lg border border-slate-200 dark:border-slate-600 font-mono text-xs break-all text-dark dark:text-slate-200 shadow-card"
                         aria-label="Terminal command to remove quarantine attribute"
                     >
                         xattr -cr &quot;/Applications/Power Platform Tool Box.app&quot;
