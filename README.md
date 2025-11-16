@@ -92,22 +92,83 @@ Six key features are highlighted with icons and descriptions:
 ```
 pptb-web/
 ├── app/
-│   ├── layout.tsx       # Root layout with metadata
-│   ├── page.tsx         # Homepage
-│   └── globals.css      # Global styles
+│   ├── about/              # XrmToolBox tribute page
+│   ├── auth/
+│   │   └── signin/         # OAuth sign-in page (Microsoft, Google, GitHub)
+│   ├── dashboard/          # Authenticated user dashboard
+│   ├── rate-tool/          # Tool rating page
+│   ├── tools/
+│   │   ├── [id]/           # Individual tool details page
+│   │   └── page.tsx        # Tools showcase page
+│   ├── layout.tsx          # Root layout with metadata
+│   ├── page.tsx            # Homepage
+│   └── globals.css         # Global styles
 ├── components/
+│   ├── animations/         # Reusable animation components
+│   ├── Button.tsx          # Button component
+│   ├── Container.tsx       # Container component
 │   ├── DownloadButton.tsx  # Smart download button with OS detection
-│   └── Features.tsx        # Features showcase section
+│   ├── Footer.tsx          # Footer component
+│   ├── Header.tsx          # Header with navigation
+│   └── ...                 # Other components
 ├── lib/
 │   ├── os-detection.ts     # OS detection utility
-│   └── github-api.ts       # GitHub API integration
-└── public/              # Static assets
+│   ├── github-api.ts       # GitHub API integration
+│   └── supabase.ts         # Supabase client and types
+├── styles/
+│   └── globals.css         # Custom theme and styles
+└── public/                 # Static assets
 ```
+
+## Pages
+
+### Public Pages
+- **Home (`/`)**: Main landing page with features and download button
+- **Tools (`/tools`)**: Showcase of all available tools with filtering by category
+- **About (`/about`)**: Tribute to XrmToolBox and Tanguy (with placeholder text)
+- **Tool Details (`/tools/[id]`)**: Individual tool page with features, ratings, and version info
+
+### Authentication
+- **Sign In (`/auth/signin`)**: OAuth authentication with Microsoft, Google, and GitHub
+
+### Protected Pages (Requires Authentication)
+- **Dashboard (`/dashboard`)**: User dashboard with tool analytics (downloads, ratings, AUM)
+- **Rate Tool (`/rate-tool`)**: Form to rate and review tools
+
+## Features
+
+### Authentication
+- OAuth sign-in with three providers: Microsoft (Azure AD), Google, and GitHub
+- Protected routes automatically redirect to sign-in
+- Graceful handling when Supabase is not configured (uses mock data)
+
+### Tool Management
+- Browse all tools with category filtering
+- View detailed information about each tool
+- Rate and review tools (authenticated users only)
+- Real-time statistics: downloads, ratings, and AUM (Active User Months)
+
+### User Dashboard
+- Overview of all tools with sortable analytics
+- Quick access to rate tools
+- Statistics summary (total tools, downloads, average rating)
+
+## Supabase Integration
+
+The website integrates with Supabase for:
+- User authentication (OAuth providers)
+- Tool data storage and retrieval
+- User ratings and reviews
+- Analytics tracking
+
+See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for detailed setup instructions.
 
 ## Future Enhancements
 
-- Add Supabase integration for user analytics
-- Implement documentation section
+- Add user profile management
+- Implement real-time analytics updates
+- Add tool search functionality
+- Create admin panel for tool management
 - Add blog or news section
 - Create video tutorials section
 - Add community showcase

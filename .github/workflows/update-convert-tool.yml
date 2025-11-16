@@ -173,45 +173,56 @@ jobs:
                       Automated update from update checker.
                   files: ${{ steps.release_files.outputs.files }}
 
-            - name: Update registry.json
+            - name: Update Supabase database
+              env:
+                  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+                  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+              if: env.SUPABASE_URL != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
               run: |
-                  # Get download URL from release
-                  DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz"
-
-                  # Prepare icon URL if icon was uploaded
+                  # Prepare icon URL
                   if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
                     ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.icon.outputs.filename }}"
                   else
                     ICON_URL=""
                   fi
 
-                  cd public/registry
+                  # Prepare SQL payload for tools table
+                  TOOL_PAYLOAD=$(jq -n \
+                    --arg packageName "${{ steps.metadata.outputs.package_name }}" \
+                    --arg name "${{ steps.metadata.outputs.name }}" \
+                    --arg description "${{ steps.metadata.outputs.description }}" \
+                    --arg iconUrl "$ICON_URL" \
+                    --arg author "${{ steps.metadata.outputs.author }}" \
+                    --arg version "${{ inputs.version }}" \
+                    --arg category "${{ steps.metadata.outputs.category }}" \
+                    --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                    '{
+                      packageName: $packageName,
+                      name: $name,
+                      description: $description,
+                      iconUrl: $iconUrl,
+                      author: $author,
+                      version: $version,
+                      category: $category,
+                      published_at: $published
+                    }')
 
-                  # Update registry.json - update existing tool version
-                  jq --arg id "${{ steps.metadata.outputs.id }}" \
-                     --arg version "${{ inputs.version }}" \
-                     --arg url "$DOWNLOAD_URL" \
-                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
-                     --arg size "${{ steps.checksum.outputs.size }}" \
-                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                     --arg iconUrl "$ICON_URL" \
-                     '(.tools[] | select(.id == $id)) |= (
-                       .version = $version |
-                       .downloadUrl = $url |
-                       .checksum = $checksum |
-                       .size = ($size | tonumber) |
-                       .publishedAt = $published |
-                       (if $iconUrl != "" then .iconUrl = $iconUrl else . end)
-                     ) | .updated = $published' \
-                     registry.json > registry.json.tmp
+                  # Insert or update tool metadata in Supabase
+                  RESPONSE=$(curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tools" \
+                    -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                    -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                    -H "Content-Type: application/json" \
+                    -H "Prefer: resolution=merge-duplicates,return=representation" \
+                    -d "$TOOL_PAYLOAD")
 
-                  mv registry.json.tmp registry.json
-                  cd ../..
+                  echo "Supabase tools response: $RESPONSE"
 
-            - name: Commit and push
-              run: |
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add public/registry/registry.json
-                  git commit -m "Update tool: ${{ steps.metadata.outputs.name }} v${{ inputs.version }}"
-                  git push
+                  # Extract the tool_id from response
+                  TOOL_ID=$(echo "$RESPONSE" | jq -r '.[0].id // empty')
+
+                  if [ -n "$TOOL_ID" ]; then
+                    echo "Tool metadata updated with ID: $TOOL_ID"
+                    echo "Analytics data preserved from previous version"
+                  else
+                    echo "Warning: Could not extract tool ID from Supabase response"
+                  fi
