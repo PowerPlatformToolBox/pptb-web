@@ -8,7 +8,7 @@ export function Hero() {
     return (
         <Container className="pt-20 pb-16 text-center lg:pt-32">
             <FadeIn direction="up" delay={0.2}>
-                <h1 className="mx-auto max-w-4xl font-display text-5xl font-medium tracking-tight text-slate-900 sm:text-7xl">
+                <h1 className="mx-auto max-w-4xl font-display text-4xl font-medium tracking-tight text-slate-900 sm:text-7xl">
                     Build{" "}
                     <span className="relative whitespace-nowrap">
                         <svg aria-hidden="true" viewBox="0 0 418 42" className="absolute top-2/3 left-0 h-[0.58em] w-full fill-blue-300/70" preserveAspectRatio="none">
