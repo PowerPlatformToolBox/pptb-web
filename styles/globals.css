@@ -224,3 +224,8 @@
         background-color: rgba(255, 255, 255, 0.7);
     }
 }
+
+/* Dark mode for FAQ section */
+.dark #faq {
+    background-color: rgb(15 23 42) !important; /* slate-900 */
+}
