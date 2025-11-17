@@ -196,6 +196,8 @@ jobs:
                     --arg version "${{ inputs.version }}" \
                     --arg category "${{ steps.metadata.outputs.category }}" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                    --arg checksum "${{ steps.metadata.outputs.checksum }}" \
+                    --arg size "${{ steps.metadata.outputs.size }}" \
                     '{
                       packageName: $packageName,
                       name: $name,
@@ -204,7 +206,9 @@ jobs:
                       author: $author,
                       version: $version,
                       category: $category,
-                      published_at: $published
+                      published_at: $published,
+                      checksum: $checksum,
+                      size: $size
                     }')
 
                   # Insert or update tool metadata in Supabase
