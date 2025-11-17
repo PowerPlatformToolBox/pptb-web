@@ -217,11 +217,11 @@ jobs:
                     }')
 
                   # Insert or update tool metadata in Supabase
-                  RESPONSE=$(curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tools" \
+                  RESPONSE=$(curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tools?on_conflict=packagename" \
                     -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                     -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                     -H "Content-Type: application/json" \
-                    -H "Prefer: resolution=merge-new,return=representation" \
+                    -H "Prefer: resolution=merge-duplicates,return=representation" \
                     -d "$TOOL_PAYLOAD")
 
                   echo "Supabase tools response: $RESPONSE"
