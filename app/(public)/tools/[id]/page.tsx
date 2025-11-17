@@ -213,7 +213,7 @@ export default function ToolDetailPage() {
                 <Container className="mt-16 sm:mt-32">
                     <div className="text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                        <p className="mt-4 text-slate-600">Loading tool details...</p>
+                        <p className="mt-4 text-slate-600 dark:text-slate-400">Loading tool details...</p>
                     </div>
                 </Container>
             </main>
@@ -230,7 +230,7 @@ export default function ToolDetailPage() {
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl lg:max-w-5xl">
                         {/* Back button */}
-                        <Link href="/tools" className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8">
+                        <Link href="/tools" className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors mb-8">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
@@ -239,7 +239,7 @@ export default function ToolDetailPage() {
 
                         {/* Tool Header */}
                         <header className="flex items-start gap-6 mb-12">
-                            <div className="w-20 h-20 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-xl shrink-0">
+                            <div className="w-20 h-20 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl shrink-0">
                                 {tool.iconurl && tool.iconurl.startsWith("http") ? (
                                     <Image src={tool.iconurl} alt={`${tool.name} icon`} width={64} height={64} className="object-contain" />
                                 ) : (
@@ -248,16 +248,16 @@ export default function ToolDetailPage() {
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <h1 className="text-4xl font-bold tracking-tight text-slate-900">{tool.name}</h1>
-                                    <span className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                    <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{tool.name}</h1>
+                                    <span className="px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-full">{tool.category}</span>
                                 </div>
-                                <p className="text-lg text-slate-600 mb-4">{tool.description}</p>
+                                <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">{tool.description}</p>
                                 <div className="flex flex-wrap gap-6 text-sm">
                                     <div className="flex items-center gap-2">
-                                        <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
-                                        <span className="text-slate-700">
+                                        <span className="text-slate-700 dark:text-slate-300">
                                             <strong>{tool.downloads.toLocaleString()}</strong> downloads
                                         </span>
                                     </div>
@@ -265,13 +265,13 @@ export default function ToolDetailPage() {
                                         <svg className="h-5 w-5 text-amber-500 fill-current" viewBox="0 0 20 20">
                                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                         </svg>
-                                        <span className="text-slate-700">
+                                        <span className="text-slate-700 dark:text-slate-300">
                                             <strong>{tool.rating.toFixed(1)}</strong> rating
                                         </span>
                                     </div>
                                     {tool.aum && (
                                         <div className="flex items-center gap-2">
-                                            <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
@@ -279,7 +279,7 @@ export default function ToolDetailPage() {
                                                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                                                 />
                                             </svg>
-                                            <span className="text-slate-700">
+                                            <span className="text-slate-700 dark:text-slate-300">
                                                 <strong>{tool.aum.toLocaleString()}</strong> AUM
                                             </span>
                                         </div>
@@ -292,21 +292,21 @@ export default function ToolDetailPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
                             {/* Main Content */}
                             <div className="lg:col-span-2 space-y-8">
-                                <div className="card p-8 shadow-lg hover:shadow-xl transition-shadow">
-                                    <h2 className="text-2xl font-semibold text-slate-900 mb-4">About</h2>
-                                    <p className="text-slate-700 leading-relaxed">{tool.longDescription || tool.description}</p>
+                                <div className="card p-8 shadow-lg hover:shadow-xl transition-shadow dark:bg-slate-800">
+                                    <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-4">About</h2>
+                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{tool.longDescription || tool.description}</p>
                                 </div>
 
                                 {tool.features && tool.features.length > 0 && (
-                                    <div className="card p-8 shadow-lg border-l-4 border-blue-600">
-                                        <h2 className="text-2xl font-semibold text-slate-900 mb-4">Features</h2>
+                                    <div className="card p-8 shadow-lg border-l-4 border-blue-600 dark:bg-slate-800">
+                                        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Features</h2>
                                         <ul className="space-y-3">
                                             {tool.features.map((feature, index) => (
                                                 <li key={index} className="flex items-start gap-3">
                                                     <svg className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    <span className="text-slate-700">{feature}</span>
+                                                    <span className="text-slate-700 dark:text-slate-300">{feature}</span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -316,25 +316,25 @@ export default function ToolDetailPage() {
 
                             {/* Sidebar */}
                             <div className="space-y-8">
-                                <div className="card p-6 shadow-md hover:shadow-lg transition-shadow">
-                                    <h3 className="font-semibold text-slate-900 mb-4">Tool Information</h3>
+                                <div className="card p-6 shadow-md hover:shadow-lg transition-shadow dark:bg-slate-800">
+                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Tool Information</h3>
                                     <dl className="space-y-3 text-sm">
                                         {tool.version && (
                                             <>
-                                                <dt className="text-slate-500">Version</dt>
-                                                <dd className="text-slate-900 font-medium">{tool.version}</dd>
+                                                <dt className="text-slate-500 dark:text-slate-400">Version</dt>
+                                                <dd className="text-slate-900 dark:text-slate-100 font-medium">{tool.version}</dd>
                                             </>
                                         )}
                                         {tool.author && (
                                             <>
-                                                <dt className="text-slate-500">Author</dt>
-                                                <dd className="text-slate-900 font-medium">{tool.author}</dd>
+                                                <dt className="text-slate-500 dark:text-slate-400">Author</dt>
+                                                <dd className="text-slate-900 dark:text-slate-100 font-medium">{tool.author}</dd>
                                             </>
                                         )}
                                         {tool.lastUpdated && (
                                             <>
-                                                <dt className="text-slate-500">Last Updated</dt>
-                                                <dd className="text-slate-900 font-medium">
+                                                <dt className="text-slate-500 dark:text-slate-400">Last Updated</dt>
+                                                <dd className="text-slate-900 dark:text-slate-100 font-medium">
                                                     {new Date(tool.lastUpdated).toLocaleDateString("en-US", {
                                                         year: "numeric",
                                                         month: "long",
@@ -346,9 +346,9 @@ export default function ToolDetailPage() {
                                     </dl>
                                 </div>
 
-                                <div className="card p-6 text-center shadow-md hover:shadow-lg transition-shadow">
-                                    <h3 className="font-semibold text-slate-900 mb-4">Rate this tool</h3>
-                                    <p className="text-sm text-slate-600 mb-4">Share your experience with the community</p>
+                                <div className="card p-6 text-center shadow-md hover:shadow-lg transition-shadow dark:bg-slate-800">
+                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Rate this tool</h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Share your experience with the community</p>
                                     <Link href={`/rate-tool?toolId=${tool.id}`} className="inline-block btn-primary w-full">
                                         <span className="flex items-center justify-center gap-2">
                                             Leave a Rating
@@ -364,10 +364,10 @@ export default function ToolDetailPage() {
                                     </Link>
                                 </div>
 
-                                <div className="card p-6 text-center bg-linear-to-br from-blue-50 to-purple-50 shadow-lg relative overflow-hidden">
+                                <div className="card p-6 text-center bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 shadow-lg relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-br from-blue-300/20 to-purple-300/20 rounded-full blur-2xl"></div>
-                                    <h3 className="font-semibold text-slate-900 mb-2 relative z-10">Download PPTB</h3>
-                                    <p className="text-sm text-slate-600 mb-4 relative z-10">Get the desktop app to use this tool</p>
+                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2 relative z-10">Download PPTB</h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 relative z-10">Get the desktop app to use this tool</p>
                                     <Link href="/" className="inline-block btn-outline w-full relative z-10">
                                         <span className="flex items-center justify-center gap-2">
                                             Download Now

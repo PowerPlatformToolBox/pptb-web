@@ -66,6 +66,10 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
                 ) : (
                     <MobileNavLink href="/auth/signin">Sign in</MobileNavLink>
                 )}
+                <hr className="m-2 border-slate-300/40 dark:border-slate-600/40" />
+                <div className="px-2 py-2">
+                    <ThemeToggle />
+                </div>
             </PopoverPanel>
         </Popover>
     );

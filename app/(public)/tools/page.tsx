@@ -146,8 +146,8 @@ export default function ToolsPage() {
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl lg:max-w-7xl">
                         <header className="max-w-2xl mb-16">
-                            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Power Platform Tools</h1>
-                            <p className="mt-6 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
+                            <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">Power Platform Tools</h1>
+                            <p className="mt-6 text-lg text-slate-700 dark:text-slate-300">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
                         </header>
 
                         {/* Category Filter */}
@@ -160,7 +160,7 @@ export default function ToolsPage() {
                                         className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
                                             selectedCategory === category
                                                 ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
+                                                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-600 hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-md"
                                         }`}
                                     >
                                         {category}
@@ -173,17 +173,17 @@ export default function ToolsPage() {
                         {loading ? (
                             <div className="mt-16 text-center">
                                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                                <p className="mt-4 text-slate-600">Loading tools...</p>
+                                <p className="mt-4 text-slate-600 dark:text-slate-400">Loading tools...</p>
                             </div>
                         ) : (
                             <SlideIn direction="up" delay={0.4}>
                                 <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                                     {filteredTools.map((tool, index) => (
                                         <FadeIn key={tool.id} direction="up" delay={0.5 + index * 0.05}>
-                                            <Link href={`/tools/${tool.id}`} className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                                            <Link href={`/tools/${tool.id}`} className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-xl dark:bg-slate-800 dark:hover:shadow-2xl">
                                                 <div className="p-6">
                                                     <div className="flex items-center justify-between mb-4">
-                                                        <div className="w-16 h-16 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
+                                                        <div className="w-16 h-16 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
                                                             {tool.iconurl && tool.iconurl.startsWith("http") ? (
                                                                 <Image
                                                                     src={tool.iconurl}
@@ -203,12 +203,12 @@ export default function ToolsPage() {
                                                                 <span className="text-4xl">{tool.iconurl || "📦"}</span>
                                                             )}
                                                         </div>
-                                                        <span className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                                        <span className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-full">{tool.category}</span>
                                                     </div>
-                                                    <h3 className="text-xl font-semibold text-slate-900 group-hover:text-gradient transition-colors">{tool.name}</h3>
-                                                    <p className="mt-3 text-sm text-slate-600">{tool.description}</p>
+                                                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 group-hover:text-gradient transition-colors">{tool.name}</h3>
+                                                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{tool.description}</p>
                                                     <div className="mt-6 flex items-center justify-between text-sm">
-                                                        <div className="flex items-center gap-1 text-slate-600">
+                                                        <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                             </svg>
