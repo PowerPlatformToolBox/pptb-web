@@ -188,10 +188,10 @@ jobs:
 
                   # Prepare SQL payload for tools table
                   TOOL_PAYLOAD=$(jq -n \
-                    --arg packageName "${{ steps.metadata.outputs.package_name }}" \
+                    --arg packagename "${{ steps.metadata.outputs.package_name }}" \
                     --arg name "${{ steps.metadata.outputs.name }}" \
                     --arg description "${{ steps.metadata.outputs.description }}" \
-                    --arg iconUrl "$ICON_URL" \
+                    --arg iconurl "$ICON_URL" \
                     --arg author "${{ steps.metadata.outputs.author }}" \
                     --arg version "${{ inputs.version }}" \
                     --arg category "${{ steps.metadata.outputs.category }}" \
