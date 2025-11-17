@@ -199,10 +199,10 @@ jobs:
                     --arg checksum "${{ steps.metadata.outputs.checksum }}" \
                     --arg size "${{ steps.metadata.outputs.size }}" \
                     '{
-                      packageName: $packageName,
+                      packagename: $packagename,
                       name: $name,
                       description: $description,
-                      iconUrl: $iconUrl,
+                      iconurl: $iconurl,
                       author: $author,
                       version: $version,
                       category: $category,
