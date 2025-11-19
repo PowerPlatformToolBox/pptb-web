@@ -4,6 +4,7 @@ import { Inter, Lexend } from "next/font/google";
 
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeScript } from "@/components/ThemeScript";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +30,8 @@ const lexend = Lexend({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" className={clsx("h-full scroll-smooth antialiased", inter.variable, lexend.variable)}>
-            <body className="flex h-full flex-col bg-white dark:bg-slate-900">
+            <body className="flex h-full flex-col">
+                <ThemeScript />
                 <ThemeProvider>
                     {children}
                     <ScrollToTop />

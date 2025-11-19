@@ -223,13 +223,8 @@
         backdrop-filter: blur(12px);
         background-color: rgba(255, 255, 255, 0.7);
     }
-}
-
-/* Dark mode overrides for body and components */
-.dark body {
-    background-color: rgb(15 23 42) !important; /* slate-900 */
-}
-
-.dark #faq {
-    background-color: rgb(15 23 42) !important; /* slate-900 */
+    
+    .dark .backdrop-fluent {
+        background-color: rgba(15, 23, 42, 0.7);
+    }
 }
