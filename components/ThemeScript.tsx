@@ -25,13 +25,12 @@ export function ThemeScript() {
                 document.documentElement.setAttribute('data-theme', theme);
                 
                 // Apply theme styles directly to body element (workaround for Tailwind v4 + Turbopack)
+                // Only set background color, not text color to avoid overriding component-specific text colors
                 if (document.body) {
                     if (theme === 'dark') {
                         document.body.style.backgroundColor = '#0f172a';
-                        document.body.style.color = '#f1f5f9';
                     } else {
                         document.body.style.backgroundColor = '#ffffff';
-                        document.body.style.color = '#171717';
                     }
                 }
             }

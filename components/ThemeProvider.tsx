@@ -36,12 +36,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             setTheme(dataTheme);
             
             // Apply inline styles on mount (workaround for Tailwind v4 + Turbopack issue)
+            // Only set background color, not text color to avoid overriding component-specific text colors
             if (dataTheme === "dark") {
                 document.body.style.backgroundColor = "#0f172a";
-                document.body.style.color = "#f1f5f9";
             } else {
                 document.body.style.backgroundColor = "#ffffff";
-                document.body.style.color = "#171717";
             }
         }
 
@@ -58,10 +57,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 // Apply inline styles
                 if (newTheme === "dark") {
                     document.body.style.backgroundColor = "#0f172a";
-                    document.body.style.color = "#f1f5f9";
                 } else {
                     document.body.style.backgroundColor = "#ffffff";
-                    document.body.style.color = "#171717";
                 }
             }
         };
@@ -82,12 +79,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             document.documentElement.setAttribute("data-theme", newTheme);
             
             // Apply theme styles directly to body element (workaround for Tailwind v4 + Turbopack issue)
+            // Only set background color, not text color to avoid overriding component-specific text colors
             if (newTheme === "dark") {
                 document.body.style.backgroundColor = "#0f172a";
-                document.body.style.color = "#f1f5f9";
             } else {
                 document.body.style.backgroundColor = "#ffffff";
-                document.body.style.color = "#171717";
             }
             
             return newTheme;
