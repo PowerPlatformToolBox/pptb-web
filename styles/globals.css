@@ -225,7 +225,11 @@
     }
 }
 
-/* Dark mode for FAQ section */
+/* Dark mode overrides for body and components */
+.dark body {
+    background-color: rgb(15 23 42) !important; /* slate-900 */
+}
+
 .dark #faq {
     background-color: rgb(15 23 42) !important; /* slate-900 */
 }
