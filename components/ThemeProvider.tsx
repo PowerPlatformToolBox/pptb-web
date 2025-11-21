@@ -34,8 +34,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         // Sync with data attribute on mount (in case it changed)
         const dataTheme = document.documentElement.getAttribute("data-theme");
         if (dataTheme === "dark" || dataTheme === "light") {
-            setTheme(dataTheme);
-
             // Apply inline styles on mount (workaround for Tailwind v4 + Turbopack issue)
             // Only set background color, not text color to avoid overriding component-specific text colors
             if (dataTheme === "dark") {
