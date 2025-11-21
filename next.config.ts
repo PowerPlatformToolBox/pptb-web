@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
                         key: "X-XSS-Protection",
                         value: "1; mode=block",
                     },
+                    {
+                        key: "Referrer-Policy",
+                        value: "strict-origin-when-cross-origin",
+                    },
                 ],
             },
             {
@@ -46,8 +50,16 @@ const nextConfig: NextConfig = {
                         value: "GET, HEAD, OPTIONS",
                     },
                     {
+                        key: "Access-Control-Allow-Headers",
+                        value: "X-Requested-With, Content-Type, Accept, Origin",
+                    },
+                    {
                         key: "X-Content-Type-Options",
                         value: "nosniff",
+                    },
+                    {
+                        key: "Referrer-Policy",
+                        value: "no-referrer",
                     },
                 ],
             },
@@ -58,6 +70,62 @@ const nextConfig: NextConfig = {
                     {
                         key: "Cache-Control",
                         value: "public, max-age=31536000, immutable",
+                    },
+                    {
+                        key: "Access-Control-Allow-Origin",
+                        value: "*",
+                    },
+                ],
+            },
+            {
+                // Headers for all JavaScript and CSS chunks
+                source: "/_next/:path*.js",
+                headers: [
+                    {
+                        key: "Cache-Control",
+                        value: "public, max-age=31536000, immutable",
+                    },
+                    {
+                        key: "Access-Control-Allow-Origin",
+                        value: "*",
+                    },
+                    {
+                        key: "Access-Control-Allow-Methods",
+                        value: "GET, HEAD, OPTIONS",
+                    },
+                    {
+                        key: "Access-Control-Allow-Headers",
+                        value: "X-Requested-With, Content-Type, Accept, Origin",
+                    },
+                    {
+                        key: "Referrer-Policy",
+                        value: "no-referrer",
+                    },
+                ],
+            },
+            {
+                // Headers for CSS files
+                source: "/_next/:path*.css",
+                headers: [
+                    {
+                        key: "Cache-Control",
+                        value: "public, max-age=31536000, immutable",
+                    },
+                    {
+                        key: "Access-Control-Allow-Origin",
+                        value: "*",
+                    },
+                    {
+                        key: "Access-Control-Allow-Methods",
+                        value: "GET, HEAD, OPTIONS",
+                    },
+                    {
+                        key: "Access-Control-Allow-Headers",
+                        value: "X-Requested-With, Content-Type, Accept, Origin",
+                    },
+                    {
+                        key: "Referrer-Policy",
+                        value: "no-referrer",
                     },
                 ],
             },
