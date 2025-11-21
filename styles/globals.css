@@ -1,44 +1,12 @@
 @import "tailwindcss";
 
-@plugin '@tailwindcss/forms';
-
-@theme {
-    --text-*: initial;
-    --text-xs: 0.75rem;
-    --text-xs--line-height: 1rem;
-    --text-sm: 0.875rem;
-    --text-sm--line-height: 1.5rem;
-    --text-base: 1rem;
-    --text-base--line-height: 1.75rem;
-    --text-lg: 1.125rem;
-    --text-lg--line-height: 2rem;
-    --text-xl: 1.25rem;
-    --text-xl--line-height: 2rem;
-    --text-2xl: 1.5rem;
-    --text-2xl--line-height: 2rem;
-    --text-3xl: 2rem;
-    --text-3xl--line-height: 2.5rem;
-    --text-4xl: 2.5rem;
-    --text-4xl--line-height: 3.5rem;
-    --text-5xl: 3rem;
-    --text-5xl--line-height: 3.5rem;
-    --text-6xl: 3.75rem;
-    --text-6xl--line-height: 1;
-    --text-7xl: 4.5rem;
-    --text-7xl--line-height: 1.1;
-    --text-8xl: 6rem;
-    --text-8xl--line-height: 1;
-    --text-9xl: 8rem;
-    --text-9xl--line-height: 1;
-
+/* Removed experimental @plugin/@theme at-rules to satisfy lint; use tailwind.config.ts for plugins & theme extensions. */
+/* Custom CSS variables */
+:root {
     --radius-4xl: 2rem;
-
     --font-sans: var(--font-inter);
     --font-display: var(--font-lexend);
-
     --container-2xl: 40rem;
-
-    /* Custom PPTB Colors */
     --color-blue: #0078d4;
     --color-purple: #8a3ffc;
     --color-dark: #0f172a;
@@ -46,15 +14,13 @@
     --color-light: #475569;
     --color-background: #f8fafc;
     --color-surface: #ffffff;
-
-    /* Custom Shadows */
     --shadow-fluent: 0 4px 12px rgba(0, 0, 0, 0.08);
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.05);
     --shadow-glow: 0 0 20px rgba(138, 63, 252, 0.3);
 }
 
 /* ===============================
-   Power Platform Tool Box Theme
+    Power Platform Tool Box Theme
    Inspired by Microsoft Fluent Design
    =============================== */
 
@@ -71,9 +37,14 @@
         -moz-osx-font-smoothing: grayscale;
     }
 
-    .dark body {
+    /* Dark mode styles - moved from .dark body to body.dark for proper specificity */
+    body.dark {
         background-color: #0f172a;
         color: #cbd5e1;
+    }
+
+    html.dark {
+        background-color: #0f172a;
     }
 
     h1,
@@ -86,12 +57,13 @@
         font-weight: 600;
     }
 
-    .dark h1,
-    .dark h2,
-    .dark h3,
-    .dark h4,
-    .dark h5,
-    .dark h6 {
+    /* Dark mode headings - moved from .dark h1 to h1.dark pattern, but better to use html.dark descendant */
+    html.dark h1,
+    html.dark h2,
+    html.dark h3,
+    html.dark h4,
+    html.dark h5,
+    html.dark h6 {
         color: #f1f5f9;
     }
 
@@ -108,7 +80,7 @@
         font-weight: 600;
     }
 
-    .dark strong {
+    html.dark strong {
         color: #f1f5f9;
     }
 }
@@ -167,6 +139,13 @@
     .btn-outline:hover {
         background-color: rgba(0, 120, 212, 0.1);
     }
+    .dark .btn-outline {
+        border-color: rgba(138, 63, 252, 0.7);
+        color: #93c5fd;
+    }
+    .dark .btn-outline:hover {
+        background-color: rgba(138, 63, 252, 0.15);
+    }
 
     /* Section header with accent underline */
     .section-header {
@@ -202,6 +181,15 @@
 
     .dark .card:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Accent gradient border for cards in dark mode (optional utility) */
+    .dark .card[data-accent="gradient"] {
+        position: relative;
+        background:
+            linear-gradient(rgb(30 41 59), rgb(30 41 59)) padding-box,
+            linear-gradient(135deg, var(--color-blue), var(--color-purple)) border-box;
+        border: 2px solid transparent;
     }
 
     .dark .btn-secondary {

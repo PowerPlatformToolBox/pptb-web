@@ -3,14 +3,16 @@
 import { Popover, PopoverBackdrop, PopoverButton, PopoverPanel } from "@headlessui/react";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
+import dynamic from "next/dynamic";
+// Dynamically import ThemeToggle without SSR to avoid hydration mismatches when localStorage/script pre-sets theme.
+const ThemeToggle = dynamic(() => import("@/components/ThemeToggle").then((m) => m.ThemeToggle), { ssr: false });
 
 function MobileNavLink({ href, children }: { href: string; children: React.ReactNode }) {
     return (
@@ -79,8 +81,10 @@ export function Header() {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true); // defer auth UI until after first client render to avoid hydration mismatch
         async function checkAuth() {
             if (!supabase) {
                 setLoading(false);
@@ -88,10 +92,12 @@ export function Header() {
             }
 
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
                 setIsAuthenticated(!!user);
             } catch (error) {
-                console.error('Error checking auth:', error);
+                console.error("Error checking auth:", error);
                 setIsAuthenticated(false);
             } finally {
                 setLoading(false);
@@ -102,7 +108,9 @@ export function Header() {
 
         // Listen for auth state changes
         if (supabase) {
-            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            const {
+                data: { subscription },
+            } = supabase.auth.onAuthStateChange((_event, session) => {
                 setIsAuthenticated(!!session);
             });
 
@@ -114,22 +122,22 @@ export function Header() {
 
     const handleSignOut = async () => {
         if (!supabase) return;
-        
+
         try {
             await supabase.auth.signOut();
             setIsAuthenticated(false);
-            router.push('/');
+            router.push("/");
         } catch (error) {
-            console.error('Error signing out:', error);
+            console.error("Error signing out:", error);
         }
     };
 
     return (
-        <header className="py-10">
+        <header className="py-10 bg-transparent">
             <Container>
-                <nav className="relative z-50 flex justify-between">
+                <nav className="relative z-50 flex justify-between text-slate-700 dark:text-slate-200">
                     <div className="flex items-center md:gap-x-12">
-                        <Link href="/" aria-label="Home">
+                        <Link href="/" aria-label="Home" className="transition-opacity hover:opacity-90">
                             <Logo className="h-10 w-auto" alt="PPTB" />
                         </Link>
                         <div className="hidden md:flex md:gap-x-6">
@@ -141,28 +149,24 @@ export function Header() {
                     </div>
                     <div className="flex items-center gap-x-5 md:gap-x-8">
                         <div className="hidden md:flex md:items-center md:gap-x-6">
-                            {!loading && (
-                                <>
-                                    {isAuthenticated ? (
-                                        <>
-                                            <NavLink href="/dashboard">Dashboard</NavLink>
-                                            <button
-                                                onClick={handleSignOut}
-                                                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:border-slate-500"
-                                            >
-                                                Sign out
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <NavLink href="/auth/signin">Sign in</NavLink>
-                                    )}
-                                </>
-                            )}
-                            <ThemeToggle />
+                            {mounted &&
+                                !loading &&
+                                (isAuthenticated ? (
+                                    <>
+                                        <NavLink href="/dashboard">Dashboard</NavLink>
+                                        <button
+                                            onClick={handleSignOut}
+                                            className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:border-slate-500"
+                                        >
+                                            Sign out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <NavLink href="/auth/signin">Sign in</NavLink>
+                                ))}
+                            {mounted && <ThemeToggle />}
                         </div>
-                        <div className="-mr-1 md:hidden">
-                            <MobileNavigation isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
-                        </div>
+                        <div className="-mr-1 md:hidden">{mounted && <MobileNavigation isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />}</div>
                     </div>
                 </nav>
             </Container>

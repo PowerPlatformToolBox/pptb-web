@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
@@ -84,7 +83,6 @@ const mockTools: Tool[] = [
 ];
 
 export default function DashboardPage() {
-    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
@@ -125,13 +123,6 @@ export default function DashboardPage() {
 
         fetchData();
     }, []);
-
-    const handleSignOut = async () => {
-        if (!supabase) return;
-
-        await supabase.auth.signOut();
-        router.push("/");
-    };
 
     const sortedTools = [...tools].sort((a, b) => {
         const aAnalytics = a.tool_analytics?.[0];

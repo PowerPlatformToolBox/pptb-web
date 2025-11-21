@@ -29,12 +29,13 @@ function getInitialTheme(): Theme {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
+    // Apply theme class whenever theme changes
     useEffect(() => {
         // Sync with data attribute on mount (in case it changed)
         const dataTheme = document.documentElement.getAttribute("data-theme");
         if (dataTheme === "dark" || dataTheme === "light") {
             setTheme(dataTheme);
-            
+
             // Apply inline styles on mount (workaround for Tailwind v4 + Turbopack issue)
             // Only set background color, not text color to avoid overriding component-specific text colors
             if (dataTheme === "dark") {
@@ -53,7 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 setTheme(newTheme);
                 document.documentElement.classList.toggle("dark", newTheme === "dark");
                 document.documentElement.setAttribute("data-theme", newTheme);
-                
+
                 // Apply inline styles
                 if (newTheme === "dark") {
                     document.body.style.backgroundColor = "#0f172a";
@@ -70,14 +71,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const toggleTheme = () => {
         setTheme((prevTheme) => {
             const newTheme = prevTheme === "light" ? "dark" : "light";
-            
+
             // Update localStorage
             localStorage.setItem("theme", newTheme);
-            
+
             // Update DOM
             document.documentElement.classList.toggle("dark", newTheme === "dark");
             document.documentElement.setAttribute("data-theme", newTheme);
-            
+
             // Apply theme styles directly to body element (workaround for Tailwind v4 + Turbopack issue)
             // Only set background color, not text color to avoid overriding component-specific text colors
             if (newTheme === "dark") {
@@ -85,16 +86,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             } else {
                 document.body.style.backgroundColor = "#ffffff";
             }
-            
+
             return newTheme;
         });
     };
 
-    return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            {children}
-        </ThemeContext.Provider>
-    );
+    return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
