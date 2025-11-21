@@ -1,6 +1,14 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+    // Include all paths that use Tailwind classes so dark: variants are generated.
+    content: [
+        "./app/**/*.{js,ts,jsx,tsx,mdx}",
+        "./components/**/*.{js,ts,jsx,tsx,mdx}",
+        "./lib/**/*.{js,ts,jsx,tsx}",
+        "./styles/**/*.{css}",
+        "./public/**/*.{html,js}", // safety net for any static markup
+    ],
     darkMode: "class",
     theme: {
         extend: {

@@ -3,13 +3,16 @@
 import { Popover, PopoverBackdrop, PopoverButton, PopoverPanel } from "@headlessui/react";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
 import { supabase } from "@/lib/supabase";
+import dynamic from "next/dynamic";
+// Dynamically import ThemeToggle without SSR to avoid hydration mismatches when localStorage/script pre-sets theme.
+const ThemeToggle = dynamic(() => import("@/components/ThemeToggle").then((m) => m.ThemeToggle), { ssr: false });
 
 function MobileNavLink({ href, children }: { href: string; children: React.ReactNode }) {
     return (
@@ -29,7 +32,7 @@ function MobileNavButton({ onClick, children }: { onClick: () => void; children:
 
 function MobileNavIcon({ open }: { open: boolean }) {
     return (
-        <svg aria-hidden="true" className="h-3.5 w-3.5 overflow-visible stroke-slate-700" fill="none" strokeWidth={2} strokeLinecap="round">
+        <svg aria-hidden="true" className="h-3.5 w-3.5 overflow-visible stroke-slate-700 dark:stroke-slate-300" fill="none" strokeWidth={2} strokeLinecap="round">
             <path d="M0 1H14M0 7H14M0 13H14" className={clsx("origin-center transition", open && "scale-90 opacity-0")} />
             <path d="M2 2L12 12M12 2L2 12" className={clsx("origin-center transition", !open && "scale-90 opacity-0")} />
         </svg>
@@ -47,16 +50,16 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
             <PopoverButton className="relative z-10 flex h-8 w-8 items-center justify-center focus:not-data-focus:outline-hidden" aria-label="Toggle Navigation">
                 {({ open }) => <MobileNavIcon open={open} />}
             </PopoverButton>
-            <PopoverBackdrop transition className="fixed inset-0 bg-slate-300/50 duration-150 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in" />
+            <PopoverBackdrop transition className="fixed inset-0 bg-slate-300/50 dark:bg-slate-900/80 duration-150 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in" />
             <PopoverPanel
                 transition
-                className="absolute inset-x-0 top-full mt-4 flex origin-top flex-col rounded-2xl bg-white p-4 text-lg tracking-tight text-slate-900 shadow-xl ring-1 ring-slate-900/5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-150 data-enter:ease-out data-leave:duration-100 data-leave:ease-in"
+                className="absolute inset-x-0 top-full mt-4 flex origin-top flex-col rounded-2xl bg-white dark:bg-slate-800 p-4 text-lg tracking-tight text-slate-900 dark:text-slate-100 shadow-xl ring-1 ring-slate-900/5 dark:ring-slate-700/50 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-150 data-enter:ease-out data-leave:duration-100 data-leave:ease-in"
             >
                 <MobileNavLink href="/#features">Features</MobileNavLink>
                 <MobileNavLink href="/tools">Tools</MobileNavLink>
                 <MobileNavLink href="/about">About</MobileNavLink>
                 <MobileNavLink href="/#faq">FAQs</MobileNavLink>
-                <hr className="m-2 border-slate-300/40" />
+                <hr className="m-2 border-slate-300/40 dark:border-slate-600/40" />
                 {isAuthenticated ? (
                     <>
                         <MobileNavLink href="/dashboard">Dashboard</MobileNavLink>
@@ -65,6 +68,10 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
                 ) : (
                     <MobileNavLink href="/auth/signin">Sign in</MobileNavLink>
                 )}
+                <hr className="m-2 border-slate-300/40 dark:border-slate-600/40" />
+                <div className="px-2 py-2">
+                    <ThemeToggle />
+                </div>
             </PopoverPanel>
         </Popover>
     );
@@ -74,8 +81,10 @@ export function Header() {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true); // defer auth UI until after first client render to avoid hydration mismatch
         async function checkAuth() {
             if (!supabase) {
                 setLoading(false);
@@ -83,10 +92,12 @@ export function Header() {
             }
 
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
                 setIsAuthenticated(!!user);
             } catch (error) {
-                console.error('Error checking auth:', error);
+                console.error("Error checking auth:", error);
                 setIsAuthenticated(false);
             } finally {
                 setLoading(false);
@@ -97,7 +108,9 @@ export function Header() {
 
         // Listen for auth state changes
         if (supabase) {
-            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            const {
+                data: { subscription },
+            } = supabase.auth.onAuthStateChange((_event, session) => {
                 setIsAuthenticated(!!session);
             });
 
@@ -109,22 +122,22 @@ export function Header() {
 
     const handleSignOut = async () => {
         if (!supabase) return;
-        
+
         try {
             await supabase.auth.signOut();
             setIsAuthenticated(false);
-            router.push('/');
+            router.push("/");
         } catch (error) {
-            console.error('Error signing out:', error);
+            console.error("Error signing out:", error);
         }
     };
 
     return (
-        <header className="py-10">
+        <header className="py-10 bg-transparent">
             <Container>
-                <nav className="relative z-50 flex justify-between">
+                <nav className="relative z-50 flex justify-between text-slate-700 dark:text-slate-200">
                     <div className="flex items-center md:gap-x-12">
-                        <Link href="/" aria-label="Home">
+                        <Link href="/" aria-label="Home" className="transition-opacity hover:opacity-90">
                             <Logo className="h-10 w-auto" alt="PPTB" />
                         </Link>
                         <div className="hidden md:flex md:gap-x-6">
@@ -136,27 +149,24 @@ export function Header() {
                     </div>
                     <div className="flex items-center gap-x-5 md:gap-x-8">
                         <div className="hidden md:flex md:items-center md:gap-x-6">
-                            {!loading && (
-                                <>
-                                    {isAuthenticated ? (
-                                        <>
-                                            <NavLink href="/dashboard">Dashboard</NavLink>
-                                            <button
-                                                onClick={handleSignOut}
-                                                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
-                                            >
-                                                Sign out
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <NavLink href="/auth/signin">Sign in</NavLink>
-                                    )}
-                                </>
-                            )}
+                            {mounted &&
+                                !loading &&
+                                (isAuthenticated ? (
+                                    <>
+                                        <NavLink href="/dashboard">Dashboard</NavLink>
+                                        <button
+                                            onClick={handleSignOut}
+                                            className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:border-slate-500"
+                                        >
+                                            Sign out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <NavLink href="/auth/signin">Sign in</NavLink>
+                                ))}
+                            {mounted && <ThemeToggle />}
                         </div>
-                        <div className="-mr-1 md:hidden">
-                            <MobileNavigation isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
-                        </div>
+                        <div className="-mr-1 md:hidden">{mounted && <MobileNavigation isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />}</div>
                     </div>
                 </nav>
             </Container>
