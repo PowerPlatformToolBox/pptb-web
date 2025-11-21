@@ -120,6 +120,10 @@ const nextConfig: NextConfig = {
                         value: "GET, HEAD, OPTIONS",
                     },
                     {
+                        key: "Access-Control-Allow-Headers",
+                        value: "X-Requested-With, Content-Type, Accept, Origin",
+                    },
+                    {
                         key: "Referrer-Policy",
                         value: "no-referrer",
                     },
