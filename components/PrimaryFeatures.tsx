@@ -56,8 +56,8 @@ export function PrimaryFeatures() {
     }, []);
 
     return (
-        <section id="features" aria-label="Features for running your tools" className="relative overflow-hidden bg-blue-600 pt-20 pb-28 sm:py-32">
-            <Image className="absolute top-1/2 left-1/2 max-w-none translate-x-[-44%] translate-y-[-42%]" src={backgroundImage} alt="" width={2245} height={1636} unoptimized />
+        <section id="features" aria-label="Features for running your tools" className="relative overflow-hidden bg-blue-600 dark:bg-blue-800 pt-20 pb-28 sm:py-32">
+            <Image className="absolute top-1/2 left-1/2 max-w-none translate-x-[-44%] translate-y-[-42%] dark:opacity-30" src={backgroundImage} alt="" width={2245} height={1636} unoptimized />
             <Container className="relative">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="max-w-2xl md:mx-auto md:text-center xl:max-w-none">
