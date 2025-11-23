@@ -24,12 +24,12 @@
       "name": "Sample Standard Tool",
       "description": "A sample HTML tool that showcases various features provided by the Tool Box",
       "author": "PPTB Creator",
-      "version": "1.0.4",
-      "downloadUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/pptb-standard-sample-tool-1.0.4/pptb-standard-sample-tool-1.0.4.tar.gz",
+      "version": "1.0.5",
+      "downloadUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/pptb-standard-sample-tool-1.0.5/pptb-standard-sample-tool-1.0.5.tar.gz",
       "readme": "https://raw.githubusercontent.com/PowerPlatformToolBox/sample-tools/refs/heads/main/new/html-sample/README.md",
-      "checksum": "2720257a84c31c42a1abdd9c6bfe485c155564c1b623af52de940da50bc80d66",
-      "size": 87892,
-      "publishedAt": "2025-11-08T19:28:01Z",
+      "checksum": "b64a588f5c9c522c7b9d78c5688fb03a4afd48a4e97df7fc1f99a598db9b785d",
+      "size": 87640,
+      "publishedAt": "2025-11-23T19:28:01Z",
       "tags": [
         "Other"
       ],
