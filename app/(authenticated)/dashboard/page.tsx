@@ -2,12 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 
 interface User {
     id: string;
@@ -84,54 +83,36 @@ const mockTools: Tool[] = [
 ];
 
 export default function DashboardPage() {
-    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "aum">("downloads");
+    const { supabase } = useSupabase();
 
     useEffect(() => {
-        async function fetchData() {
-            if (!supabase) {
-                setLoading(false);
-                return;
-            }
-
+        if (!supabase) return;
+        (async () => {
             try {
                 const {
                     data: { user },
                 } = await supabase.auth.getUser();
-
-                if (user) {
-                    setUser(user);
-                }
-
-                // Fetch tools data with analytics
+                if (user) setUser(user);
                 const { data: toolsData, error } = await supabase
                     .from("tools")
                     .select("id, name, description, iconurl, category, tool_analytics (downloads, rating, aum)")
                     .order("name", { ascending: true });
-
                 if (error) throw error;
                 if (toolsData) setTools(toolsData);
             } catch (error) {
                 console.error("Error fetching data:", error);
-                // Fallback to mock data
                 setTools(mockTools);
             } finally {
                 setLoading(false);
             }
-        }
+        })();
+    }, [supabase]);
 
-        fetchData();
-    }, []);
-
-    const handleSignOut = async () => {
-        if (!supabase) return;
-
-        await supabase.auth.signOut();
-        router.push("/");
-    };
+    // Sign out logic handled in Header component.
 
     const sortedTools = [...tools].sort((a, b) => {
         const aAnalytics = a.tool_analytics?.[0];

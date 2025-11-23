@@ -5,6 +5,7 @@ The official website for Power Platform Tool Box - showcasing features and provi
 ## Overview
 
 This is a Next.js-based static website built with TypeScript and Tailwind CSS that:
+
 - Showcases the key features of Power Platform Tool Box
 - Automatically detects the user's operating system (Windows, macOS, or Linux)
 - Provides smart download links from the latest GitHub release of the [desktop-app](https://github.com/PowerPlatformToolBox/desktop-app)
@@ -70,16 +71,21 @@ vercel
 ## Features
 
 ### OS Detection
+
 The website automatically detects the user's operating system and displays the appropriate download button for their platform.
 
 ### GitHub Release Integration
+
 Downloads are automatically fetched from the latest release of the desktop-app repository, ensuring users always get the most recent version.
 
 ### Responsive Design
+
 The website is fully responsive and works seamlessly on desktop, tablet, and mobile devices.
 
 ### Features Showcase
+
 Six key features are highlighted with icons and descriptions:
+
 1. Solution Management
 2. Environment Tools
 3. Code Generation
@@ -123,32 +129,38 @@ pptb-web/
 ## Pages
 
 ### Public Pages
+
 - **Home (`/`)**: Main landing page with features and download button
 - **Tools (`/tools`)**: Showcase of all available tools with filtering by category
 - **About (`/about`)**: Tribute to XrmToolBox and Tanguy (with placeholder text)
 - **Tool Details (`/tools/[id]`)**: Individual tool page with features, ratings, and version info
 
 ### Authentication
+
 - **Sign In (`/auth/signin`)**: OAuth authentication with Microsoft, Google, and GitHub
 
 ### Protected Pages (Requires Authentication)
+
 - **Dashboard (`/dashboard`)**: User dashboard with tool analytics (downloads, ratings, AUM)
 - **Rate Tool (`/rate-tool`)**: Form to rate and review tools
 
 ## Features
 
 ### Authentication
+
 - OAuth sign-in with three providers: Microsoft (Azure AD), Google, and GitHub
 - Protected routes automatically redirect to sign-in
 - Graceful handling when Supabase is not configured (uses mock data)
 
 ### Tool Management
+
 - Browse all tools with category filtering
 - View detailed information about each tool
 - Rate and review tools (authenticated users only)
 - Real-time statistics: downloads, ratings, and AUM (Active User Months)
 
 ### User Dashboard
+
 - Overview of all tools with sortable analytics
 - Quick access to rate tools
 - Statistics summary (total tools, downloads, average rating)
@@ -156,8 +168,37 @@ pptb-web/
 ## Supabase Integration
 
 The website integrates with Supabase for:
+
 - User authentication (OAuth providers)
 - Tool data storage and retrieval
+
+### Environment Variables (Updated)
+
+Supabase configuration no longer uses `NEXT_PUBLIC_` prefixed variables. Instead set the following in your `.env.local`:
+
+```bash
+SUPABASE_URL=your-project-url.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+```
+
+Client components now initialize Supabase via a lightweight hook `useSupabase()` that fetches configuration from an internal API route (`/api/supabase-config`). This prevents accidental exposure of additional server-only environment variables while still allowing the (safe) anon key to be used in the browser.
+
+### Usage in Client Components
+
+```tsx
+import { useSupabase } from "@/lib/useSupabase";
+
+export function Example() {
+    const { supabase } = useSupabase();
+    // supabase will be null until initialized
+    // Add guards before calling auth/data methods
+}
+```
+
+### Server-Side Usage
+
+For server components or route handlers, use the server client in `lib/supabase.ts`.
+
 - User ratings and reviews
 - Analytics tracking
 
