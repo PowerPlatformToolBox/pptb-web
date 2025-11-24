@@ -54,6 +54,7 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
             >
                 <MobileNavLink href="/#features">Features</MobileNavLink>
                 <MobileNavLink href="/tools">Tools</MobileNavLink>
+                <MobileNavLink href="https://docs.powerplatformtoolbox.com">Documentation</MobileNavLink>
                 <MobileNavLink href="/about">About</MobileNavLink>
                 <MobileNavLink href="/#faq">FAQs</MobileNavLink>
                 <hr className="m-2 border-slate-300/40" />
@@ -127,6 +128,7 @@ export function Header() {
                         <div className="hidden md:flex md:gap-x-6">
                             <NavLink href="/#features">Features</NavLink>
                             <NavLink href="/tools">Tools</NavLink>
+                            <NavLink href="https://docs.powerplatformtoolbox.com">Documentation</NavLink>
                             <NavLink href="/about">About</NavLink>
                             <NavLink href="/#faq">FAQs</NavLink>
                         </div>
