@@ -176,6 +176,15 @@ export default function DashboardPage() {
                                     </h1>
                                     <p className="mt-4 text-lg text-slate-700">Here&apos;s an overview of all available Power Platform tools with their analytics.</p>
                                 </div>
+                                <Link
+                                    href="/submit-tool"
+                                    className="btn-primary flex items-center gap-2"
+                                >
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Submit Tool
+                                </Link>
                             </div>
                         </header>
 
