@@ -50,17 +50,6 @@ CREATE POLICY "Users can view own submissions" ON tool_intakes
     FOR SELECT
     USING (auth.uid() = submitted_by);
 
--- Policy: Allow admins to view all submissions (you'll need to create an admin check)
--- Example using a custom claim or a separate admins table:
--- CREATE POLICY "Admins can view all submissions" ON tool_intakes
---     FOR SELECT
---     USING (
---         EXISTS (
---             SELECT 1 FROM user_roles 
---             WHERE user_id = auth.uid() AND role = 'admin'
---         )
---     );
-
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -76,21 +65,72 @@ CREATE TRIGGER update_tool_intakes_updated_at
     BEFORE UPDATE ON tool_intakes
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+```
 
--- Create status enum type for better data integrity (optional)
--- DO $$
--- BEGIN
---     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tool_intake_status') THEN
---         CREATE TYPE tool_intake_status AS ENUM (
---             'pending_review',
---             'approved',
---             'rejected',
---             'needs_changes',
---             'converted_to_tool'
---         );
---     END IF;
--- END
--- $$;
+## Create User Roles Table (for Admin Access)
+
+```sql
+-- Create user_roles table for admin permissions
+CREATE TABLE IF NOT EXISTS user_roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, role)
+);
+
+-- Create index for faster role lookups
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role);
+
+-- Enable Row Level Security
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow users to view their own roles
+CREATE POLICY "Users can view own roles" ON user_roles
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy: Only admins can manage roles (using service role key)
+-- Note: Role management should be done via admin API with service role key
+```
+
+## Admin Policies for Tool Intakes
+
+```sql
+-- Policy: Allow admins to view all submissions
+CREATE POLICY "Admins can view all submissions" ON tool_intakes
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_roles 
+            WHERE user_id = auth.uid() AND role = 'admin'
+        )
+    );
+
+-- Policy: Allow admins to update submissions (for review actions)
+CREATE POLICY "Admins can update submissions" ON tool_intakes
+    FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_roles 
+            WHERE user_id = auth.uid() AND role = 'admin'
+        )
+    );
+```
+
+## Add Admin User
+
+```sql
+-- Add admin role to a user (replace USER_UUID with actual user ID)
+INSERT INTO user_roles (user_id, role) 
+VALUES ('USER_UUID', 'admin')
+ON CONFLICT (user_id, role) DO NOTHING;
+
+-- Example: Find user by email and add admin role
+-- INSERT INTO user_roles (user_id, role)
+-- SELECT id, 'admin' FROM auth.users WHERE email = 'admin@example.com'
+-- ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
 ## Status Values

@@ -89,6 +89,7 @@ export default function DashboardPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "aum">("downloads");
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         async function fetchData() {
@@ -104,6 +105,16 @@ export default function DashboardPage() {
 
                 if (user) {
                     setUser(user);
+                    
+                    // Check if user is admin
+                    const { data: roleData } = await supabase
+                        .from("user_roles")
+                        .select("role")
+                        .eq("user_id", user.id)
+                        .eq("role", "admin")
+                        .single();
+                    
+                    setIsAdmin(!!roleData);
                 }
 
                 // Fetch tools data with analytics
@@ -176,15 +187,28 @@ export default function DashboardPage() {
                                     </h1>
                                     <p className="mt-4 text-lg text-slate-700">Here&apos;s an overview of all available Power Platform tools with their analytics.</p>
                                 </div>
-                                <Link
-                                    href="/submit-tool"
-                                    className="btn-primary flex items-center gap-2"
-                                >
-                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Submit Tool
-                                </Link>
+                                <div className="flex gap-3">
+                                    {isAdmin && (
+                                        <Link
+                                            href="/admin/tool-intakes"
+                                            className="btn-secondary flex items-center gap-2"
+                                        >
+                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                            </svg>
+                                            Review Intakes
+                                        </Link>
+                                    )}
+                                    <Link
+                                        href="/submit-tool"
+                                        className="btn-primary flex items-center gap-2"
+                                    >
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Submit Tool
+                                    </Link>
+                                </div>
                             </div>
                         </header>
 
