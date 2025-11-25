@@ -38,8 +38,10 @@ export async function POST(request: NextRequest) {
         // Clean up package name
         const cleanPackageName = packageName.trim().toLowerCase();
 
-        // Validate package name format
-        if (!/^(@[\w-]+\/)?[\w.-]+$/.test(cleanPackageName)) {
+        // Validate package name format using npm's naming rules
+        // https://github.com/npm/validate-npm-package-name
+        const npmPackageNameRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+        if (!npmPackageNameRegex.test(cleanPackageName)) {
             return NextResponse.json(
                 { error: "Invalid npm package name format" },
                 { status: 400 }
@@ -133,18 +135,30 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Extract packageInfo for cleaner access (validated to exist at this point)
+        const packageInfo = validationResult.packageInfo;
+        if (!packageInfo) {
+            return NextResponse.json(
+                {
+                    error: "Unexpected validation error",
+                    step: "validation",
+                },
+                { status: 500 }
+            );
+        }
+
         // Store the tool intake request
         const { data: intakeData, error: insertError } = await supabase
             .from("tool_intakes")
             .insert({
                 package_name: cleanPackageName,
-                version: validationResult.packageInfo!.version,
-                display_name: validationResult.packageInfo!.displayName,
-                description: validationResult.packageInfo!.description,
-                license: validationResult.packageInfo!.license,
-                contributors: validationResult.packageInfo!.contributors,
-                csp_exceptions: validationResult.packageInfo!.cspExceptions || null,
-                configurations: validationResult.packageInfo!.configurations,
+                version: packageInfo.version,
+                display_name: packageInfo.displayName,
+                description: packageInfo.description,
+                license: packageInfo.license,
+                contributors: packageInfo.contributors,
+                csp_exceptions: packageInfo.cspExceptions || null,
+                configurations: packageInfo.configurations,
                 submitted_by: userId,
                 status: "pending_review",
                 validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
@@ -169,8 +183,8 @@ export async function POST(request: NextRequest) {
             data: {
                 id: intakeData.id,
                 packageName: cleanPackageName,
-                version: validationResult.packageInfo!.version,
-                displayName: validationResult.packageInfo!.displayName,
+                version: packageInfo.version,
+                displayName: packageInfo.displayName,
                 status: "pending_review",
                 warnings: validationResult.warnings,
             },

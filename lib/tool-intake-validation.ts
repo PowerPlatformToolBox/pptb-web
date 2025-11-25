@@ -208,8 +208,9 @@ export async function fetchNpmPackageInfo(
     packageName: string
 ): Promise<{ success: true; data: NpmPackageInfo } | { success: false; error: string }> {
     try {
-        // Fetch package info from npm registry
-        const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packageName)}/latest`, {
+        // Fetch package info from npm registry using base endpoint
+        // This is more reliable than /latest for packages with pre-release versions
+        const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packageName)}`, {
             headers: {
                 Accept: "application/json",
             },
@@ -222,19 +223,31 @@ export async function fetchNpmPackageInfo(
             return { success: false, error: `Failed to fetch package: HTTP ${response.status}` };
         }
 
-        const data = await response.json();
+        const packageData = await response.json();
+        
+        // Get the latest version from dist-tags
+        const latestVersion = packageData["dist-tags"]?.latest;
+        if (!latestVersion) {
+            return { success: false, error: `Package "${packageName}" has no latest version` };
+        }
+
+        // Get the version-specific data
+        const versionData = packageData.versions?.[latestVersion];
+        if (!versionData) {
+            return { success: false, error: `Could not find version data for ${latestVersion}` };
+        }
 
         return {
             success: true,
             data: {
-                name: data.name,
-                version: data.version,
-                description: data.description,
-                license: data.license,
-                displayName: data.displayName,
-                contributors: data.contributors,
-                cspExceptions: data.cspExceptions,
-                configurations: data.configurations,
+                name: versionData.name,
+                version: versionData.version,
+                description: versionData.description,
+                license: versionData.license,
+                displayName: versionData.displayName,
+                contributors: versionData.contributors,
+                cspExceptions: versionData.cspExceptions,
+                configurations: versionData.configurations,
             },
         };
     } catch (error) {
