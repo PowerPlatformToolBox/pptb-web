@@ -1,41 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { supabase } = useSupabase();
 
     useEffect(() => {
-        async function checkAuth() {
-            if (!supabase) {
-                // If Supabase is not configured, redirect to sign in
-                router.push('/auth/signin');
-                return;
-            }
-
+        if (!supabase) return; // wait for client
+        (async () => {
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
                 if (!user) {
-                    router.push('/auth/signin');
+                    router.push("/auth/signin");
                     return;
                 }
-                
                 setLoading(false);
             } catch (error) {
-                console.error('Error checking auth:', error);
-                router.push('/auth/signin');
+                console.error("Error checking auth:", error);
+                router.push("/auth/signin");
             }
-        }
-
-        checkAuth();
-    }, [router]);
+        })();
+    }, [router, supabase]);
 
     if (loading) {
         return (

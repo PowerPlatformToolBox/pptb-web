@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 
 interface Tool {
     id: string;
@@ -125,87 +125,57 @@ const mockTools: Record<string, Tool> = {
     },
 };
 
-export default function ToolDetailPage() {
+export default function ToolDetailsPage() {
     const params = useParams();
     const router = useRouter();
+    const { supabase } = useSupabase();
     const toolId = params?.id as string;
 
     const [tool, setTool] = useState<Tool | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        async function fetchTool() {
-            if (!supabase) {
-                // If Supabase is not configured, use mock data
-                const mockTool = mockTools[toolId];
-                if (mockTool) {
-                    setTool(mockTool);
-                } else {
-                    router.push("/tools");
-                }
-                setLoading(false);
-                return;
-            }
-
+        if (!toolId) {
+            router.push("/tools");
+            return;
+        }
+        if (!supabase) {
+            // Fallback to mock data if Supabase not ready/configured
+            const mockTool = mockTools[toolId];
+            if (mockTool) setTool(mockTool);
+            setLoading(false);
+            return;
+        }
+        (async () => {
             try {
-                const { data, error } = await supabase
-                    .from("tools")
-                    .select(
-                        `
-                        id,
-                        name,
-                        description,
-                        iconurl,
-                        category,
-                        author,
-                        version,
-                        tool_analytics (
-                            downloads,
-                            rating,
-                            aum
-                        )
-                    `,
-                    )
-                    .eq("id", toolId)
-                    .single();
-
+                const { data: toolData, error } = await supabase.from("tools").select("id, name, description, iconurl, category, tool_analytics (downloads, rating, aum)").eq("id", toolId).single();
                 if (error) throw error;
-
-                if (data) {
-                    // Transform the data to match the Tool interface
-                    const analytics = data.tool_analytics as Array<{ downloads: number; rating: number; aum: number }> | undefined;
-                    const transformedTool: Tool = {
-                        id: data.id,
-                        name: data.name,
-                        description: data.description,
-                        iconurl: data.iconurl || "📦",
-                        category: data.category,
-                        author: data.author,
-                        version: data.version,
-                        downloads: analytics?.[0]?.downloads || 0,
-                        rating: analytics?.[0]?.rating || 0,
-                        aum: analytics?.[0]?.aum || 0,
-                    };
-                    setTool(transformedTool);
+                if (toolData) {
+                    setTool({
+                        id: toolData.id,
+                        name: toolData.name,
+                        description: toolData.description,
+                        iconurl: toolData.iconurl,
+                        category: toolData.category,
+                        downloads: toolData.tool_analytics?.[0]?.downloads || 0,
+                        rating: toolData.tool_analytics?.[0]?.rating || 0,
+                        aum: toolData.tool_analytics?.[0]?.aum || 0,
+                    });
+                } else if (mockTools[toolId]) {
+                    setTool(mockTools[toolId]);
                 } else {
                     router.push("/tools");
+                    return;
                 }
-            } catch (error) {
-                console.error("Error fetching tool:", error);
-                // Fallback to mock data
-                const mockTool = mockTools[toolId];
-                if (mockTool) {
-                    setTool(mockTool);
-                } else {
-                    router.push("/tools");
-                }
+            } catch (err) {
+                console.error("Error fetching tool:", err);
+                if (mockTools[toolId]) setTool(mockTools[toolId]);
+                else router.push("/tools");
             } finally {
                 setLoading(false);
             }
-        }
-
-        fetchTool();
-    }, [toolId, router]);
+        })();
+    }, [toolId, supabase, router]);
 
     if (loading) {
         return (

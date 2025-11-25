@@ -2,7 +2,7 @@
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -79,40 +79,19 @@ export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
+    const { supabase } = useSupabase();
 
     useEffect(() => {
-        async function fetchTools() {
-            if (!supabase) {
-                // If Supabase is not configured, use mock data
-                setTools(mockTools);
-                setLoading(false);
-                return;
-            }
-
+        if (!supabase) return;
+        (async () => {
             try {
-                // Fetch tools with analytics data using a join
                 const { data, error } = await supabase
                     .from("tools")
-                    .select(
-                        `
-                        id,
-                        name,
-                        description,
-                        iconurl,
-                        category,
-                        tool_analytics (
-                            downloads,
-                            rating
-                        )
-                    `,
-                    )
+                    .select(`id,name,description,iconurl,category,tool_analytics (downloads,rating)`) // simplified select
                     .order("name", { ascending: true });
-
                 if (error) throw error;
-
                 if (data) {
-                    // Transform the data to match the Tool interface
-                    const transformedTools: Tool[] = data.map(
+                    const transformed: Tool[] = data.map(
                         (tool: { id: string; name: string; description: string; iconurl: string; category: string; tool_analytics?: Array<{ downloads: number; rating: number }> }) => ({
                             id: tool.id,
                             name: tool.name,
@@ -123,19 +102,16 @@ export default function ToolsPage() {
                             rating: tool.tool_analytics?.[0]?.rating || 0,
                         }),
                     );
-                    setTools(transformedTools);
+                    setTools(transformed);
                 }
-            } catch (error) {
-                console.error("Error fetching tools:", error);
-                // Fallback to mock data
+            } catch (err) {
+                console.error("Error fetching tools:", err);
                 setTools(mockTools);
             } finally {
                 setLoading(false);
             }
-        }
-
-        fetchTools();
-    }, []);
+        })();
+    }, [supabase]);
 
     const categories = ["All", ...Array.from(new Set(tools.map((t) => t.category)))];
     const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.category === selectedCategory);

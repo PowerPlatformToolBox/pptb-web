@@ -5,13 +5,14 @@ import { useState } from "react";
 
 import { Logo } from "@/components/Logo";
 import { SlimLayout } from "@/components/SlimLayout";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 
 export default function SignIn() {
     const [loading, setLoading] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState("");
     const [emailSent, setEmailSent] = useState(false);
+    const { supabase } = useSupabase();
 
     const handleOAuthSignIn = async (provider: "google" | "github" | "azure") => {
         if (!supabase) {

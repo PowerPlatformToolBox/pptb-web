@@ -3,13 +3,13 @@
 import { Popover, PopoverBackdrop, PopoverButton, PopoverPanel } from "@headlessui/react";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 
 function MobileNavLink({ href, children }: { href: string; children: React.ReactNode }) {
     return (
@@ -54,6 +54,7 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
             >
                 <MobileNavLink href="/#features">Features</MobileNavLink>
                 <MobileNavLink href="/tools">Tools</MobileNavLink>
+                <MobileNavLink href="https://docs.powerplatformtoolbox.com">Documentation</MobileNavLink>
                 <MobileNavLink href="/about">About</MobileNavLink>
                 <MobileNavLink href="/#faq">FAQs</MobileNavLink>
                 <hr className="m-2 border-slate-300/40" />
@@ -74,48 +75,45 @@ export function Header() {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
+    const { supabase } = useSupabase();
 
     useEffect(() => {
-        async function checkAuth() {
-            if (!supabase) {
-                setLoading(false);
-                return;
-            }
+        if (!supabase) return; // Wait for client to be ready
+        let subscription: { unsubscribe: () => void } | null = null;
 
+        (async () => {
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
                 setIsAuthenticated(!!user);
             } catch (error) {
-                console.error('Error checking auth:', error);
+                console.error("Error checking auth:", error);
                 setIsAuthenticated(false);
             } finally {
                 setLoading(false);
             }
-        }
+        })();
 
-        checkAuth();
+        const authListener = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsAuthenticated(!!session);
+        });
+        subscription = authListener.data.subscription;
 
-        // Listen for auth state changes
-        if (supabase) {
-            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-                setIsAuthenticated(!!session);
-            });
-
-            return () => {
-                subscription.unsubscribe();
-            };
-        }
-    }, []);
+        return () => {
+            if (subscription) subscription.unsubscribe();
+        };
+    }, [supabase]);
 
     const handleSignOut = async () => {
         if (!supabase) return;
-        
+
         try {
             await supabase.auth.signOut();
             setIsAuthenticated(false);
-            router.push('/');
+            router.push("/");
         } catch (error) {
-            console.error('Error signing out:', error);
+            console.error("Error signing out:", error);
         }
     };
 
@@ -130,6 +128,7 @@ export function Header() {
                         <div className="hidden md:flex md:gap-x-6">
                             <NavLink href="/#features">Features</NavLink>
                             <NavLink href="/tools">Tools</NavLink>
+                            <NavLink href="https://docs.powerplatformtoolbox.com">Documentation</NavLink>
                             <NavLink href="/about">About</NavLink>
                             <NavLink href="/#faq">FAQs</NavLink>
                         </div>
