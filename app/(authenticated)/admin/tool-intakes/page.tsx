@@ -146,6 +146,39 @@ export default function AdminToolIntakesPage() {
         }
     }
 
+    async function handleConvertToTool(intakeId: string) {
+        if (!supabase) return;
+
+        setActionLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            const response = await fetch("/api/admin/tool-intakes/convert", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                },
+                body: JSON.stringify({ intakeId }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to convert intake to tool");
+            }
+
+            // Refresh the list
+            await refreshIntakes();
+            setSelectedIntake(null);
+        } catch (err) {
+            console.error("Error converting intake:", err);
+            setError(err instanceof Error ? err.message : "Failed to convert intake to tool");
+        } finally {
+            setActionLoading(false);
+        }
+    }
+
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
             pending_review: "bg-yellow-100 text-yellow-800",
@@ -386,27 +419,39 @@ export default function AdminToolIntakesPage() {
 
                                                     {/* Action Buttons */}
                                                     <div className="flex flex-wrap gap-3">
-                                                        <button
-                                                            onClick={() => handleReviewAction(intake.id, "approve")}
-                                                            disabled={actionLoading}
-                                                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-                                                        >
-                                                            {actionLoading ? "Processing..." : "✓ Approve"}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleReviewAction(intake.id, "needs_changes")}
-                                                            disabled={actionLoading}
-                                                            className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
-                                                        >
-                                                            {actionLoading ? "Processing..." : "⚠ Request Changes"}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleReviewAction(intake.id, "reject")}
-                                                            disabled={actionLoading}
-                                                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                                                        >
-                                                            {actionLoading ? "Processing..." : "✕ Reject"}
-                                                        </button>
+                                                        {intake.status === "approved" ? (
+                                                            <button
+                                                                onClick={() => handleConvertToTool(intake.id)}
+                                                                disabled={actionLoading}
+                                                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                                            >
+                                                                {actionLoading ? "Processing..." : "🚀 Convert to Tool"}
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleReviewAction(intake.id, "approve")}
+                                                                    disabled={actionLoading}
+                                                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                                                                >
+                                                                    {actionLoading ? "Processing..." : "✓ Approve"}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleReviewAction(intake.id, "needs_changes")}
+                                                                    disabled={actionLoading}
+                                                                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                                                                >
+                                                                    {actionLoading ? "Processing..." : "⚠ Request Changes"}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleReviewAction(intake.id, "reject")}
+                                                                    disabled={actionLoading}
+                                                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                                                >
+                                                                    {actionLoading ? "Processing..." : "✕ Reject"}
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}

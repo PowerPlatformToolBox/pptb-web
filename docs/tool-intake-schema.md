@@ -169,17 +169,61 @@ WHERE submitted_by = 'USER_UUID'
 ORDER BY created_at DESC;
 ```
 
-### Convert approved intake to tool
+## Converting Approved Intake to Tool
+
+Once an admin approves a tool intake request, it needs to be converted to an actual tool entry in the `tools` table. This can be done via the admin API endpoint or manually via SQL.
+
+### Option 1: Using the Admin API (Recommended)
+
+Call the `/api/admin/tool-intakes/convert` endpoint:
+
+```bash
+POST /api/admin/tool-intakes/convert
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+    "intakeId": "intake-uuid-here"
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Tool created successfully",
+    "data": {
+        "toolId": "new-tool-uuid",
+        "name": "Tool Display Name",
+        "status": "converted_to_tool"
+    }
+}
+```
+
+### Option 2: Manual SQL Conversion
+
+Run these queries in the Supabase SQL Editor:
+
 ```sql
--- First, insert into tools table
+-- Step 1: Insert into tools table
+-- Note: iconurl is the primary field used for displaying tool icons
 INSERT INTO tools (
     name,
     description,
-    icon,
+    iconurl,
     category,
     author,
     version,
-    last_updated
+    npm_package,
+    repository_url,
+    website_url,
+    readme_url,
+    license,
+    contributors,
+    csp_exceptions,
+    categories,
+    last_updated,
+    created_at
 )
 SELECT 
     display_name,
@@ -188,23 +232,121 @@ SELECT
     configurations->'categories'->>0,
     contributors->0->>'name',
     version,
+    package_name,
+    configurations->>'repository',
+    configurations->>'website',
+    configurations->>'readmeUrl',
+    license,
+    contributors,
+    csp_exceptions,
+    configurations->'categories',
+    NOW(),
     NOW()
 FROM tool_intakes
 WHERE id = 'INTAKE_UUID' AND status = 'approved';
 
--- Then, update the intake status
+-- Step 2: Update the intake status to mark it as converted
 UPDATE tool_intakes 
-SET status = 'converted_to_tool' 
+SET 
+    status = 'converted_to_tool',
+    updated_at = NOW()
 WHERE id = 'INTAKE_UUID';
 ```
 
-## Service Role Key
+### Tools Table Schema
 
-The API route requires the `SUPABASE_SERVICE_ROLE_KEY` environment variable to be set. This key bypasses Row Level Security and should only be used on the server side.
+If the `tools` table doesn't exist, create it with:
 
-Add to your `.env.local`:
+```sql
+CREATE TABLE IF NOT EXISTS tools (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    iconurl TEXT,  -- Primary field for tool icon URL
+    category TEXT NOT NULL,
+    author TEXT,
+    version TEXT,
+    npm_package TEXT UNIQUE,
+    repository_url TEXT,
+    website_url TEXT,
+    readme_url TEXT,
+    license TEXT,
+    contributors JSONB,
+    csp_exceptions JSONB,
+    categories JSONB,
+    downloads INTEGER DEFAULT 0,
+    rating NUMERIC(3,2) DEFAULT 0,
+    aum INTEGER DEFAULT 0,
+    last_updated TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_tools_npm_package ON tools(npm_package);
+CREATE INDEX IF NOT EXISTS idx_tools_category ON tools(category);
+
+-- Enable Row Level Security
+ALTER TABLE tools ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow public read access to tools
+CREATE POLICY "Public can view tools" ON tools
+    FOR SELECT
+    USING (true);
+
+-- Policy: Only admins can insert/update tools
+CREATE POLICY "Admins can manage tools" ON tools
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_roles 
+            WHERE user_id = auth.uid() AND role = 'admin'
+        )
+    );
 ```
+
+## Environment Variables
+
+### Server-Side Only Variables (NOT prefixed with NEXT_PUBLIC_)
+
+These variables are only available on the server and are never exposed to the browser:
+
+```env
+# Supabase Service Role Key - NEVER expose this to the client!
+# This key bypasses Row Level Security and should only be used in API routes
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Admin email for notifications (optional)
+ADMIN_NOTIFICATION_EMAIL=admin@example.com
+
+# GitHub Token for API rate limits (optional)
+GITHUB_TOKEN=your-github-token
 ```
 
-⚠️ **Warning**: Never expose the service role key on the client side!
+### Public Variables (prefixed with NEXT_PUBLIC_)
+
+These variables are available in both client and server code:
+
+```env
+# Supabase URL and anonymous key (safe to expose)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Site URL for email links
+NEXT_PUBLIC_SITE_URL=https://your-site.com
+```
+
+### Vercel Deployment
+
+When deploying to Vercel, add these environment variables in the Vercel dashboard:
+
+1. Go to your project settings → Environment Variables
+2. Add each variable with appropriate environments (Production, Preview, Development)
+3. For `SUPABASE_SERVICE_ROLE_KEY`, ensure it's only added for server-side use
+
+**Important Security Notes:**
+- `SUPABASE_SERVICE_ROLE_KEY` is automatically excluded from client bundles by Next.js because it doesn't have the `NEXT_PUBLIC_` prefix
+- Never log or expose the service role key in client-side code
+- The service role key should only be used in API routes (`/api/*`) and server components
+
+⚠️ **Warning**: Never prefix `SUPABASE_SERVICE_ROLE_KEY` with `NEXT_PUBLIC_` as this would expose it to the browser!
