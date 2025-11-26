@@ -307,11 +307,14 @@ CREATE POLICY "Admins can manage tools" ON tools
 
 ## Environment Variables
 
-### Server-Side Only Variables (NOT prefixed with NEXT_PUBLIC_)
-
-These variables are only available on the server and are never exposed to the browser:
+All Supabase environment variables are server-side only (no `NEXT_PUBLIC_` prefix). The anon key is safely exposed to clients via the `/api/supabase-config` endpoint.
 
 ```env
+# Supabase URL and anonymous key
+# NOTE: No NEXT_PUBLIC_ prefix - provided to clients via API endpoint
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+
 # Supabase Service Role Key - NEVER expose this to the client!
 # This key bypasses Row Level Security and should only be used in API routes
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -323,30 +326,15 @@ ADMIN_NOTIFICATION_EMAIL=admin@example.com
 GITHUB_TOKEN=your-github-token
 ```
 
-### Public Variables (prefixed with NEXT_PUBLIC_)
-
-These variables are available in both client and server code:
-
-```env
-# Supabase URL and anonymous key (safe to expose)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# Site URL for email links
-NEXT_PUBLIC_SITE_URL=https://your-site.com
-```
-
 ### Vercel Deployment
 
 When deploying to Vercel, add these environment variables in the Vercel dashboard:
 
 1. Go to your project settings → Environment Variables
-2. Add each variable with appropriate environments (Production, Preview, Development)
-3. For `SUPABASE_SERVICE_ROLE_KEY`, ensure it's only added for server-side use
+2. Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`
+3. All variables are server-side only (no `NEXT_PUBLIC_` prefix)
 
 **Important Security Notes:**
-- `SUPABASE_SERVICE_ROLE_KEY` is automatically excluded from client bundles by Next.js because it doesn't have the `NEXT_PUBLIC_` prefix
+- The anon key is safe to expose (RLS is enforced) and is provided to clients via `/api/supabase-config`
+- `SUPABASE_SERVICE_ROLE_KEY` bypasses RLS and should only be used in API routes
 - Never log or expose the service role key in client-side code
-- The service role key should only be used in API routes (`/api/*`) and server components
-
-⚠️ **Warning**: Never prefix `SUPABASE_SERVICE_ROLE_KEY` with `NEXT_PUBLIC_` as this would expose it to the browser!
