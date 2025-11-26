@@ -101,6 +101,8 @@ export default function DashboardPage() {
                     .from("tools")
                     .select("id, name, description, iconurl, category, tool_analytics (downloads, rating, aum)")
                     .order("name", { ascending: true });
+                console.log(toolsData);
+
                 if (error) throw error;
                 if (toolsData) setTools(toolsData);
             } catch (error) {

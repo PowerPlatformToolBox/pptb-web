@@ -17,66 +17,8 @@ interface Tool {
     rating: number;
 }
 
-// Mock data for tools (will be replaced with Supabase data)
-const mockTools: Tool[] = [
-    {
-        id: "1",
-        name: "Solution Manager",
-        description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
-        iconurl: "📦",
-        category: "Solutions",
-        downloads: 1250,
-        rating: 4.8,
-    },
-    {
-        id: "2",
-        name: "Environment Tools",
-        description: "Compare environments, copy configurations, and manage environment settings efficiently.",
-        iconurl: "🌍",
-        category: "Environments",
-        downloads: 980,
-        rating: 4.6,
-    },
-    {
-        id: "3",
-        name: "Code Generator",
-        description: "Generate early-bound classes, TypeScript definitions, and more from your Dataverse metadata.",
-        iconurl: "⚡",
-        category: "Development",
-        downloads: 2100,
-        rating: 4.9,
-    },
-    {
-        id: "4",
-        name: "Plugin Manager",
-        description: "Register, update, and manage your plugins and custom workflow activities with a modern interface.",
-        iconurl: "🔌",
-        category: "Development",
-        downloads: 1450,
-        rating: 4.7,
-    },
-    {
-        id: "5",
-        name: "Data Import/Export",
-        description: "Import and export data using Excel, CSV, or JSON. Support for bulk operations and data transformation.",
-        iconurl: "📊",
-        category: "Data",
-        downloads: 1800,
-        rating: 4.5,
-    },
-    {
-        id: "6",
-        name: "Performance Monitor",
-        description: "Monitor and analyze the performance of your Power Platform solutions. Identify bottlenecks and optimize.",
-        iconurl: "📈",
-        category: "Monitoring",
-        downloads: 750,
-        rating: 4.4,
-    },
-];
-
 export default function ToolsPage() {
-    const [tools, setTools] = useState<Tool[]>(mockTools);
+    const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
     const { supabase } = useSupabase();
@@ -92,21 +34,33 @@ export default function ToolsPage() {
                 if (error) throw error;
                 if (data) {
                     const transformed: Tool[] = data.map(
-                        (tool: { id: string; name: string; description: string; iconurl: string; category: string; tool_analytics?: Array<{ downloads: number; rating: number }> }) => ({
-                            id: tool.id,
-                            name: tool.name,
-                            description: tool.description,
-                            iconurl: tool.iconurl || "📦",
-                            category: tool.category,
-                            downloads: tool.tool_analytics?.[0]?.downloads || 0,
-                            rating: tool.tool_analytics?.[0]?.rating || 0,
-                        }),
+                        (tool: { id: string; name: string; description: string; iconurl: string; category: string; tool_analytics?: Array<{ downloads: number; rating: number }> }) => {
+                            console.log(tool.tool_analytics);
+
+                            // Access the first (and likely only) item in the 'tool_analytics' array
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const analytics = tool.tool_analytics as any;
+
+                            // Return the new, flattened object
+                            return {
+                                id: tool.id,
+                                name: tool.name,
+                                description: tool.description,
+                                iconurl: tool.iconurl || "📦", // Added this line back in from the source code
+                                category: tool.category, // Added this line back in from the source code
+                                // Safely access properties from the 'analytics' variable
+                                downloads: analytics?.downloads || 0,
+                                rating: analytics?.rating || 0,
+                            };
+                        },
                     );
+                    console.log(transformed);
+
                     setTools(transformed);
                 }
             } catch (err) {
                 console.error("Error fetching tools:", err);
-                setTools(mockTools);
+                setTools([]);
             } finally {
                 setLoading(false);
             }
