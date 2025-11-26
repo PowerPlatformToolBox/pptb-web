@@ -9,12 +9,14 @@ This guide will help you set up Supabase authentication and database for the Pow
 
 ## Step 1: Set up Environment Variables
 
-Create a `.env.local` file in the root of the project:
+Create a `.env.local` file in the root of the project (prefix removed so keys are not automatically exposed to client bundles):
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_URL=your-project-url.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
 ```
+
+These values are now accessed server-side and provided to the browser through a lightweight internal API (`/api/supabase-config`) instead of direct `process.env` usage in client components.
 
 ## Step 2: Configure OAuth Providers
 
