@@ -35,18 +35,45 @@ jobs:
               with:
                   node-version: "20"
 
-            - name: Get tool metadata from registry
+            - name: Get tool metadata from Supabase
               id: metadata
+              env:
+                  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+                  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
               run: |
-                  # Read existing tool metadata from registry
+                  # Read existing tool metadata from Supabase
                   TOOL_ID=$(echo "${{ inputs.tool_id }}" | sed 's/@//g' | sed 's/\//-/g')
                   TOOL_PACKAGE_NAME="${{ inputs.tool_id }}"
-                  TOOL_NAME=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .name // "${{ inputs.tool_id }}"' public/registry/registry.json)
-                  TOOL_DESC=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .description // "Power Platform Tool"' public/registry/registry.json)
-                  TOOL_AUTHOR=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .author // "Unknown"' public/registry/registry.json)
-                  TOOL_CATEGORY=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .tags[0] // "General"' public/registry/registry.json)
-                  README_URL=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .readme // ""' public/registry/registry.json)
-                  ICON_URL=$(jq -r --arg id "$TOOL_ID" '.tools[] | select(.id == $id) | .iconUrl // empty' public/registry/registry.json)
+
+                  # URL-encode the package name for the query
+                  ENCODED_PACKAGE=$(echo "$TOOL_PACKAGE_NAME" | jq -sRr @uri)
+
+                  # Fetch tool from Supabase by packagename
+                  HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/tool_response.json \
+                    "$SUPABASE_URL/rest/v1/tools?packagename=eq.$ENCODED_PACKAGE&select=name,description,author,category,readme_url,iconurl" \
+                    -H "apikey: $SUPABASE_ANON_KEY" \
+                    -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+                  TOOL_RESPONSE=$(cat /tmp/tool_response.json)
+
+                  # Check HTTP status code
+                  if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+                    echo "⚠️ Failed to fetch tool from Supabase (HTTP $HTTP_CODE), using defaults"
+                    TOOL_RESPONSE="[]"
+                  fi
+
+                  # Check if response is valid JSON array
+                  if ! echo "$TOOL_RESPONSE" | jq -e 'type == "array"' > /dev/null 2>&1; then
+                    echo "⚠️ Invalid response from Supabase, using defaults"
+                    TOOL_RESPONSE="[]"
+                  fi
+
+                  # Parse response (returns array, get first element or use defaults)
+                  TOOL_NAME=$(echo "$TOOL_RESPONSE" | jq -r '.[0].name // "${{ inputs.tool_id }}"')
+                  TOOL_DESC=$(echo "$TOOL_RESPONSE" | jq -r '.[0].description // "Power Platform Tool"')
+                  TOOL_AUTHOR=$(echo "$TOOL_RESPONSE" | jq -r '.[0].author // "Unknown"')
+                  TOOL_CATEGORY=$(echo "$TOOL_RESPONSE" | jq -r '.[0].category // "General"')
+                  README_URL=$(echo "$TOOL_RESPONSE" | jq -r '.[0].readme_url // ""')
+                  ICON_URL=$(echo "$TOOL_RESPONSE" | jq -r '.[0].iconurl // empty')
 
                   echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
                   echo "package_name=$TOOL_PACKAGE_NAME" >> $GITHUB_OUTPUT
