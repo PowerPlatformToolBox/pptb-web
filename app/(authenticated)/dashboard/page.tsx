@@ -22,7 +22,13 @@ interface Tool {
     name: string;
     description: string;
     iconurl: string;
-    category: string;
+    tool_categories?: Array<{
+        categories: {
+            id: number;
+            name: string;
+        };
+    }>;
+    categories?: Array<{ id: number; name: string }>; // Transformed from tool_categories
     tool_analytics?: Array<{
         downloads: number;
         rating: number;
@@ -37,7 +43,7 @@ const mockTools: Tool[] = [
         name: "Solution Manager",
         description: "Manage your Power Platform solutions with ease.",
         iconurl: "📦",
-        category: "Solutions",
+        categories: [{ id: 1, name: "Solutions" }],
         tool_analytics: [{ downloads: 1250, rating: 4.8, aum: 850 }],
     },
     {
@@ -45,7 +51,7 @@ const mockTools: Tool[] = [
         name: "Environment Tools",
         description: "Compare environments and manage settings efficiently.",
         iconurl: "🌍",
-        category: "Environments",
+        categories: [{ id: 2, name: "Environments" }],
         tool_analytics: [{ downloads: 980, rating: 4.6, aum: 620 }],
     },
     {
@@ -53,7 +59,7 @@ const mockTools: Tool[] = [
         name: "Code Generator",
         description: "Generate early-bound classes and TypeScript definitions.",
         iconurl: "⚡",
-        category: "Development",
+        categories: [{ id: 3, name: "Development" }],
         tool_analytics: [{ downloads: 2100, rating: 4.9, aum: 1450 }],
     },
     {
@@ -61,7 +67,7 @@ const mockTools: Tool[] = [
         name: "Plugin Manager",
         description: "Register and manage plugins with a modern interface.",
         iconurl: "🔌",
-        category: "Development",
+        categories: [{ id: 3, name: "Development" }],
         tool_analytics: [{ downloads: 1450, rating: 4.7, aum: 920 }],
     },
     {
@@ -69,7 +75,7 @@ const mockTools: Tool[] = [
         name: "Data Import/Export",
         description: "Import and export data using Excel, CSV, or JSON.",
         iconurl: "📊",
-        category: "Data",
+        categories: [{ id: 4, name: "Data" }],
         tool_analytics: [{ downloads: 1800, rating: 4.5, aum: 1100 }],
     },
     {
@@ -77,7 +83,7 @@ const mockTools: Tool[] = [
         name: "Performance Monitor",
         description: "Monitor and analyze solution performance.",
         iconurl: "📈",
-        category: "Monitoring",
+        categories: [{ id: 5, name: "Monitoring" }],
         tool_analytics: [{ downloads: 750, rating: 4.4, aum: 480 }],
     },
 ];
@@ -88,6 +94,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "aum">("downloads");
     const { supabase } = useSupabase();
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         if (!supabase) return;
@@ -96,13 +103,46 @@ export default function DashboardPage() {
                 const {
                     data: { user },
                 } = await supabase.auth.getUser();
-                if (user) setUser(user);
+
+                if (user) {
+                    setUser(user);
+
+                    // Check if user is admin (avoid single/maybeSingle to prevent 406)
+                    const { data: roleRows, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").limit(1);
+
+                    if (roleError) {
+                        console.warn("Role check failed:", roleError);
+                    }
+                    setIsAdmin(!!roleRows && roleRows.length > 0);
+                }
+
+                // Fetch tools data with analytics and categories
                 const { data: toolsData, error } = await supabase
                     .from("tools")
-                    .select("id, name, description, iconurl, category, tool_analytics (downloads, rating, aum)")
+                    .select(
+                        `
+                        id, 
+                        name, 
+                        description, 
+                        iconurl, 
+                        tool_analytics (downloads, rating, aum),
+                        tool_categories (
+                            categories (id, name)
+                        )
+                    `,
+                    )
                     .order("name", { ascending: true });
                 if (error) throw error;
-                if (toolsData) setTools(toolsData);
+                if (toolsData) {
+                    // Transform tool_categories for easier rendering
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const transformedTools = toolsData.map((tool: any) => ({
+                        ...tool,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
+                    })) as Tool[];
+                    setTools(transformedTools);
+                }
             } catch (error) {
                 console.error("Error fetching data:", error);
                 setTools(mockTools);
@@ -156,6 +196,27 @@ export default function DashboardPage() {
                                         Welcome back{user?.user_metadata?.name ? `, ${user.user_metadata.name.split(" ")[0]}` : ""}!
                                     </h1>
                                     <p className="mt-4 text-lg text-slate-700">Here&apos;s an overview of all available Power Platform tools with their analytics.</p>
+                                </div>
+                                <div className="flex gap-3">
+                                    {isAdmin && (
+                                        <Link href="/admin/tool-intakes" className="btn-secondary flex items-center gap-2">
+                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                                                />
+                                            </svg>
+                                            Review Intakes
+                                        </Link>
+                                    )}
+                                    <Link href="/submit-tool" className="btn-primary flex items-center gap-2">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Submit Tool
+                                    </Link>
                                 </div>
                             </div>
                         </header>
@@ -270,7 +331,17 @@ export default function DashboardPage() {
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {tool.categories && tool.categories.length > 0 ? (
+                                                                    tool.categories.map((cat) => (
+                                                                        <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                                                                            {cat.name}
+                                                                        </span>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">N/A</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(analytics?.downloads || 0).toLocaleString()}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap">

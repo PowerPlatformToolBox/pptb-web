@@ -198,8 +198,6 @@ jobs:
                       npm package: ${{ steps.tool.outputs.package }}
                       Version: ${{ steps.build.outputs.version }}
                       Author: ${{ steps.tool.outputs.author }}
-
-                      Submitted via issue #${{ github.event.issue.number }}
                   files: ${{ steps.release_files.outputs.files }}
 
             - name: Update Supabase database
