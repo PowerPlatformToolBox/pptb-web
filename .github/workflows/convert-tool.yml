@@ -32,7 +32,7 @@ on:
 
 jobs:
     convert:
-        if: github.event.label.name == 'approved'
+        if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'approved'
         runs-on: ubuntu-latest
         permissions: write-all
         env:
