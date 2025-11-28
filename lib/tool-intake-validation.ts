@@ -21,7 +21,6 @@ export interface Configurations {
     funding?: string;
     iconUrl?: string;
     readmeUrl?: string;
-    categories?: string[];
 }
 
 export interface ToolPackageJson {
@@ -52,16 +51,7 @@ export interface ValidationResult {
 }
 
 // List of approved open source licenses (from intake-validation.yml)
-const APPROVED_LICENSES = [
-    "MIT",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "GPL-2.0",
-    "GPL-3.0",
-    "LGPL-3.0",
-    "ISC",
-];
+const APPROVED_LICENSES = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "GPL-2.0", "GPL-3.0", "LGPL-3.0", "ISC"];
 
 export function isValidUrl(url: string): boolean {
     try {
@@ -97,9 +87,7 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
     if (!packageJson.license) {
         errors.push("license is required");
     } else if (!APPROVED_LICENSES.includes(packageJson.license)) {
-        errors.push(
-            `License "${packageJson.license}" is not in the approved list. Approved licenses: ${APPROVED_LICENSES.join(", ")}`
-        );
+        errors.push(`License "${packageJson.license}" is not in the approved list. Approved licenses: ${APPROVED_LICENSES.join(", ")}`);
     }
 
     // Contributors validation
@@ -118,18 +106,9 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
         });
     }
 
-    // Configurations validation
-    if (!packageJson.configurations) {
-        errors.push("configurations is required");
-    } else {
+    // Configurations validation (optional but validated if present)
+    if (packageJson.configurations) {
         const configs = packageJson.configurations;
-
-        // Categories are required
-        if (!configs.categories || !Array.isArray(configs.categories)) {
-            errors.push("configurations.categories is required and must be an array");
-        } else if (configs.categories.length === 0) {
-            errors.push("At least one category is required");
-        }
 
         // Optional but validated if present
         if (configs.repository && !isValidUrl(configs.repository)) {
@@ -151,14 +130,7 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
 
     // CSP Exceptions validation (optional but validated if present)
     if (packageJson.cspExceptions) {
-        const validCspDirectives = [
-            "connect-src",
-            "script-src",
-            "style-src",
-            "img-src",
-            "font-src",
-            "frame-src",
-        ];
+        const validCspDirectives = ["connect-src", "script-src", "style-src", "img-src", "font-src", "frame-src"];
 
         Object.keys(packageJson.cspExceptions).forEach((directive) => {
             if (!validCspDirectives.includes(directive)) {
@@ -204,9 +176,7 @@ export interface NpmPackageInfo {
     configurations?: Configurations;
 }
 
-export async function fetchNpmPackageInfo(
-    packageName: string
-): Promise<{ success: true; data: NpmPackageInfo } | { success: false; error: string }> {
+export async function fetchNpmPackageInfo(packageName: string): Promise<{ success: true; data: NpmPackageInfo } | { success: false; error: string }> {
     try {
         // Fetch package info from npm registry using base endpoint
         // This is more reliable than /latest for packages with pre-release versions
@@ -224,7 +194,7 @@ export async function fetchNpmPackageInfo(
         }
 
         const packageData = await response.json();
-        
+
         // Get the latest version from dist-tags
         const latestVersion = packageData["dist-tags"]?.latest;
         if (!latestVersion) {

@@ -101,10 +101,13 @@ export default function DashboardPage() {
                 if (user) {
                     setUser(user);
 
-                    // Check if user is admin
-                    const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single();
+                    // Check if user is admin (avoid single/maybeSingle to prevent 406)
+                    const { data: roleRows, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").limit(1);
 
-                    setIsAdmin(!!roleData);
+                    if (roleError) {
+                        console.warn("Role check failed:", roleError);
+                    }
+                    setIsAdmin(!!roleRows && roleRows.length > 0);
                 }
 
                 // Fetch tools data with analytics

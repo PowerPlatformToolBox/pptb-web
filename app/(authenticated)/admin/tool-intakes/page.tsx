@@ -5,11 +5,16 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
-import { supabase } from "@/lib/supabase";
+import { useSupabase } from "@/lib/useSupabase";
 
 interface Contributor {
     name: string;
     url?: string;
+}
+
+interface Category {
+    id: number;
+    name: string;
 }
 
 interface ToolIntake {
@@ -27,7 +32,6 @@ interface ToolIntake {
         funding?: string;
         iconUrl?: string;
         readmeUrl?: string;
-        categories?: string[];
     };
     submitted_by: string | null;
     status: string;
@@ -37,11 +41,13 @@ interface ToolIntake {
     reviewed_at: string | null;
     created_at: string;
     updated_at: string;
+    categories?: Category[];
 }
 
 type StatusFilter = "all" | "pending_review" | "approved" | "rejected" | "needs_changes";
 
 export default function AdminToolIntakesPage() {
+    const { supabase } = useSupabase();
     const [intakes, setIntakes] = useState<ToolIntake[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -61,7 +67,18 @@ export default function AdminToolIntakesPage() {
         try {
             let query = supabase
                 .from("tool_intakes")
-                .select("*")
+                .select(
+                    `
+                    *,
+                    tool_intake_categories(
+                        categories(id, name)
+                    ),
+                    tool_intake_contributors(
+                        contributor_id,
+                        contributors(id, name, profile_url)
+                    )
+                `,
+                )
                 .order("created_at", { ascending: false });
 
             if (statusFilter !== "all") {
@@ -71,7 +88,21 @@ export default function AdminToolIntakesPage() {
             const { data, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
-            setIntakes(data || []);
+
+            // Transform the data to flatten categories
+            const transformedData = (data || []).map((intake: any) => ({
+                ...intake,
+                categories: intake.tool_intake_categories?.map((tic: any) => tic.categories).filter(Boolean) || [],
+                contributors:
+                    intake.tool_intake_contributors
+                        ?.map((tic: any) => ({
+                            name: tic.contributors?.name,
+                            url: tic.contributors?.profile_url || undefined,
+                        }))
+                        .filter((c: any) => c.name) || [],
+            }));
+
+            setIntakes(transformedData);
         } catch (err) {
             console.error("Error fetching intakes:", err);
             setError("Failed to load tool intake requests");
@@ -81,40 +112,45 @@ export default function AdminToolIntakesPage() {
     };
 
     useEffect(() => {
+        if (!supabase) return; // wait for client init
+
         async function checkAdminStatus() {
-            if (!supabase) return;
-            
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    // Check if user has admin role (you can customize this check)
-                    const { data: roleData } = await supabase
-                        .from("user_roles")
-                        .select("role")
-                        .eq("user_id", user.id)
-                        .eq("role", "admin")
-                        .single();
-                    
-                    setIsAdmin(!!roleData);
+                const {
+                    data: { user },
+                } = await supabase!.auth.getUser();
+                if (!user) {
+                    setIsAdmin(false);
+                    return;
+                }
+                // Count-based head query to avoid 406 and reduce payload
+                const { count, error: roleError } = await supabase!.from("user_roles").select("role", { head: true, count: "exact" }).eq("user_id", user.id).eq("role", "admin");
+                if (roleError) {
+                    console.warn("Admin role check failed:", roleError);
+                    setIsAdmin(false);
+                } else {
+                    setIsAdmin((count || 0) > 0);
                 }
             } catch (err) {
                 console.error("Error checking admin status:", err);
-                // Deny access on error for security
                 setIsAdmin(false);
             }
         }
 
         refreshIntakes();
         checkAdminStatus();
-    }, [statusFilter]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter, supabase]);
 
     async function handleReviewAction(intakeId: string, action: "approve" | "reject" | "needs_changes") {
         if (!supabase) return;
 
         setActionLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            
+            const {
+                data: { session },
+            } = await supabase.auth.getSession();
+
             const response = await fetch("/api/admin/tool-intakes", {
                 method: "POST",
                 headers: {
@@ -151,8 +187,10 @@ export default function AdminToolIntakesPage() {
 
         setActionLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            
+            const {
+                data: { session },
+            } = await supabase.auth.getSession();
+
             const response = await fetch("/api/admin/tool-intakes/convert", {
                 method: "POST",
                 headers: {
@@ -209,7 +247,12 @@ export default function AdminToolIntakesPage() {
                 <Container className="mt-16 sm:mt-32">
                     <div className="text-center">
                         <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
                         </svg>
                         <h2 className="mt-4 text-xl font-semibold text-slate-900">Access Denied</h2>
                         <p className="mt-2 text-slate-600">You need admin privileges to access this page.</p>
@@ -228,10 +271,7 @@ export default function AdminToolIntakesPage() {
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-6xl">
                         {/* Back button */}
-                        <Link
-                            href="/dashboard"
-                            className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8"
-                        >
+                        <Link href="/dashboard" className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
@@ -240,12 +280,8 @@ export default function AdminToolIntakesPage() {
 
                         {/* Page Header */}
                         <div className="mb-8">
-                            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                                Tool Intake Review
-                            </h1>
-                            <p className="mt-4 text-lg text-slate-600">
-                                Review and manage tool submission requests from the community.
-                            </p>
+                            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Tool Intake Review</h1>
+                            <p className="mt-4 text-lg text-slate-600">Review and manage tool submission requests from the community.</p>
                         </div>
 
                         {error && (
@@ -262,9 +298,7 @@ export default function AdminToolIntakesPage() {
                                         key={status}
                                         onClick={() => setStatusFilter(status)}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            statusFilter === status
-                                                ? "bg-blue-600 text-white"
-                                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            statusFilter === status ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                                         }`}
                                     >
                                         {status === "all" ? "All" : status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
@@ -279,7 +313,12 @@ export default function AdminToolIntakesPage() {
                                 {intakes.length === 0 ? (
                                     <div className="card p-8 text-center">
                                         <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                                            />
                                         </svg>
                                         <p className="mt-4 text-slate-600">No tool intake requests found.</p>
                                     </div>
@@ -289,12 +328,8 @@ export default function AdminToolIntakesPage() {
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-2">
-                                                        <h3 className="text-lg font-semibold text-slate-900">
-                                                            {intake.display_name}
-                                                        </h3>
-                                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(intake.status)}`}>
-                                                            {intake.status.replace(/_/g, " ")}
-                                                        </span>
+                                                        <h3 className="text-lg font-semibold text-slate-900">{intake.display_name}</h3>
+                                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(intake.status)}`}>{intake.status.replace(/_/g, " ")}</span>
                                                     </div>
                                                     <p className="text-sm text-slate-600 mb-2">{intake.description}</p>
                                                     <div className="flex flex-wrap gap-4 text-xs text-slate-500">
@@ -311,11 +346,11 @@ export default function AdminToolIntakesPage() {
                                                             <strong>Submitted:</strong> {new Date(intake.created_at).toLocaleDateString()}
                                                         </span>
                                                     </div>
-                                                    {intake.configurations.categories && (
+                                                    {intake.categories && intake.categories.length > 0 && (
                                                         <div className="mt-2 flex flex-wrap gap-1">
-                                                            {intake.configurations.categories.map((cat) => (
-                                                                <span key={cat} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded">
-                                                                    {cat}
+                                                            {intake.categories.map((cat) => (
+                                                                <span key={cat.id} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded">
+                                                                    {cat.name}
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -351,7 +386,7 @@ export default function AdminToolIntakesPage() {
                                             {selectedIntake?.id === intake.id && (
                                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                                     <h4 className="font-medium text-slate-900 mb-3">Review Actions</h4>
-                                                    
+
                                                     {/* Package Details */}
                                                     <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
                                                         <div>
@@ -394,7 +429,12 @@ export default function AdminToolIntakesPage() {
                                                                     </li>
                                                                 )}
                                                                 <li>
-                                                                    <a href={`https://www.npmjs.com/package/${intake.package_name}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                                                    <a
+                                                                        href={`https://www.npmjs.com/package/${intake.package_name}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-blue-600 hover:underline"
+                                                                    >
                                                                         npm Package
                                                                     </a>
                                                                 </li>

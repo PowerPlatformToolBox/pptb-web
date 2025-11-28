@@ -1,10 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-intake-validation";
 import { createClient } from "@supabase/supabase-js";
-import {
-    fetchNpmPackageInfo,
-    validatePackageJson,
-    ToolPackageJson,
-} from "@/lib/tool-intake-validation";
+import { NextRequest, NextResponse } from "next/server";
 
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
@@ -19,13 +15,7 @@ function getSupabaseClient() {
 }
 
 // Send notification to admins about new tool intake
-async function notifyAdmins(intakeDetails: {
-    packageName: string;
-    displayName: string;
-    version: string;
-    description: string;
-    submittedBy?: string;
-}) {
+async function notifyAdmins(intakeDetails: { packageName: string; displayName: string; version: string; description: string; submittedBy?: string }) {
     // Log the notification (in production, integrate with email service like Resend, SendGrid, etc.)
     console.log("=== NEW TOOL INTAKE SUBMITTED ===");
     console.log(`Package: ${intakeDetails.packageName}`);
@@ -51,25 +41,27 @@ async function notifyAdmins(intakeDetails: {
     //         },
     //     });
     // }
-    
+
     return true;
 }
 
 interface SubmitToolRequest {
     packageName: string;
+    categoryIds: number[];
 }
 
 export async function POST(request: NextRequest) {
     try {
         // Parse request body
         const body = (await request.json()) as SubmitToolRequest;
-        const { packageName } = body;
+        const { packageName, categoryIds } = body;
 
         if (!packageName || typeof packageName !== "string") {
-            return NextResponse.json(
-                { error: "Package name is required" },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: "Package name is required" }, { status: 400 });
+        }
+
+        if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
+            return NextResponse.json({ error: "At least one category is required" }, { status: 400 });
         }
 
         // Clean up package name
@@ -79,10 +71,7 @@ export async function POST(request: NextRequest) {
         // https://github.com/npm/validate-npm-package-name
         const npmPackageNameRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
         if (!npmPackageNameRegex.test(cleanPackageName)) {
-            return NextResponse.json(
-                { error: "Invalid npm package name format" },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: "Invalid npm package name format" }, { status: 400 });
         }
 
         // Step 1: Fetch package info from npm
@@ -94,7 +83,7 @@ export async function POST(request: NextRequest) {
                     error: npmResult.error,
                     step: "npm_check",
                 },
-                { status: 404 }
+                { status: 404 },
             );
         }
 
@@ -122,7 +111,7 @@ export async function POST(request: NextRequest) {
                         warnings: validationResult.warnings,
                     },
                 },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
@@ -135,7 +124,7 @@ export async function POST(request: NextRequest) {
                     error: "Database connection not configured",
                     step: "database",
                 },
-                { status: 500 }
+                { status: 500 },
             );
         }
 
@@ -156,11 +145,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if this package already exists in tool_intakes
-        const { data: existingIntake } = await supabase
-            .from("tool_intakes")
-            .select("id, status")
-            .eq("package_name", cleanPackageName)
-            .single();
+        const { data: existingIntake } = await supabase.from("tool_intakes").select("id, status").eq("package_name", cleanPackageName).single();
 
         if (existingIntake) {
             return NextResponse.json(
@@ -168,7 +153,7 @@ export async function POST(request: NextRequest) {
                     error: `This package has already been submitted (Status: ${existingIntake.status})`,
                     step: "duplicate_check",
                 },
-                { status: 409 }
+                { status: 409 },
             );
         }
 
@@ -180,11 +165,11 @@ export async function POST(request: NextRequest) {
                     error: "Unexpected validation error",
                     step: "validation",
                 },
-                { status: 500 }
+                { status: 500 },
             );
         }
 
-        // Store the tool intake request
+        // Store the tool intake request (contributors now normalized via join table)
         const { data: intakeData, error: insertError } = await supabase
             .from("tool_intakes")
             .insert({
@@ -193,7 +178,6 @@ export async function POST(request: NextRequest) {
                 display_name: packageInfo.displayName,
                 description: packageInfo.description,
                 license: packageInfo.license,
-                contributors: packageInfo.contributors,
                 csp_exceptions: packageInfo.cspExceptions || null,
                 configurations: packageInfo.configurations,
                 submitted_by: userId,
@@ -210,8 +194,57 @@ export async function POST(request: NextRequest) {
                     error: "Failed to save tool intake request",
                     step: "database",
                 },
-                { status: 500 }
+                { status: 500 },
             );
+        }
+
+        // Insert category relationships
+        const categoryRelations = categoryIds.map((categoryId) => ({
+            tool_intake_id: intakeData.id,
+            category_id: categoryId,
+        }));
+
+        const { error: categoryError } = await supabase.from("tool_intake_categories").insert(categoryRelations);
+
+        if (categoryError) {
+            console.error("Error inserting tool intake categories:", categoryError);
+            // Note: We don't fail the request here since the main intake was saved
+            // The admin can manually fix categories if needed
+        }
+
+        // Normalize contributors: insert into contributors table & link
+        if (packageInfo.contributors && packageInfo.contributors.length > 0) {
+            for (const contrib of packageInfo.contributors) {
+                if (!contrib.name) continue;
+
+                // Attempt to find existing contributor by name + profile_url
+                const { data: existingContributor } = await supabase
+                    .from("contributors")
+                    .select("id")
+                    .eq("name", contrib.name)
+                    .eq("profile_url", contrib.url || null)
+                    .maybeSingle();
+
+                let contributorId = existingContributor?.id;
+                if (!contributorId) {
+                    const { data: insertedContributor, error: insertContribError } = await supabase
+                        .from("contributors")
+                        .insert({ name: contrib.name, profile_url: contrib.url || null })
+                        .select("id")
+                        .single();
+                    if (insertContribError) {
+                        console.error("Failed to insert contributor", contrib.name, insertContribError);
+                        continue; // skip this contributor
+                    }
+                    contributorId = insertedContributor.id;
+                }
+
+                // Link contributor to intake
+                const { error: linkError } = await supabase.from("tool_intake_contributors").insert({ tool_intake_id: intakeData.id, contributor_id: contributorId });
+                if (linkError) {
+                    console.error("Failed to link contributor", contrib.name, linkError);
+                }
+            }
         }
 
         // Notify admins about the new submission
@@ -242,7 +275,7 @@ export async function POST(request: NextRequest) {
                 error: "Internal server error",
                 step: "unknown",
             },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }

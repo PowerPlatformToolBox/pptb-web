@@ -3,10 +3,36 @@ name: Convert and Publish Tool
 on:
     issues:
         types: [labeled]
+    workflow_dispatch:
+        inputs:
+            npm_package_name:
+                description: "npm package name"
+                required: true
+                type: string
+            display_name:
+                description: "Tool display name"
+                required: true
+                type: string
+            description:
+                description: "Tool description"
+                required: true
+                type: string
+            author:
+                description: "Author(s)"
+                required: false
+                type: string
+            readme_url:
+                description: "README URL"
+                required: false
+                type: string
+            icon_url:
+                description: "Icon URL"
+                required: false
+                type: string
 
 jobs:
     convert:
-        if: github.event.label.name == 'approved'
+        if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'approved'
         runs-on: ubuntu-latest
         permissions: write-all
         env:
@@ -23,26 +49,35 @@ jobs:
               with:
                   node-version: "20"
 
-            - name: Parse issue form
+            - name: Parse issue form (only for issue trigger)
+              if: github.event_name == 'issues'
               id: parse
               uses: stefanbuck/github-issue-parser@v3
 
             - name: Extract tool info
               id: tool
               run: |
-                  PACKAGE_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.npm_package_name')
-                  DISPLAY_NAME=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.display_name')
-                  DESCRIPTION=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.description')
-                  AUTHOR=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.author')
-                  CATEGORY=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.category')
-                  README_URL=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.readme_url')
-                  ICON_URL=$(echo '${{ steps.parse.outputs.jsonString }}' | jq -r '.icon_url // empty')
+                  if [ "${{ github.event_name }}" = "issues" ]; then
+                    JSON='${{ steps.parse.outputs.jsonString }}'
+                    PACKAGE_NAME=$(echo "$JSON" | jq -r '.npm_package_name')
+                    DISPLAY_NAME=$(echo "$JSON" | jq -r '.display_name')
+                    DESCRIPTION=$(echo "$JSON" | jq -r '.description')
+                    AUTHOR=$(echo "$JSON" | jq -r '.author')
+                    README_URL=$(echo "$JSON" | jq -r '.readme_url')
+                    ICON_URL=$(echo "$JSON" | jq -r '.icon_url // empty')
+                  else
+                    PACKAGE_NAME='${{ inputs.npm_package_name }}'
+                    DISPLAY_NAME='${{ inputs.display_name }}'
+                    DESCRIPTION='${{ inputs.description }}'
+                    AUTHOR='${{ inputs.author }}'
+                    README_URL='${{ inputs.readme_url }}'
+                    ICON_URL='${{ inputs.icon_url }}'
+                  fi
 
                   echo "package=$PACKAGE_NAME" >> $GITHUB_OUTPUT
                   echo "name=$DISPLAY_NAME" >> $GITHUB_OUTPUT
                   echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
                   echo "author=$AUTHOR" >> $GITHUB_OUTPUT
-                  echo "category=$CATEGORY" >> $GITHUB_OUTPUT
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
 
@@ -163,8 +198,6 @@ jobs:
                       npm package: ${{ steps.tool.outputs.package }}
                       Version: ${{ steps.build.outputs.version }}
                       Author: ${{ steps.tool.outputs.author }}
-
-                      Submitted via issue #${{ github.event.issue.number }}
                   files: ${{ steps.release_files.outputs.files }}
 
             - name: Update Supabase database
@@ -179,6 +212,7 @@ jobs:
                   else
                     ICON_URL=""
                   fi
+                  DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
 
                   # Prepare SQL payload for tools table
                   TOOL_PAYLOAD=$(jq -n \
@@ -186,18 +220,22 @@ jobs:
                     --arg name "${{ steps.tool.outputs.name }}" \
                     --arg description "${{ steps.tool.outputs.description }}" \
                     --arg iconUrl "$ICON_URL" \
-                    --arg author "${{ steps.tool.outputs.author }}" \
                     --arg version "${{ steps.build.outputs.version }}" \
-                    --arg category "${{ steps.tool.outputs.category }}" \
+                    --arg downloadurl "$DOWNLOAD_URL" \
+                    --arg checksum "${{ steps.checksum.outputs.checksum }}" \
+                    --arg size "${{ steps.checksum.outputs.size }}" \
+                    --arg readmeurl "${{ steps.tool.outputs.readme_url }}" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     '{
-                      packageName: $packageName,
+                      packagename: $packageName,
                       name: $name,
                       description: $description,
-                      iconUrl: $iconUrl,
-                      author: $author,
+                      iconurl: $iconUrl,
                       version: $version,
-                      category: $category,
+                      downloadurl: $downloadurl,
+                      checksum: $checksum,
+                      size: $size,
+                      readmeurl: $readmeurl,
                       published_at: $published
                     }')
 
@@ -239,12 +277,12 @@ jobs:
                     echo "Warning: Could not extract tool ID from Supabase response"
                   fi
 
-            - name: Close issue with success
+            - name: Close issue with success (only for issue trigger)
+              if: github.event_name == 'issues'
               uses: actions/github-script@v7
               with:
                   script: |
                       const creator = context.payload.sender.login;
-                                  
                       await github.rest.issues.createComment({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
@@ -254,10 +292,9 @@ jobs:
                               `**Package Name**: \`${{ steps.tool.outputs.package }}\`\n` +
                               `**Name**: ${{ steps.tool.outputs.name }}\n` +
                               `**Version**: ${{ steps.build.outputs.version }}\n` +
-                              `**Download URL**: ${{ steps.upload.outputs.url }}\n\n` +
+                              `**Download URL**: https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz\n\n` +
                               `@${creator} your tool is now available in the Power Platform Tool Box marketplace!`
                       });
-
                       await github.rest.issues.update({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
