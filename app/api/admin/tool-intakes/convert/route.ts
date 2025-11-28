@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Trigger GitHub Actions workflow to build and publish the tool and wait for completion
-        const ghToken = process.env.GITHUB_TOKEN;
+        const ghToken = process.env.GH_PAT_TOKEN;
         if (!ghToken) {
             return NextResponse.json({ error: "GitHub token not configured" }, { status: 500 });
         }
