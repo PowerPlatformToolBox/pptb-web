@@ -22,7 +22,13 @@ interface Tool {
     name: string;
     description: string;
     iconurl: string;
-    category: string;
+    tool_categories?: Array<{
+        categories: {
+            id: number;
+            name: string;
+        };
+    }>;
+    categories?: Array<{ id: number; name: string }>; // Transformed from tool_categories
     tool_analytics?: Array<{
         downloads: number;
         rating: number;
@@ -37,7 +43,7 @@ const mockTools: Tool[] = [
         name: "Solution Manager",
         description: "Manage your Power Platform solutions with ease.",
         iconurl: "📦",
-        category: "Solutions",
+        categories: [{ id: 1, name: "Solutions" }],
         tool_analytics: [{ downloads: 1250, rating: 4.8, aum: 850 }],
     },
     {
@@ -45,7 +51,7 @@ const mockTools: Tool[] = [
         name: "Environment Tools",
         description: "Compare environments and manage settings efficiently.",
         iconurl: "🌍",
-        category: "Environments",
+        categories: [{ id: 2, name: "Environments" }],
         tool_analytics: [{ downloads: 980, rating: 4.6, aum: 620 }],
     },
     {
@@ -53,7 +59,7 @@ const mockTools: Tool[] = [
         name: "Code Generator",
         description: "Generate early-bound classes and TypeScript definitions.",
         iconurl: "⚡",
-        category: "Development",
+        categories: [{ id: 3, name: "Development" }],
         tool_analytics: [{ downloads: 2100, rating: 4.9, aum: 1450 }],
     },
     {
@@ -61,7 +67,7 @@ const mockTools: Tool[] = [
         name: "Plugin Manager",
         description: "Register and manage plugins with a modern interface.",
         iconurl: "🔌",
-        category: "Development",
+        categories: [{ id: 3, name: "Development" }],
         tool_analytics: [{ downloads: 1450, rating: 4.7, aum: 920 }],
     },
     {
@@ -69,7 +75,7 @@ const mockTools: Tool[] = [
         name: "Data Import/Export",
         description: "Import and export data using Excel, CSV, or JSON.",
         iconurl: "📊",
-        category: "Data",
+        categories: [{ id: 4, name: "Data" }],
         tool_analytics: [{ downloads: 1800, rating: 4.5, aum: 1100 }],
     },
     {
@@ -77,7 +83,7 @@ const mockTools: Tool[] = [
         name: "Performance Monitor",
         description: "Monitor and analyze solution performance.",
         iconurl: "📈",
-        category: "Monitoring",
+        categories: [{ id: 5, name: "Monitoring" }],
         tool_analytics: [{ downloads: 750, rating: 4.4, aum: 480 }],
     },
 ];
@@ -110,13 +116,33 @@ export default function DashboardPage() {
                     setIsAdmin(!!roleRows && roleRows.length > 0);
                 }
 
-                // Fetch tools data with analytics
+                // Fetch tools data with analytics and categories
                 const { data: toolsData, error } = await supabase
                     .from("tools")
-                    .select("id, name, description, iconurl, category, tool_analytics (downloads, rating, aum)")
+                    .select(
+                        `
+                        id, 
+                        name, 
+                        description, 
+                        iconurl, 
+                        tool_analytics (downloads, rating, aum),
+                        tool_categories (
+                            categories (id, name)
+                        )
+                    `,
+                    )
                     .order("name", { ascending: true });
                 if (error) throw error;
-                if (toolsData) setTools(toolsData);
+                if (toolsData) {
+                    // Transform tool_categories for easier rendering
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const transformedTools = toolsData.map((tool: any) => ({
+                        ...tool,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
+                    })) as Tool[];
+                    setTools(transformedTools);
+                }
             } catch (error) {
                 console.error("Error fetching data:", error);
                 setTools(mockTools);
@@ -305,7 +331,17 @@ export default function DashboardPage() {
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {tool.categories && tool.categories.length > 0 ? (
+                                                                    tool.categories.map((cat) => (
+                                                                        <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                                                                            {cat.name}
+                                                                        </span>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">N/A</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(analytics?.downloads || 0).toLocaleString()}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
