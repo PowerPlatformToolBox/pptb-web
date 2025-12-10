@@ -219,7 +219,7 @@ jobs:
                     --arg packageName "${{ steps.tool.outputs.package }}" \
                     --arg name "${{ steps.tool.outputs.name }}" \
                     --arg description "${{ steps.tool.outputs.description }}" \
-                    --arg iconUrl "$ICON_URL" \
+                    --arg iconurl "$ICON_URL" \
                     --arg version "${{ steps.build.outputs.version }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
@@ -273,6 +273,54 @@ jobs:
                       -d "$ANALYTICS_PAYLOAD"
                     
                     echo "Analytics initialized for tool"
+
+                    AUTHOR_LIST="${{ steps.tool.outputs.author }}"
+                    if [ -n "$AUTHOR_LIST" ]; then
+                      IFS=',' read -ra AUTHORS <<< "$AUTHOR_LIST"
+                      for RAW_AUTHOR in "${AUTHORS[@]}"; do
+                        AUTHOR_NAME=$(echo "$RAW_AUTHOR" | xargs)
+                        if [ -z "$AUTHOR_NAME" ]; then
+                          continue
+                        fi
+
+                        # Look up existing contributor by name
+                        ENCODED_NAME=$(jq -rn --arg v "$AUTHOR_NAME" '$v|@uri')
+                        CONTRIBUTOR_LOOKUP=$(curl -s "${{ secrets.SUPABASE_URL }}/rest/v1/contributors?name=eq.${ENCODED_NAME}&select=id&limit=1" \
+                          -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                          -H "Content-Type: application/json")
+                        CONTRIBUTOR_ID=$(echo "$CONTRIBUTOR_LOOKUP" | jq -r '.[0].id // empty')
+
+                        if [ -z "$CONTRIBUTOR_ID" ]; then
+                          CONTRIBUTOR_PAYLOAD=$(jq -n --arg name "$AUTHOR_NAME" '{name: $name}')
+                          CONTRIBUTOR_RESPONSE=$(curl -s -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/contributors?select=id" \
+                            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Content-Type: application/json" \
+                            -H "Prefer: return=representation" \
+                            -d "$CONTRIBUTOR_PAYLOAD")
+                          CONTRIBUTOR_ID=$(echo "$CONTRIBUTOR_RESPONSE" | jq -r '.[0].id // empty')
+                        fi
+
+                        if [ -n "$CONTRIBUTOR_ID" ]; then
+                          TOOL_CONTRIBUTOR_PAYLOAD=$(jq -n \
+                            --arg tool_id "$TOOL_ID" \
+                            --arg contributor_id "$CONTRIBUTOR_ID" \
+                            '{tool_id: $tool_id, contributor_id: ($contributor_id|tonumber)}')
+
+                          curl -s -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tool_contributors" \
+                            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Content-Type: application/json" \
+                            -H "Prefer: resolution=ignore-duplicates" \
+                            -d "$TOOL_CONTRIBUTOR_PAYLOAD" >/dev/null || true
+
+                          echo "Contributor linked: $AUTHOR_NAME"
+                        else
+                          echo "Warning: Failed to upsert contributor for author '$AUTHOR_NAME'"
+                        fi
+                      done
+                    fi
                   else
                     echo "Warning: Could not extract tool ID from Supabase response"
                   fi

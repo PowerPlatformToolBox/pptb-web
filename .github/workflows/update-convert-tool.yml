@@ -50,7 +50,7 @@ jobs:
 
                   # Fetch tool from Supabase by packagename
                   HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/tool_response.json \
-                    "$SUPABASE_URL/rest/v1/tools?packagename=eq.$ENCODED_PACKAGE&select=name,description,author,category,readme_url,iconurl" \
+                    "$SUPABASE_URL/rest/v1/tools?packagename=eq.$ENCODED_PACKAGE&select=name,description,author,readmeurl,iconurl" \
                     -H "apikey: $SUPABASE_ANON_KEY" \
                     -H "Authorization: Bearer $SUPABASE_ANON_KEY")
                   TOOL_RESPONSE=$(cat /tmp/tool_response.json)
@@ -70,9 +70,8 @@ jobs:
                   # Parse response (returns array, get first element or use defaults)
                   TOOL_NAME=$(echo "$TOOL_RESPONSE" | jq -r '.[0].name // "${{ inputs.tool_id }}"')
                   TOOL_DESC=$(echo "$TOOL_RESPONSE" | jq -r '.[0].description // "Power Platform Tool"')
-                  TOOL_AUTHOR=$(echo "$TOOL_RESPONSE" | jq -r '.[0].author // "Unknown"')
-                  TOOL_CATEGORY=$(echo "$TOOL_RESPONSE" | jq -r '.[0].category // "General"')
-                  README_URL=$(echo "$TOOL_RESPONSE" | jq -r '.[0].readme_url // ""')
+                  TOOL_AUTHOR=$(echo "$TOOL_RESPONSE" | jq -r '.[0].author // ""')
+                  README_URL=$(echo "$TOOL_RESPONSE" | jq -r '.[0].readmeurl // ""')
                   ICON_URL=$(echo "$TOOL_RESPONSE" | jq -r '.[0].iconurl // empty')
 
                   echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
@@ -80,7 +79,6 @@ jobs:
                   echo "name=$TOOL_NAME" >> $GITHUB_OUTPUT
                   echo "description=$TOOL_DESC" >> $GITHUB_OUTPUT
                   echo "author=$TOOL_AUTHOR" >> $GITHUB_OUTPUT
-                  echo "category=$TOOL_CATEGORY" >> $GITHUB_OUTPUT
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
 
@@ -195,7 +193,6 @@ jobs:
                       Tool: ${{ steps.metadata.outputs.name }}
                       npm package: ${{ inputs.tool_id }}
                       Version: ${{ inputs.version }}
-                      Author: ${{ steps.metadata.outputs.author }}
 
                       Automated update from update checker.
                   files: ${{ steps.release_files.outputs.files }}
@@ -223,9 +220,7 @@ jobs:
                     --arg description "${{ steps.metadata.outputs.description }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg iconurl "$ICON_URL" \
-                    --arg author "${{ steps.metadata.outputs.author }}" \
                     --arg version "${{ inputs.version }}" \
-                    --arg category "${{ steps.metadata.outputs.category }}" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
                     --arg size "${{ steps.checksum.outputs.size }}" \
@@ -235,9 +230,7 @@ jobs:
                       description: $description,
                       downloadurl: $downloadurl,
                       iconurl: $iconurl,
-                      author: $author,
                       version: $version,
-                      category: $category,
                       published_at: $published,
                       checksum: $checksum,
                       size: $size
@@ -259,6 +252,53 @@ jobs:
                   if [ -n "$TOOL_ID" ]; then
                     echo "Tool metadata updated with ID: $TOOL_ID"
                     echo "Analytics data preserved from previous version"
+
+                    AUTHOR_LIST="${{ steps.metadata.outputs.author }}"
+                    if [ -n "$AUTHOR_LIST" ]; then
+                      IFS=',' read -ra AUTHORS <<< "$AUTHOR_LIST"
+                      for RAW_AUTHOR in "${AUTHORS[@]}"; do
+                        AUTHOR_NAME=$(echo "$RAW_AUTHOR" | xargs)
+                        if [ -z "$AUTHOR_NAME" ]; then
+                          continue
+                        fi
+
+                        ENCODED_NAME=$(jq -rn --arg v "$AUTHOR_NAME" '$v|@uri')
+                        CONTRIBUTOR_LOOKUP=$(curl -s "${{ secrets.SUPABASE_URL }}/rest/v1/contributors?name=eq.${ENCODED_NAME}&select=id&limit=1" \
+                          -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                          -H "Content-Type: application/json")
+                        CONTRIBUTOR_ID=$(echo "$CONTRIBUTOR_LOOKUP" | jq -r '.[0].id // empty')
+
+                        if [ -z "$CONTRIBUTOR_ID" ]; then
+                          CONTRIBUTOR_PAYLOAD=$(jq -n --arg name "$AUTHOR_NAME" '{name: $name}')
+                          CONTRIBUTOR_RESPONSE=$(curl -s -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/contributors?select=id" \
+                            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Content-Type: application/json" \
+                            -H "Prefer: return=representation" \
+                            -d "$CONTRIBUTOR_PAYLOAD")
+                          CONTRIBUTOR_ID=$(echo "$CONTRIBUTOR_RESPONSE" | jq -r '.[0].id // empty')
+                        fi
+
+                        if [ -n "$CONTRIBUTOR_ID" ]; then
+                          TOOL_CONTRIBUTOR_PAYLOAD=$(jq -n \
+                            --arg tool_id "$TOOL_ID" \
+                            --arg contributor_id "$CONTRIBUTOR_ID" \
+                            '{tool_id: $tool_id, contributor_id: ($contributor_id|tonumber)}')
+
+                          curl -s -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tool_contributors" \
+                            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                            -H "Content-Type: application/json" \
+                            -H "Prefer: resolution=ignore-duplicates" \
+                            -d "$TOOL_CONTRIBUTOR_PAYLOAD" >/dev/null || true
+
+                          echo "Contributor linked: $AUTHOR_NAME"
+                        else
+                          echo "Warning: Failed to upsert contributor for author '$AUTHOR_NAME'"
+                        fi
+                      done
+                    fi
                   else
                     echo "Warning: Could not extract tool ID from Supabase response"
                   fi

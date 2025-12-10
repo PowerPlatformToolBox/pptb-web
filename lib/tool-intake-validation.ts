@@ -62,6 +62,15 @@ export function isValidUrl(url: string): boolean {
     }
 }
 
+function isGithubDomain(url: string): boolean {
+    try {
+        const hostname = new URL(url).hostname.toLowerCase();
+        return hostname === "github.com" || hostname.endsWith(".github.com");
+    } catch {
+        return false;
+    }
+}
+
 export function validatePackageJson(packageJson: ToolPackageJson): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -106,25 +115,39 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
         });
     }
 
-    // Configurations validation (optional but validated if present)
-    if (packageJson.configurations) {
+    // Configurations validation (repository, iconUrl, readmeUrl are required)
+    if (!packageJson.configurations || typeof packageJson.configurations !== "object") {
+        errors.push("configurations is required and must include repository, iconUrl, and readmeUrl");
+    } else {
         const configs = packageJson.configurations;
 
-        // Optional but validated if present
-        if (configs.repository && !isValidUrl(configs.repository)) {
-            warnings.push("configurations.repository has an invalid URL format");
+        if (!configs.repository || typeof configs.repository !== "string") {
+            errors.push("configurations.repository is required and must be a URL");
+        } else if (!isValidUrl(configs.repository)) {
+            errors.push("configurations.repository has an invalid URL format");
         }
+
         if (configs.website && !isValidUrl(configs.website)) {
             warnings.push("configurations.website has an invalid URL format");
         }
         if (configs.funding && !isValidUrl(configs.funding)) {
             warnings.push("configurations.funding has an invalid URL format");
         }
-        if (configs.iconUrl && !isValidUrl(configs.iconUrl)) {
-            warnings.push("configurations.iconUrl has an invalid URL format");
+
+        if (!configs.iconUrl || typeof configs.iconUrl !== "string") {
+            errors.push("configurations.iconUrl is required and must be a URL");
+        } else if (!isValidUrl(configs.iconUrl)) {
+            errors.push("configurations.iconUrl has an invalid URL format");
+        } else if (isGithubDomain(configs.iconUrl)) {
+            errors.push("configurations.iconUrl cannot be hosted on github.com; use raw.githubusercontent.com or another domain");
         }
-        if (configs.readmeUrl && !isValidUrl(configs.readmeUrl)) {
-            warnings.push("configurations.readmeUrl has an invalid URL format");
+
+        if (!configs.readmeUrl || typeof configs.readmeUrl !== "string") {
+            errors.push("configurations.readmeUrl is required and must be a URL");
+        } else if (!isValidUrl(configs.readmeUrl)) {
+            errors.push("configurations.readmeUrl has an invalid URL format");
+        } else if (isGithubDomain(configs.readmeUrl)) {
+            errors.push("configurations.readmeUrl cannot be hosted on github.com; use raw.githubusercontent.com or another domain");
         }
     }
 
