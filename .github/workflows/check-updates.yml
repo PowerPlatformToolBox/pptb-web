@@ -24,28 +24,54 @@ jobs:
 
             - name: Check for updates
               id: check
+              env:
+                  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+                  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
               run: |
-                  # Read current registry
                   UPDATES_FOUND=false
 
-                  # For each tool in registry
-                  for row in $(jq -r '.tools[] | @base64' public/registry/registry.json); do
+                  # Fetch tools from Supabase
+                  HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/tools_response.json "$SUPABASE_URL/rest/v1/tools?select=packagename,version" \
+                    -H "apikey: $SUPABASE_ANON_KEY" \
+                    -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+                  TOOLS_RESPONSE=$(cat /tmp/tools_response.json)
+
+                  # Check HTTP status code
+                  if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+                    echo "❌ Failed to fetch tools from Supabase (HTTP $HTTP_CODE)"
+                    echo "Response: $TOOLS_RESPONSE"
+                    exit 1
+                  fi
+
+                  # Check if response is valid JSON array
+                  if ! echo "$TOOLS_RESPONSE" | jq -e 'type == "array"' > /dev/null 2>&1; then
+                    echo "❌ Invalid response from Supabase - expected JSON array"
+                    echo "Response: $TOOLS_RESPONSE"
+                    exit 1
+                  fi
+
+                  # For each tool in Supabase
+                  for row in $(echo "$TOOLS_RESPONSE" | jq -r '.[] | @base64'); do
                     _jq() {
                       echo ${row} | base64 --decode | jq -r "${1}"
                     }
-                    
-                    TOOL_ID=$(_jq '.id')
+
+                    NPM_PACKAGE=$(_jq '.packagename')
                     CURRENT_VERSION=$(_jq '.version')
-                    NPM_PACKAGE=$(_jq '.packageName')
-                    
-                    # Get latest npm version
-                    LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
-                    
-                    if [ -z "$LATEST_VERSION" ]; then
-                      echo "⚠️ Could not fetch version for $TOOL_ID"
+
+                    # Skip if packagename is null or empty
+                    if [ -z "$NPM_PACKAGE" ] || [ "$NPM_PACKAGE" = "null" ]; then
                       continue
                     fi
-                    
+
+                    # Get latest npm version
+                    LATEST_VERSION=$(npm view $NPM_PACKAGE version 2>/dev/null || echo "")
+
+                    if [ -z "$LATEST_VERSION" ]; then
+                      echo "⚠️ Could not fetch version for $NPM_PACKAGE"
+                      continue
+                    fi
+
                     # Compare versions
                     if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
                       echo "🔄 Update available for $NPM_PACKAGE: $CURRENT_VERSION → $LATEST_VERSION"
