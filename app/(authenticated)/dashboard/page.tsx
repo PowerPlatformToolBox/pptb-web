@@ -22,6 +22,8 @@ interface Tool {
     name: string;
     description: string;
     iconurl: string;
+    user_id?: string;
+    status?: string;
     tool_categories?: Array<{
         categories: {
             id: number;
@@ -93,6 +95,7 @@ export default function DashboardPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "aum">("downloads");
+    const [viewMode, setViewMode] = useState<"all" | "my">("all");
     const { supabase } = useSupabase();
     const [isAdmin, setIsAdmin] = useState(false);
 
@@ -125,6 +128,8 @@ export default function DashboardPage() {
                         name, 
                         description, 
                         iconurl, 
+                        user_id,
+                        status,
                         tool_analytics (downloads, rating, aum),
                         tool_categories (
                             categories (id, name)
@@ -154,7 +159,56 @@ export default function DashboardPage() {
 
     // Sign out logic handled in Header component.
 
-    const sortedTools = [...tools].sort((a, b) => {
+    const handleToolAction = async (toolId: string, action: "deprecate" | "delete") => {
+        if (!supabase || !user) return;
+
+        const confirmMessage =
+            action === "deprecate"
+                ? "Are you sure you want to deprecate this tool? It will be marked as deprecated but remain visible."
+                : "Are you sure you want to delete this tool? This action cannot be undone.";
+
+        if (!confirm(confirmMessage)) return;
+
+        try {
+            const newStatus = action === "deprecate" ? "deprecated" : "deleted";
+
+            const {
+                data: { session },
+            } = await supabase.auth.getSession();
+
+            const response = await fetch("/api/tools/update-status", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ toolId, status: newStatus }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update tool status");
+            }
+
+            // Update local state
+            setTools((prevTools) =>
+                prevTools.map((tool) =>
+                    tool.id === toolId ? { ...tool, status: newStatus } : tool
+                )
+            );
+
+            alert(`Tool ${action === "deprecate" ? "deprecated" : "deleted"} successfully!`);
+        } catch (error) {
+            console.error("Error updating tool:", error);
+            alert(`Failed to ${action} tool. Please try again.`);
+        }
+    };
+
+    // Filter tools based on view mode
+    const filteredTools = viewMode === "my" 
+        ? tools.filter((tool) => tool.user_id === user?.id)
+        : tools;
+
+    const sortedTools = [...filteredTools].sort((a, b) => {
         const aAnalytics = a.tool_analytics?.[0];
         const bAnalytics = b.tool_analytics?.[0];
 
@@ -237,8 +291,8 @@ export default function DashboardPage() {
                                             </svg>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-blue-900">Total Tools</p>
-                                            <p className="text-2xl font-bold text-blue-900">{tools.length}</p>
+                                            <p className="text-sm font-medium text-blue-900">{viewMode === "my" ? "My Tools" : "Total Tools"}</p>
+                                            <p className="text-2xl font-bold text-blue-900">{filteredTools.length}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -252,7 +306,7 @@ export default function DashboardPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-purple-900">Total Downloads</p>
-                                            <p className="text-2xl font-bold text-purple-900">{tools.reduce((sum, tool) => sum + (tool.tool_analytics?.[0]?.downloads || 0), 0).toLocaleString()}</p>
+                                            <p className="text-2xl font-bold text-purple-900">{filteredTools.reduce((sum, tool) => sum + (tool.tool_analytics?.[0]?.downloads || 0), 0).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -267,7 +321,7 @@ export default function DashboardPage() {
                                         <div>
                                             <p className="text-sm font-medium text-amber-900">Average Rating</p>
                                             <p className="text-2xl font-bold text-amber-900">
-                                                {tools.length > 0 ? (tools.reduce((sum, tool) => sum + (tool.tool_analytics?.[0]?.rating || 0), 0) / tools.length).toFixed(1) : "0.0"}
+                                                {filteredTools.length > 0 ? (filteredTools.reduce((sum, tool) => sum + (tool.tool_analytics?.[0]?.rating || 0), 0) / filteredTools.length).toFixed(1) : "0.0"}
                                             </p>
                                         </div>
                                     </div>
@@ -275,10 +329,34 @@ export default function DashboardPage() {
                             </div>
                         </SlideIn>
 
-                        {/* Sort Options */}
+                        {/* View Selector and Sort Options */}
                         <FadeIn direction="up" delay={0.4}>
                             <div className="mb-8 flex items-center justify-between">
-                                <h2 className="text-2xl font-semibold text-slate-900">All Tools</h2>
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-2xl font-semibold text-slate-900">Tools</h2>
+                                    <div className="flex gap-2 border border-slate-300 rounded-lg p-1">
+                                        <button
+                                            onClick={() => setViewMode("all")}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                                viewMode === "all"
+                                                    ? "bg-blue-600 text-white shadow-sm"
+                                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                            }`}
+                                        >
+                                            All Tools
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode("my")}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                                viewMode === "my"
+                                                    ? "bg-blue-600 text-white shadow-sm"
+                                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                            }`}
+                                        >
+                                            My Tools
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <label htmlFor="sort" className="text-sm text-slate-600">
                                         Sort by:
@@ -355,13 +433,39 @@ export default function DashboardPage() {
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.aum?.toLocaleString() || "N/A"}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                             <div className="flex gap-2">
-                                                                <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                    View
-                                                                </Link>
-                                                                <span className="text-slate-300">|</span>
-                                                                <Link href={`/rate-tool?toolId=${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                    Rate
-                                                                </Link>
+                                                                {viewMode === "my" ? (
+                                                                    <>
+                                                                        <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                            View
+                                                                        </Link>
+                                                                        <span className="text-slate-300">|</span>
+                                                                        <button
+                                                                            onClick={() => handleToolAction(tool.id, "deprecate")}
+                                                                            disabled={tool.status === "deprecated" || tool.status === "deleted"}
+                                                                            className="text-amber-600 hover:text-amber-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                                                                        >
+                                                                            {tool.status === "deprecated" ? "Deprecated" : "Deprecate"}
+                                                                        </button>
+                                                                        <span className="text-slate-300">|</span>
+                                                                        <button
+                                                                            onClick={() => handleToolAction(tool.id, "delete")}
+                                                                            disabled={tool.status === "deleted"}
+                                                                            className="text-red-600 hover:text-red-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                                                                        >
+                                                                            {tool.status === "deleted" ? "Deleted" : "Delete"}
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                            View
+                                                                        </Link>
+                                                                        <span className="text-slate-300">|</span>
+                                                                        <Link href={`/rate-tool?toolId=${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                            Rate
+                                                                        </Link>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
