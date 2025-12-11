@@ -377,6 +377,30 @@ export default function DashboardPage() {
 
                         {/* Tools Table */}
                         <SlideIn direction="up" delay={0.5}>
+                            {sortedTools.length === 0 ? (
+                                <div className="card p-12 text-center">
+                                    <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                                        />
+                                    </svg>
+                                    <h3 className="mt-4 text-lg font-medium text-slate-900">No tools found</h3>
+                                    <p className="mt-2 text-slate-600">
+                                        {viewMode === "my" ? "You haven't submitted any tools yet." : "No tools are available at the moment."}
+                                    </p>
+                                    {viewMode === "my" && (
+                                        <Link href="/submit-tool" className="mt-6 inline-flex items-center gap-2 btn-primary">
+                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Submit Your First Tool
+                                        </Link>
+                                    )}
+                                </div>
+                            ) : (
                             <div className="card overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-slate-200">
@@ -384,6 +408,9 @@ export default function DashboardPage() {
                                             <tr>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tool</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                                                {viewMode === "my" && (
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                                )}
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Downloads</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rating</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">AUM</th>
@@ -421,6 +448,17 @@ export default function DashboardPage() {
                                                                 )}
                                                             </div>
                                                         </td>
+                                                        {viewMode === "my" && (
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                {tool.status === "deprecated" ? (
+                                                                    <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Deprecated</span>
+                                                                ) : tool.status === "deleted" ? (
+                                                                    <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Deleted</span>
+                                                                ) : (
+                                                                    <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Active</span>
+                                                                )}
+                                                            </td>
+                                                        )}
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(analytics?.downloads || 0).toLocaleString()}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="flex items-center gap-1">
@@ -475,6 +513,7 @@ export default function DashboardPage() {
                                     </table>
                                 </div>
                             </div>
+                            )}
                         </SlideIn>
                     </div>
                 </FadeIn>
