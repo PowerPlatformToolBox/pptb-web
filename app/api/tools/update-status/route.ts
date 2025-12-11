@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { VALID_TOOL_STATUSES } from "@/lib/constants/tool-statuses";
 
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
@@ -55,9 +56,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate status value
-        const validStatuses = ["active", "deprecated", "deleted"];
-        if (!validStatuses.includes(status)) {
-            return NextResponse.json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` }, { status: 400 });
+        if (!VALID_TOOL_STATUSES.includes(status)) {
+            return NextResponse.json({ error: `Invalid status. Must be one of: ${VALID_TOOL_STATUSES.join(", ")}` }, { status: 400 });
         }
 
         // Verify the tool belongs to the user

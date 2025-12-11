@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
 import { useSupabase } from "@/lib/useSupabase";
+import { TOOL_STATUSES } from "@/lib/constants/tool-statuses";
 
 interface User {
     id: string;
@@ -170,7 +171,7 @@ export default function DashboardPage() {
         if (!confirm(confirmMessage)) return;
 
         try {
-            const newStatus = action === "deprecate" ? "deprecated" : "deleted";
+            const newStatus = action === "deprecate" ? TOOL_STATUSES.DEPRECATED : TOOL_STATUSES.DELETED;
 
             const {
                 data: { session },
@@ -450,9 +451,9 @@ export default function DashboardPage() {
                                                         </td>
                                                         {viewMode === "my" && (
                                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                                {tool.status === "deprecated" ? (
+                                                                {tool.status === TOOL_STATUSES.DEPRECATED ? (
                                                                     <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Deprecated</span>
-                                                                ) : tool.status === "deleted" ? (
+                                                                ) : tool.status === TOOL_STATUSES.DELETED ? (
                                                                     <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Deleted</span>
                                                                 ) : (
                                                                     <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Active</span>
@@ -479,18 +480,18 @@ export default function DashboardPage() {
                                                                         <span className="text-slate-300">|</span>
                                                                         <button
                                                                             onClick={() => handleToolAction(tool.id, "deprecate")}
-                                                                            disabled={tool.status === "deprecated" || tool.status === "deleted"}
+                                                                            disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
                                                                             className="text-amber-600 hover:text-amber-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
                                                                         >
-                                                                            {tool.status === "deprecated" ? "Deprecated" : "Deprecate"}
+                                                                            {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
                                                                         </button>
                                                                         <span className="text-slate-300">|</span>
                                                                         <button
                                                                             onClick={() => handleToolAction(tool.id, "delete")}
-                                                                            disabled={tool.status === "deleted"}
+                                                                            disabled={tool.status === TOOL_STATUSES.DELETED}
                                                                             className="text-red-600 hover:text-red-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
                                                                         >
-                                                                            {tool.status === "deleted" ? "Deleted" : "Delete"}
+                                                                            {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
                                                                         </button>
                                                                     </>
                                                                 ) : (
