@@ -1,11 +1,11 @@
 "use client";
 
 import { Container } from "@/components/Container";
-import { FadeIn, SlideIn } from "@/components/animations";
+import { FadeIn } from "@/components/animations";
 import { useSupabase } from "@/lib/useSupabase";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 interface Tool {
     id: string;
@@ -13,6 +13,7 @@ interface Tool {
     description: string;
     iconurl: string;
     category: string;
+    author?: string;
     downloads: number;
     rating: number;
 }
@@ -25,6 +26,7 @@ const mockTools: Tool[] = [
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
         iconurl: "📦",
         category: "Solutions",
+        author: "Power Maverick",
         downloads: 1250,
         rating: 4.8,
     },
@@ -34,6 +36,7 @@ const mockTools: Tool[] = [
         description: "Compare environments, copy configurations, and manage environment settings efficiently.",
         iconurl: "🌍",
         category: "Environments",
+        author: "John Doe",
         downloads: 980,
         rating: 4.6,
     },
@@ -43,6 +46,7 @@ const mockTools: Tool[] = [
         description: "Generate early-bound classes, TypeScript definitions, and more from your Dataverse metadata.",
         iconurl: "⚡",
         category: "Development",
+        author: "Dev Tools Inc",
         downloads: 2100,
         rating: 4.9,
     },
@@ -52,6 +56,7 @@ const mockTools: Tool[] = [
         description: "Register, update, and manage your plugins and custom workflow activities with a modern interface.",
         iconurl: "🔌",
         category: "Development",
+        author: "Plugin Pro",
         downloads: 1450,
         rating: 4.7,
     },
@@ -61,6 +66,7 @@ const mockTools: Tool[] = [
         description: "Import and export data using Excel, CSV, or JSON. Support for bulk operations and data transformation.",
         iconurl: "📊",
         category: "Data",
+        author: "Data Master",
         downloads: 1800,
         rating: 4.5,
     },
@@ -70,34 +76,53 @@ const mockTools: Tool[] = [
         description: "Monitor and analyze the performance of your Power Platform solutions. Identify bottlenecks and optimize.",
         iconurl: "📈",
         category: "Monitoring",
+        author: "Perf Tools",
         downloads: 750,
         rating: 4.4,
     },
 ];
 
+type SortField = "name" | "downloads" | "rating" | "category" | "author";
+type SortDirection = "asc" | "desc";
+
 export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
+    const [sortField, setSortField] = useState<SortField>("name");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const { supabase } = useSupabase();
 
     useEffect(() => {
-        if (!supabase) return;
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
         (async () => {
             try {
                 const { data, error } = await supabase
                     .from("tools")
-                    .select(`id,name,description,iconurl,category,tool_analytics (downloads,rating)`) // simplified select
+                    .select(`id,name,description,iconurl,category,author,tool_analytics (downloads,rating)`)
                     .order("name", { ascending: true });
                 if (error) throw error;
                 if (data) {
                     const transformed: Tool[] = data.map(
-                        (tool: { id: string; name: string; description: string; iconurl: string; category: string; tool_analytics?: Array<{ downloads: number; rating: number }> }) => ({
+                        (tool: {
+                            id: string;
+                            name: string;
+                            description: string;
+                            iconurl: string;
+                            category: string;
+                            author?: string;
+                            tool_analytics?: Array<{ downloads: number; rating: number }>;
+                        }) => ({
                             id: tool.id,
                             name: tool.name,
                             description: tool.description,
                             iconurl: tool.iconurl || "📦",
                             category: tool.category,
+                            author: tool.author || "Unknown",
                             downloads: tool.tool_analytics?.[0]?.downloads || 0,
                             rating: tool.tool_analytics?.[0]?.rating || 0,
                         }),
@@ -113,125 +138,241 @@ export default function ToolsPage() {
         })();
     }, [supabase]);
 
-    const categories = ["All", ...Array.from(new Set(tools.map((t) => t.category)))];
-    const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.category === selectedCategory);
+    const categories = useMemo(() => ["All", ...Array.from(new Set(tools.map((t) => t.category)))], [tools]);
+
+    const filteredAndSortedTools = useMemo(() => {
+        let filtered = tools;
+
+        // Filter by search query
+        if (searchQuery) {
+            filtered = filtered.filter(
+                (tool) =>
+                    tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    tool.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    tool.category.toLowerCase().includes(searchQuery.toLowerCase()),
+            );
+        }
+
+        // Filter by category
+        if (selectedCategory !== "All") {
+            filtered = filtered.filter((t) => t.category === selectedCategory);
+        }
+
+        // Sort
+        const sorted = [...filtered].sort((a, b) => {
+            let aVal: string | number = a[sortField] || "";
+            let bVal: string | number = b[sortField] || "";
+
+            if (typeof aVal === "string" && typeof bVal === "string") {
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
+            }
+
+            if (sortDirection === "asc") {
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+            } else {
+                return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+            }
+        });
+
+        return sorted;
+    }, [tools, searchQuery, selectedCategory, sortField, sortDirection]);
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+        } else {
+            setSortField(field);
+            setSortDirection("asc");
+        }
+    };
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) {
+            return (
+                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+            );
+        }
+        return sortDirection === "asc" ? (
+            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+        ) : (
+            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+        );
+    };
 
     return (
         <main>
-            <Container className="mt-8 sm:mt-16">
-                <FadeIn direction="up" delay={0.2}>
-                    <div className="mx-auto max-w-2xl lg:max-w-7xl">
-                        <header className="max-w-2xl mb-16">
+            <Container className="mt-8 sm:mt-16 mb-20">
+                <FadeIn direction="up" delay={0.1}>
+                    <div className="mx-auto max-w-7xl">
+                        <header className="mb-8">
                             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Power Platform Tools</h1>
-                            <p className="mt-6 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
+                            <p className="mt-4 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
                         </header>
 
-                        {/* Category Filter */}
-                        <FadeIn direction="up" delay={0.3}>
-                            <div className="mb-12 flex flex-wrap gap-3">
-                                {categories.map((category) => (
-                                    <button
-                                        key={category}
-                                        onClick={() => setSelectedCategory(category)}
-                                        className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                                            selectedCategory === category
-                                                ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
-                                        }`}
-                                    >
-                                        {category}
-                                    </button>
-                                ))}
+                        {/* Search and Filter Bar */}
+                        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                            <div className="flex-1 relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search tools by name, description, author, or category..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                />
                             </div>
-                        </FadeIn>
+                            <div className="sm:w-48">
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="block w-full px-3 py-3 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                >
+                                    {categories.map((category) => (
+                                        <option key={category} value={category}>
+                                            {category === "All" ? "All Categories" : category}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
 
-                        {/* Tools Grid */}
+                        {/* Tools Table */}
                         {loading ? (
                             <div className="mt-16 text-center">
                                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
                                 <p className="mt-4 text-slate-600">Loading tools...</p>
                             </div>
                         ) : (
-                            <SlideIn direction="up" delay={0.4}>
-                                <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                                    {filteredTools.map((tool, index) => (
-                                        <FadeIn key={tool.id} direction="up" delay={0.5 + index * 0.05}>
-                                            <Link href={`/tools/${tool.id}`} className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                                                <div className="p-6">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="w-16 h-16 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
-                                                            {tool.iconurl && tool.iconurl.startsWith("http") ? (
-                                                                <Image
-                                                                    src={tool.iconurl}
-                                                                    alt={`${tool.name} icon`}
-                                                                    width={48}
-                                                                    height={48}
-                                                                    className="object-contain"
-                                                                    onError={(e) => {
-                                                                        // Fallback to emoji if image fails to load
-                                                                        e.currentTarget.style.display = "none";
-                                                                        if (e.currentTarget.nextSibling) {
-                                                                            (e.currentTarget.nextSibling as HTMLElement).style.display = "block";
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                <span className="text-4xl">{tool.iconurl || "📦"}</span>
-                                                            )}
-                                                        </div>
-                                                        <span className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                            <div className="bg-white shadow-md rounded-lg overflow-hidden border border-slate-200">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                                                    onClick={() => handleSort("name")}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        Tool Name
+                                                        <SortIcon field="name" />
                                                     </div>
-                                                    <h3 className="text-xl font-semibold text-slate-900 group-hover:text-gradient transition-colors">{tool.name}</h3>
-                                                    <p className="mt-3 text-sm text-slate-600">{tool.description}</p>
-                                                    <div className="mt-6 flex items-center justify-between text-sm">
-                                                        <div className="flex items-center gap-1 text-slate-600">
-                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                            </svg>
-                                                            <span>{tool.downloads.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 text-amber-500">
-                                                            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                            </svg>
-                                                            <span>{tool.rating.toFixed(1)}</span>
-                                                        </div>
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider hidden lg:table-cell">
+                                                    Description
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 hidden md:table-cell"
+                                                    onClick={() => handleSort("author")}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        Author
+                                                        <SortIcon field="author" />
                                                     </div>
-                                                </div>
-                                            </Link>
-                                        </FadeIn>
-                                    ))}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                                                    onClick={() => handleSort("category")}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        Category
+                                                        <SortIcon field="category" />
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 hidden sm:table-cell"
+                                                    onClick={() => handleSort("downloads")}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        Downloads
+                                                        <SortIcon field="downloads" />
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 hidden sm:table-cell"
+                                                    onClick={() => handleSort("rating")}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        Rating
+                                                        <SortIcon field="rating" />
+                                                    </div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-200">
+                                            {filteredAndSortedTools.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                                        No tools found matching your criteria.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredAndSortedTools.map((tool) => (
+                                                    <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <Link href={`/tools/${tool.id}`} className="flex items-center gap-3 group">
+                                                                <div className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded flex-shrink-0">
+                                                                    {tool.iconurl && tool.iconurl.startsWith("http") ? (
+                                                                        <Image src={tool.iconurl} alt={`${tool.name} icon`} width={32} height={32} className="object-contain" />
+                                                                    ) : (
+                                                                        <span className="text-xl">{tool.iconurl || "📦"}</span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-sm font-medium text-slate-900 group-hover:text-blue-600">{tool.name}</span>
+                                                            </Link>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-slate-600 hidden lg:table-cell">
+                                                            <div className="max-w-md truncate">{tool.description}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{tool.author || "Unknown"}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{tool.category}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">
+                                                            <div className="flex items-center gap-1">
+                                                                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                </svg>
+                                                                {tool.downloads.toLocaleString()}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">
+                                                            <div className="flex items-center gap-1">
+                                                                <svg className="h-4 w-4 text-amber-400 fill-current" viewBox="0 0 20 20">
+                                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                                </svg>
+                                                                {tool.rating.toFixed(1)}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </SlideIn>
-                        )}
-
-                        {/* Call to Action */}
-                        <FadeIn direction="up" delay={0.6}>
-                            <div className="mt-20 card-dark p-10 text-center relative overflow-hidden">
-                                <div className="absolute inset-0 bg-linear-to-br from-blue-600/10 to-purple-600/10"></div>
-                                <div className="relative z-10">
-                                    <h2 className="text-3xl font-bold text-white">Want to contribute a tool?</h2>
-                                    <p className="mt-4 text-slate-300 max-w-2xl mx-auto">Join our community of developers and help build the next generation of Power Platform tools.</p>
-                                    <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-                                        <Link href="https://github.com/PowerPlatformToolBox" target="_blank" rel="noopener noreferrer" className="btn-primary">
-                                            <span className="flex items-center justify-center gap-2">
-                                                Visit GitHub
-                                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </span>
-                                        </Link>
-                                        <Link href="/auth/signin" className="btn-outline bg-white">
-                                            <span className="flex items-center justify-center gap-2">Sign in to rate tools</span>
-                                        </Link>
-                                    </div>
+                                <div className="bg-slate-50 px-6 py-3 border-t border-slate-200">
+                                    <p className="text-sm text-slate-600">
+                                        Showing <span className="font-medium">{filteredAndSortedTools.length}</span> of <span className="font-medium">{tools.length}</span> tools
+                                    </p>
                                 </div>
                             </div>
-                        </FadeIn>
+                        )}
                     </div>
                 </FadeIn>
             </Container>
