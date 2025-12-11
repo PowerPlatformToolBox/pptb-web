@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { VALID_TOOL_STATUSES } from "@/lib/constants/tool-statuses";
+import { VALID_TOOL_STATUSES, ToolStatus } from "@/lib/constants/tool-statuses";
 
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
@@ -16,7 +16,7 @@ function getSupabaseClient() {
 
 interface UpdateStatusRequest {
     toolId: string;
-    status: string;
+    status: ToolStatus;
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate status value
-        if (!VALID_TOOL_STATUSES.includes(status)) {
+        if (!VALID_TOOL_STATUSES.includes(status as ToolStatus)) {
             return NextResponse.json({ error: `Invalid status. Must be one of: ${VALID_TOOL_STATUSES.join(", ")}` }, { status: 400 });
         }
 
