@@ -161,14 +161,21 @@ export default function ToolsPage() {
 
         // Sort
         const sorted = [...filtered].sort((a, b) => {
-            let aVal: string | number = a[sortField] || "";
-            let bVal: string | number = b[sortField] || "";
+            const aVal = a[sortField] || "";
+            const bVal = b[sortField] || "";
 
+            // Handle string comparisons (case-insensitive)
             if (typeof aVal === "string" && typeof bVal === "string") {
-                aVal = aVal.toLowerCase();
-                bVal = bVal.toLowerCase();
+                const aStr = aVal.toLowerCase();
+                const bStr = bVal.toLowerCase();
+                if (sortDirection === "asc") {
+                    return aStr > bStr ? 1 : aStr < bStr ? -1 : 0;
+                } else {
+                    return aStr < bStr ? 1 : aStr > bStr ? -1 : 0;
+                }
             }
 
+            // Handle numeric comparisons
             if (sortDirection === "asc") {
                 return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
             } else {
@@ -318,7 +325,7 @@ export default function ToolsPage() {
                                         <tbody className="bg-white divide-y divide-slate-200">
                                             {filteredAndSortedTools.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                                    <td colSpan={100} className="px-6 py-12 text-center text-slate-500">
                                                         No tools found matching your criteria.
                                                     </td>
                                                 </tr>
@@ -329,7 +336,23 @@ export default function ToolsPage() {
                                                             <Link href={`/tools/${tool.id}`} className="flex items-center gap-3 group">
                                                                 <div className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded flex-shrink-0">
                                                                     {tool.iconurl && tool.iconurl.startsWith("http") ? (
-                                                                        <Image src={tool.iconurl} alt={`${tool.name} icon`} width={32} height={32} className="object-contain" />
+                                                                        <>
+                                                                            <Image
+                                                                                src={tool.iconurl}
+                                                                                alt={`${tool.name} icon`}
+                                                                                width={32}
+                                                                                height={32}
+                                                                                className="object-contain"
+                                                                                onError={(e) => {
+                                                                                    e.currentTarget.style.display = "none";
+                                                                                    const fallback = e.currentTarget.nextSibling as HTMLElement;
+                                                                                    if (fallback) fallback.style.display = "block";
+                                                                                }}
+                                                                            />
+                                                                            <span className="text-xl" style={{ display: "none" }}>
+                                                                                {tool.iconurl || "📦"}
+                                                                            </span>
+                                                                        </>
                                                                     ) : (
                                                                         <span className="text-xl">{tool.iconurl || "📦"}</span>
                                                                     )}
