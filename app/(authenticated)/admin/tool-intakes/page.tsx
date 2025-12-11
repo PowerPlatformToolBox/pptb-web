@@ -45,7 +45,7 @@ interface ToolIntake {
     categories?: Category[];
 }
 
-type StatusFilter = "all" | "pending_review" | "approved" | "rejected" | "needs_changes";
+type StatusFilter = "all" | "pending_review" | "approved_-_awaiting_confirmation" | "rejected" | "needs_changes";
 
 export default function AdminToolIntakesPage() {
     const { supabase } = useSupabase();
@@ -294,7 +294,7 @@ export default function AdminToolIntakesPage() {
                         {/* Filter Tabs */}
                         <SlideIn direction="up" delay={0.3}>
                             <div className="mb-6 flex flex-wrap gap-2">
-                                {(["all", "pending_review", "approved", "rejected", "needs_changes"] as StatusFilter[]).map((status) => (
+                                {(["all", "pending_review", "approved_-_awaiting_confirmation", "rejected", "needs_changes"] as StatusFilter[]).map((status) => (
                                     <button
                                         key={status}
                                         onClick={() => setStatusFilter(status)}
