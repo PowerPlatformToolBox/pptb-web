@@ -259,6 +259,7 @@ jobs:
                   FINAL_HOMEPAGE="${{ steps.build.outputs.pkg_homepage }}"
                   
                   # Fall back to Supabase metadata if package.json fields are empty
+                  # Note: license, repository, and homepage don't have Supabase fallbacks (new fields)
                   [ -z "$FINAL_NAME" ] && FINAL_NAME="${{ steps.metadata.outputs.name }}"
                   [ -z "$FINAL_DESCRIPTION" ] && FINAL_DESCRIPTION="${{ steps.metadata.outputs.description }}"
                   [ -z "$FINAL_AUTHOR" ] && FINAL_AUTHOR="${{ steps.metadata.outputs.author }}"
