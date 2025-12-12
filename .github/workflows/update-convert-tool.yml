@@ -125,6 +125,46 @@ jobs:
                   # Extract homepage/website
                   PKG_HOMEPAGE=$(node -p "require('./package.json').homepage || ''")
                   
+                  # Extract CSP exceptions (JSONB)
+                  PKG_CSP_EXCEPTIONS=$(node -p "
+                    const pkg = require('./package.json');
+                    if (pkg.cspExceptions && typeof pkg.cspExceptions === 'object') {
+                      JSON.stringify(pkg.cspExceptions);
+                    } else {
+                      '';
+                    }
+                  ")
+                  
+                  # Extract features (array)
+                  PKG_FEATURES=$(node -p "
+                    const pkg = require('./package.json');
+                    if (pkg.features && Array.isArray(pkg.features)) {
+                      JSON.stringify(pkg.features);
+                    } else {
+                      '';
+                    }
+                  ")
+                  
+                  # Extract icon URL from configurations
+                  PKG_ICON_URL=$(node -p "
+                    const pkg = require('./package.json');
+                    if (pkg.configurations && pkg.configurations.iconUrl) {
+                      pkg.configurations.iconUrl;
+                    } else {
+                      '';
+                    }
+                  ")
+                  
+                  # Extract readme URL from configurations
+                  PKG_README_URL=$(node -p "
+                    const pkg = require('./package.json');
+                    if (pkg.configurations && pkg.configurations.readmeUrl) {
+                      pkg.configurations.readmeUrl;
+                    } else {
+                      '';
+                    }
+                  ")
+                  
                   echo "version=$VERSION" >> $GITHUB_OUTPUT
                   echo "pkg_name=$PKG_NAME" >> $GITHUB_OUTPUT
                   echo "pkg_description=$PKG_DESCRIPTION" >> $GITHUB_OUTPUT
@@ -132,6 +172,10 @@ jobs:
                   echo "pkg_license=$PKG_LICENSE" >> $GITHUB_OUTPUT
                   echo "pkg_repo=$PKG_REPO" >> $GITHUB_OUTPUT
                   echo "pkg_homepage=$PKG_HOMEPAGE" >> $GITHUB_OUTPUT
+                  echo "pkg_csp_exceptions=$PKG_CSP_EXCEPTIONS" >> $GITHUB_OUTPUT
+                  echo "pkg_features=$PKG_FEATURES" >> $GITHUB_OUTPUT
+                  echo "pkg_icon_url=$PKG_ICON_URL" >> $GITHUB_OUTPUT
+                  echo "pkg_readme_url=$PKG_README_URL" >> $GITHUB_OUTPUT
 
                   # Install production dependencies
                   npm install --production --no-optional
@@ -169,9 +213,17 @@ jobs:
 
             - name: Download icon
               id: icon
-              if: steps.metadata.outputs.icon_url != ''
+              if: steps.build.outputs.pkg_icon_url != '' || steps.metadata.outputs.icon_url != ''
               run: |
-                  ICON_URL="${{ steps.metadata.outputs.icon_url }}"
+                  # Use icon URL from package.json if available, otherwise fall back to Supabase
+                  ICON_URL="${{ steps.build.outputs.pkg_icon_url }}"
+                  [ -z "$ICON_URL" ] && ICON_URL="${{ steps.metadata.outputs.icon_url }}"
+                  
+                  if [ -z "$ICON_URL" ]; then
+                    echo "No icon URL available"
+                    echo "has_icon=false" >> $GITHUB_OUTPUT
+                    exit 0
+                  fi
 
                   # Extract file extension from URL
                   EXTENSION="${ICON_URL##*.}"
@@ -257,29 +309,99 @@ jobs:
                   FINAL_LICENSE="${{ steps.build.outputs.pkg_license }}"
                   FINAL_REPO="${{ steps.build.outputs.pkg_repo }}"
                   FINAL_HOMEPAGE="${{ steps.build.outputs.pkg_homepage }}"
+                  FINAL_CSP_EXCEPTIONS="${{ steps.build.outputs.pkg_csp_exceptions }}"
+                  FINAL_FEATURES="${{ steps.build.outputs.pkg_features }}"
+                  FINAL_README="${{ steps.build.outputs.pkg_readme_url }}"
                   
                   # Fall back to Supabase metadata if package.json fields are empty
-                  # Note: license, repository, and homepage don't have Supabase fallbacks (new fields)
+                  # Note: license, repository, homepage, csp_exceptions, and features don't have Supabase fallbacks (new fields)
                   [ -z "$FINAL_NAME" ] && FINAL_NAME="${{ steps.metadata.outputs.name }}"
                   [ -z "$FINAL_DESCRIPTION" ] && FINAL_DESCRIPTION="${{ steps.metadata.outputs.description }}"
                   [ -z "$FINAL_AUTHOR" ] && FINAL_AUTHOR="${{ steps.metadata.outputs.author }}"
+                  [ -z "$FINAL_README" ] && FINAL_README="${{ steps.metadata.outputs.readme_url }}"
                   
                   # Prepare SQL payload for tools table with package.json metadata
-                  TOOL_PAYLOAD=$(jq -n \
-                    --arg packagename "${{ steps.metadata.outputs.package_name }}" \
-                    --arg name "$FINAL_NAME" \
-                    --arg description "$FINAL_DESCRIPTION" \
-                    --arg downloadurl "$DOWNLOAD_URL" \
-                    --arg iconurl "$ICON_URL" \
-                    --arg version "${{ inputs.version }}" \
-                    --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                    --arg checksum "${{ steps.checksum.outputs.checksum }}" \
-                    --arg size "${{ steps.checksum.outputs.size }}" \
-                    --arg license "$FINAL_LICENSE" \
-                    --arg repository "$FINAL_REPO" \
-                    --arg homepage "$FINAL_HOMEPAGE" \
-                    --arg readme "${{ steps.metadata.outputs.readme_url }}" \
-                    '{
+                  # Build jq command with conditional arguments for JSONB fields
+                  JQ_ARGS=(
+                    --arg packagename "${{ steps.metadata.outputs.package_name }}"
+                    --arg name "$FINAL_NAME"
+                    --arg description "$FINAL_DESCRIPTION"
+                    --arg downloadurl "$DOWNLOAD_URL"
+                    --arg iconurl "$ICON_URL"
+                    --arg version "${{ inputs.version }}"
+                    --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                    --arg checksum "${{ steps.checksum.outputs.checksum }}"
+                    --arg size "${{ steps.checksum.outputs.size }}"
+                    --arg license "$FINAL_LICENSE"
+                    --arg repository "$FINAL_REPO"
+                    --arg homepage "$FINAL_HOMEPAGE"
+                    --arg readme "$FINAL_README"
+                  )
+                  
+                  # Add argjson for JSONB fields if they exist
+                  if [ -n "$FINAL_CSP_EXCEPTIONS" ]; then
+                    JQ_ARGS+=(--argjson csp_exceptions "$FINAL_CSP_EXCEPTIONS")
+                  fi
+                  
+                  if [ -n "$FINAL_FEATURES" ]; then
+                    JQ_ARGS+=(--argjson features "$FINAL_FEATURES")
+                  fi
+                  
+                  # Build JSON payload conditionally including JSONB fields
+                  if [ -n "$FINAL_CSP_EXCEPTIONS" ] && [ -n "$FINAL_FEATURES" ]; then
+                    TOOL_PAYLOAD=$(jq -n "${JQ_ARGS[@]}" '{
+                      packagename: $packagename,
+                      name: $name,
+                      description: $description,
+                      downloadurl: $downloadurl,
+                      iconurl: $iconurl,
+                      version: $version,
+                      published_at: $published,
+                      checksum: $checksum,
+                      size: $size,
+                      license: $license,
+                      repository_url: $repository,
+                      website_url: $homepage,
+                      readme_url: $readme,
+                      csp_exceptions: $csp_exceptions,
+                      features: $features
+                    }')
+                  elif [ -n "$FINAL_CSP_EXCEPTIONS" ]; then
+                    TOOL_PAYLOAD=$(jq -n "${JQ_ARGS[@]}" '{
+                      packagename: $packagename,
+                      name: $name,
+                      description: $description,
+                      downloadurl: $downloadurl,
+                      iconurl: $iconurl,
+                      version: $version,
+                      published_at: $published,
+                      checksum: $checksum,
+                      size: $size,
+                      license: $license,
+                      repository_url: $repository,
+                      website_url: $homepage,
+                      readme_url: $readme,
+                      csp_exceptions: $csp_exceptions
+                    }')
+                  elif [ -n "$FINAL_FEATURES" ]; then
+                    TOOL_PAYLOAD=$(jq -n "${JQ_ARGS[@]}" '{
+                      packagename: $packagename,
+                      name: $name,
+                      description: $description,
+                      downloadurl: $downloadurl,
+                      iconurl: $iconurl,
+                      version: $version,
+                      published_at: $published,
+                      checksum: $checksum,
+                      size: $size,
+                      license: $license,
+                      repository_url: $repository,
+                      website_url: $homepage,
+                      readme_url: $readme,
+                      features: $features
+                    }')
+                  else
+                    TOOL_PAYLOAD=$(jq -n "${JQ_ARGS[@]}" '{
                       packagename: $packagename,
                       name: $name,
                       description: $description,
@@ -294,6 +416,7 @@ jobs:
                       website_url: $homepage,
                       readme_url: $readme
                     }')
+                  fi
 
                   # Insert or update tool metadata in Supabase
                   RESPONSE=$(curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tools?on_conflict=packagename" \
