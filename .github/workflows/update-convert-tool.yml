@@ -92,9 +92,46 @@ jobs:
                   tar -xzf *.tgz
                   cd package
 
-                  # Verify version
+                  # Extract metadata from package.json
                   VERSION=$(node -p "require('./package.json').version")
+                  PKG_NAME=$(node -p "require('./package.json').name || ''")
+                  PKG_DESCRIPTION=$(node -p "require('./package.json').description || ''")
+                  PKG_LICENSE=$(node -p "require('./package.json').license || ''")
+                  
+                  # Extract author (can be string or object)
+                  PKG_AUTHOR=$(node -p "
+                    const pkg = require('./package.json');
+                    if (typeof pkg.author === 'string') {
+                      pkg.author;
+                    } else if (typeof pkg.author === 'object' && pkg.author.name) {
+                      pkg.author.name;
+                    } else {
+                      '';
+                    }
+                  ")
+                  
+                  # Extract repository URL (can be string or object)
+                  PKG_REPO=$(node -p "
+                    const pkg = require('./package.json');
+                    if (typeof pkg.repository === 'string') {
+                      pkg.repository;
+                    } else if (typeof pkg.repository === 'object' && pkg.repository.url) {
+                      pkg.repository.url;
+                    } else {
+                      '';
+                    }
+                  ")
+                  
+                  # Extract homepage/website
+                  PKG_HOMEPAGE=$(node -p "require('./package.json').homepage || ''")
+                  
                   echo "version=$VERSION" >> $GITHUB_OUTPUT
+                  echo "pkg_name=$PKG_NAME" >> $GITHUB_OUTPUT
+                  echo "pkg_description=$PKG_DESCRIPTION" >> $GITHUB_OUTPUT
+                  echo "pkg_author=$PKG_AUTHOR" >> $GITHUB_OUTPUT
+                  echo "pkg_license=$PKG_LICENSE" >> $GITHUB_OUTPUT
+                  echo "pkg_repo=$PKG_REPO" >> $GITHUB_OUTPUT
+                  echo "pkg_homepage=$PKG_HOMEPAGE" >> $GITHUB_OUTPUT
 
                   # Install production dependencies
                   npm install --production --no-optional
@@ -213,17 +250,34 @@ jobs:
                   # Get download URL from release
                   DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.metadata.outputs.id }}-${{ inputs.version }}.tar.gz"
 
-                  # Prepare SQL payload for tools table
+                  # Use package.json metadata if available, otherwise fall back to Supabase metadata
+                  FINAL_NAME="${{ steps.build.outputs.pkg_name }}"
+                  FINAL_DESCRIPTION="${{ steps.build.outputs.pkg_description }}"
+                  FINAL_AUTHOR="${{ steps.build.outputs.pkg_author }}"
+                  FINAL_LICENSE="${{ steps.build.outputs.pkg_license }}"
+                  FINAL_REPO="${{ steps.build.outputs.pkg_repo }}"
+                  FINAL_HOMEPAGE="${{ steps.build.outputs.pkg_homepage }}"
+                  
+                  # Fall back to Supabase metadata if package.json fields are empty
+                  [ -z "$FINAL_NAME" ] && FINAL_NAME="${{ steps.metadata.outputs.name }}"
+                  [ -z "$FINAL_DESCRIPTION" ] && FINAL_DESCRIPTION="${{ steps.metadata.outputs.description }}"
+                  [ -z "$FINAL_AUTHOR" ] && FINAL_AUTHOR="${{ steps.metadata.outputs.author }}"
+                  
+                  # Prepare SQL payload for tools table with package.json metadata
                   TOOL_PAYLOAD=$(jq -n \
                     --arg packagename "${{ steps.metadata.outputs.package_name }}" \
-                    --arg name "${{ steps.metadata.outputs.name }}" \
-                    --arg description "${{ steps.metadata.outputs.description }}" \
+                    --arg name "$FINAL_NAME" \
+                    --arg description "$FINAL_DESCRIPTION" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg iconurl "$ICON_URL" \
                     --arg version "${{ inputs.version }}" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
                     --arg size "${{ steps.checksum.outputs.size }}" \
+                    --arg license "$FINAL_LICENSE" \
+                    --arg repository "$FINAL_REPO" \
+                    --arg homepage "$FINAL_HOMEPAGE" \
+                    --arg readme "${{ steps.metadata.outputs.readme_url }}" \
                     '{
                       packagename: $packagename,
                       name: $name,
@@ -233,7 +287,11 @@ jobs:
                       version: $version,
                       published_at: $published,
                       checksum: $checksum,
-                      size: $size
+                      size: $size,
+                      license: $license,
+                      repository_url: $repository,
+                      website_url: $homepage,
+                      readme_url: $readme
                     }')
 
                   # Insert or update tool metadata in Supabase
@@ -253,7 +311,8 @@ jobs:
                     echo "Tool metadata updated with ID: $TOOL_ID"
                     echo "Analytics data preserved from previous version"
 
-                    AUTHOR_LIST="${{ steps.metadata.outputs.author }}"
+                    # Use author from package.json if available, otherwise fall back to Supabase metadata
+                    AUTHOR_LIST="$FINAL_AUTHOR"
                     if [ -n "$AUTHOR_LIST" ]; then
                       IFS=',' read -ra AUTHORS <<< "$AUTHOR_LIST"
                       for RAW_AUTHOR in "${AUTHORS[@]}"; do
