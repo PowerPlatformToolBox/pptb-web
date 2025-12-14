@@ -5,7 +5,7 @@ import { FadeIn, SlideIn } from "@/components/animations";
 import { useSupabase } from "@/lib/useSupabase";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 interface Tool {
     id: string;
@@ -13,6 +13,7 @@ interface Tool {
     description: string;
     iconurl: string;
     category: string;
+    author?: string;
     downloads: number;
     rating: number;
 }
@@ -25,6 +26,7 @@ const mockTools: Tool[] = [
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
         iconurl: "📦",
         category: "Solutions",
+        author: "Power Maverick",
         downloads: 1250,
         rating: 4.8,
     },
@@ -34,6 +36,7 @@ const mockTools: Tool[] = [
         description: "Compare environments, copy configurations, and manage environment settings efficiently.",
         iconurl: "🌍",
         category: "Environments",
+        author: "John Doe",
         downloads: 980,
         rating: 4.6,
     },
@@ -43,6 +46,7 @@ const mockTools: Tool[] = [
         description: "Generate early-bound classes, TypeScript definitions, and more from your Dataverse metadata.",
         iconurl: "⚡",
         category: "Development",
+        author: "Dev Tools Inc",
         downloads: 2100,
         rating: 4.9,
     },
@@ -52,6 +56,7 @@ const mockTools: Tool[] = [
         description: "Register, update, and manage your plugins and custom workflow activities with a modern interface.",
         iconurl: "🔌",
         category: "Development",
+        author: "Plugin Pro",
         downloads: 1450,
         rating: 4.7,
     },
@@ -61,6 +66,7 @@ const mockTools: Tool[] = [
         description: "Import and export data using Excel, CSV, or JSON. Support for bulk operations and data transformation.",
         iconurl: "📊",
         category: "Data",
+        author: "Data Master",
         downloads: 1800,
         rating: 4.5,
     },
@@ -70,6 +76,7 @@ const mockTools: Tool[] = [
         description: "Monitor and analyze the performance of your Power Platform solutions. Identify bottlenecks and optimize.",
         iconurl: "📈",
         category: "Monitoring",
+        author: "Perf Tools",
         downloads: 750,
         rating: 4.4,
     },
@@ -78,26 +85,39 @@ const mockTools: Tool[] = [
 export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
     const { supabase } = useSupabase();
 
     useEffect(() => {
-        if (!supabase) return;
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
         (async () => {
             try {
                 const { data, error } = await supabase
                     .from("tools")
-                    .select(`id,name,description,iconurl,category,tool_analytics (downloads,rating)`) // simplified select
+                    .select(`id,name,description,iconurl,category,author,tool_analytics (downloads,rating)`)
                     .order("name", { ascending: true });
                 if (error) throw error;
                 if (data) {
                     const transformed: Tool[] = data.map(
-                        (tool: { id: string; name: string; description: string; iconurl: string; category: string; tool_analytics?: Array<{ downloads: number; rating: number }> }) => ({
+                        (tool: {
+                            id: string;
+                            name: string;
+                            description: string;
+                            iconurl: string;
+                            category: string;
+                            author?: string;
+                            tool_analytics?: Array<{ downloads: number; rating: number }>;
+                        }) => ({
                             id: tool.id,
                             name: tool.name,
                             description: tool.description,
                             iconurl: tool.iconurl || "📦",
                             category: tool.category,
+                            author: tool.author || "Unknown",
                             downloads: tool.tool_analytics?.[0]?.downloads || 0,
                             rating: tool.tool_analytics?.[0]?.rating || 0,
                         }),
@@ -113,88 +133,169 @@ export default function ToolsPage() {
         })();
     }, [supabase]);
 
-    const categories = ["All", ...Array.from(new Set(tools.map((t) => t.category)))];
-    const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.category === selectedCategory);
+    const categories = useMemo(() => ["All", ...Array.from(new Set(tools.map((t) => t.category)))], [tools]);
+
+    const filteredTools = useMemo(() => {
+        let filtered = tools;
+
+        // Filter by search query
+        if (searchQuery) {
+            filtered = filtered.filter(
+                (tool) =>
+                    tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    tool.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    tool.category.toLowerCase().includes(searchQuery.toLowerCase()),
+            );
+        }
+
+        // Filter by category
+        if (selectedCategory !== "All") {
+            filtered = filtered.filter((t) => t.category === selectedCategory);
+        }
+
+        return filtered;
+    }, [tools, searchQuery, selectedCategory]);
 
     return (
-        <main>
-            <Container className="mt-8 sm:mt-16">
-                <FadeIn direction="up" delay={0.2}>
-                    <div className="mx-auto max-w-2xl lg:max-w-7xl">
-                        <header className="max-w-2xl mb-16">
+        <main className="bg-slate-50">
+            <Container className="py-12 sm:py-20">
+                <div className="mx-auto max-w-7xl">
+                    {/* Header */}
+                    <FadeIn direction="up" delay={0.1}>
+                        <div className="mb-10">
                             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Power Platform Tools</h1>
-                            <p className="mt-6 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
-                        </header>
+                            <p className="mt-4 text-lg text-slate-700">Discover powerful tools to enhance your Power Platform experience</p>
+                        </div>
+                    </FadeIn>
 
-                        {/* Category Filter */}
-                        <FadeIn direction="up" delay={0.3}>
-                            <div className="mb-12 flex flex-wrap gap-3">
-                                {categories.map((category) => (
-                                    <button
-                                        key={category}
-                                        onClick={() => setSelectedCategory(category)}
-                                        className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                                            selectedCategory === category
-                                                ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
-                                        }`}
-                                    >
-                                        {category}
-                                    </button>
-                                ))}
+                    {/* Search Bar */}
+                    <FadeIn direction="up" delay={0.2}>
+                        <div className="mb-8">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search for tools..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="block w-full pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
+                                />
                             </div>
-                        </FadeIn>
+                        </div>
+                    </FadeIn>
 
-                        {/* Tools Grid */}
-                        {loading ? (
-                            <div className="mt-16 text-center">
-                                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                                <p className="mt-4 text-slate-600">Loading tools...</p>
-                            </div>
-                        ) : (
+                    {/* Category Filters */}
+                    <FadeIn direction="up" delay={0.3}>
+                        <div className="mb-8 flex flex-wrap gap-2">
+                            {categories.map((category) => (
+                                <button
+                                    key={category}
+                                    onClick={() => setSelectedCategory(category)}
+                                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+                                        selectedCategory === category
+                                            ? "bg-blue-600 text-white shadow-md"
+                                            : "bg-white text-slate-700 border border-slate-200 hover:border-blue-600 hover:text-blue-600"
+                                    }`}
+                                >
+                                    {category}
+                                </button>
+                            ))}
+                        </div>
+                    </FadeIn>
+
+                    {/* Tools Grid */}
+                    {loading ? (
+                        <div className="mt-16 text-center">
+                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                            <p className="mt-4 text-slate-600">Loading tools...</p>
+                        </div>
+                    ) : filteredTools.length === 0 ? (
+                        <div className="mt-16 text-center">
+                            <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h3 className="mt-4 text-lg font-medium text-slate-900">No tools found</h3>
+                            <p className="mt-2 text-slate-600">Try adjusting your search or filter to find what you&apos;re looking for.</p>
+                        </div>
+                    ) : (
+                        <>
                             <SlideIn direction="up" delay={0.4}>
-                                <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                                     {filteredTools.map((tool, index) => (
-                                        <FadeIn key={tool.id} direction="up" delay={0.5 + index * 0.05}>
-                                            <Link href={`/tools/${tool.id}`} className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                                                <div className="p-6">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="w-16 h-16 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
+                                        <FadeIn key={tool.id} direction="up" delay={0.1 + index * 0.05}>
+                                            <Link
+                                                href={`/tools/${tool.id}`}
+                                                className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-200 hover:border-blue-300 flex flex-col h-full"
+                                            >
+                                                {/* Card Header with Icon and Category */}
+                                                <div className="p-6 pb-4">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-sm group-hover:shadow-md transition-shadow">
                                                             {tool.iconurl && tool.iconurl.startsWith("http") ? (
-                                                                <Image
-                                                                    src={tool.iconurl}
-                                                                    alt={`${tool.name} icon`}
-                                                                    width={48}
-                                                                    height={48}
-                                                                    className="object-contain"
-                                                                    onError={(e) => {
-                                                                        // Fallback to emoji if image fails to load
-                                                                        e.currentTarget.style.display = "none";
-                                                                        if (e.currentTarget.nextSibling) {
-                                                                            (e.currentTarget.nextSibling as HTMLElement).style.display = "block";
-                                                                        }
-                                                                    }}
-                                                                />
+                                                                <>
+                                                                    <Image
+                                                                        src={tool.iconurl}
+                                                                        alt={`${tool.name} icon`}
+                                                                        width={48}
+                                                                        height={48}
+                                                                        className="object-contain rounded-xl"
+                                                                        onError={(e) => {
+                                                                            e.currentTarget.style.display = "none";
+                                                                            const fallback = e.currentTarget.nextSibling as HTMLElement;
+                                                                            if (fallback) fallback.style.display = "block";
+                                                                        }}
+                                                                    />
+                                                                    <span className="text-3xl" style={{ display: "none" }}>
+                                                                        {tool.iconurl || "📦"}
+                                                                    </span>
+                                                                </>
                                                             ) : (
-                                                                <span className="text-4xl">{tool.iconurl || "📦"}</span>
+                                                                <span className="text-3xl">{tool.iconurl || "📦"}</span>
                                                             )}
                                                         </div>
-                                                        <span className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                                        <span className="px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 rounded-full">{tool.category}</span>
                                                     </div>
-                                                    <h3 className="text-xl font-semibold text-slate-900 group-hover:text-gradient transition-colors">{tool.name}</h3>
-                                                    <p className="mt-3 text-sm text-slate-600">{tool.description}</p>
-                                                    <div className="mt-6 flex items-center justify-between text-sm">
-                                                        <div className="flex items-center gap-1 text-slate-600">
+
+                                                    {/* Tool Name */}
+                                                    <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">{tool.name}</h3>
+
+                                                    {/* Author */}
+                                                    {tool.author && <p className="text-sm text-slate-500 mb-3">{tool.author}</p>}
+
+                                                    {/* Description */}
+                                                    <p className="text-sm text-slate-600 line-clamp-3">{tool.description}</p>
+                                                </div>
+
+                                                {/* Card Footer with Stats */}
+                                                <div className="mt-auto px-6 py-4 bg-slate-50 border-t border-slate-100">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        {/* Rating */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="flex items-center">
+                                                                {[...Array(5)].map((_, i) => (
+                                                                    <svg
+                                                                        key={i}
+                                                                        className={`h-4 w-4 ${i < Math.floor(tool.rating) ? "text-amber-400 fill-current" : "text-slate-300 fill-current"}`}
+                                                                        viewBox="0 0 20 20"
+                                                                    >
+                                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                                    </svg>
+                                                                ))}
+                                                            </div>
+                                                            <span className="font-semibold text-slate-900">{tool.rating.toFixed(1)}</span>
+                                                        </div>
+
+                                                        {/* Downloads */}
+                                                        <div className="flex items-center gap-1.5 text-slate-600">
                                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                             </svg>
-                                                            <span>{tool.downloads.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 text-amber-500">
-                                                            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                            </svg>
-                                                            <span>{tool.rating.toFixed(1)}</span>
+                                                            <span className="font-medium">{tool.downloads >= 1000 ? `${(tool.downloads / 1000).toFixed(1)}K` : tool.downloads}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -203,37 +304,16 @@ export default function ToolsPage() {
                                     ))}
                                 </div>
                             </SlideIn>
-                        )}
 
-                        {/* Call to Action */}
-                        <FadeIn direction="up" delay={0.6}>
-                            <div className="mt-20 card-dark p-10 text-center relative overflow-hidden">
-                                <div className="absolute inset-0 bg-linear-to-br from-blue-600/10 to-purple-600/10"></div>
-                                <div className="relative z-10">
-                                    <h2 className="text-3xl font-bold text-white">Want to contribute a tool?</h2>
-                                    <p className="mt-4 text-slate-300 max-w-2xl mx-auto">Join our community of developers and help build the next generation of Power Platform tools.</p>
-                                    <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-                                        <Link href="https://github.com/PowerPlatformToolBox" target="_blank" rel="noopener noreferrer" className="btn-primary">
-                                            <span className="flex items-center justify-center gap-2">
-                                                Visit GitHub
-                                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </span>
-                                        </Link>
-                                        <Link href="/auth/signin" className="btn-outline bg-white">
-                                            <span className="flex items-center justify-center gap-2">Sign in to rate tools</span>
-                                        </Link>
-                                    </div>
-                                </div>
+                            {/* Results Count */}
+                            <div className="mt-8 text-center">
+                                <p className="text-sm text-slate-600">
+                                    Showing <span className="font-semibold text-slate-900">{filteredTools.length}</span> of <span className="font-semibold text-slate-900">{tools.length}</span> tools
+                                </p>
                             </div>
-                        </FadeIn>
-                    </div>
-                </FadeIn>
+                        </>
+                    )}
+                </div>
             </Container>
         </main>
     );
