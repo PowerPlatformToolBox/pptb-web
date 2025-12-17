@@ -1,6 +1,6 @@
+import { ToolStatus, VALID_TOOL_STATUSES } from "@/lib/constants/tool-statuses";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { VALID_TOOL_STATUSES, ToolStatus } from "@/lib/constants/tool-statuses";
 
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
 
             if (!authError && user) {
                 userId = user.id;
+            } else {
+                return NextResponse.json({ error: "Unauthorized. Valid user token required." }, { status: 401 });
             }
         }
 
@@ -61,11 +63,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify the tool belongs to the user
-        const { data: tool, error: fetchError } = await supabase
-            .from("tools")
-            .select("id, user_id")
-            .eq("id", toolId)
-            .single();
+        const { data: tool, error: fetchError } = await supabase.from("tools").select("id, user_id").eq("id", toolId).single();
 
         if (fetchError || !tool) {
             return NextResponse.json({ error: "Tool not found" }, { status: 404 });

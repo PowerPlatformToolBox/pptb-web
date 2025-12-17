@@ -11,6 +11,10 @@ on:
                 description: "Version to convert"
                 required: true
                 type: string
+            authors:
+                description: "Authors of the tool"
+                required: true
+                type: string
             branch:
                 description: "Branch to commit to (optional, defaults to current branch)"
                 required: false
@@ -215,22 +219,14 @@ jobs:
 
                   # Prepare SQL payload for tools table
                   TOOL_PAYLOAD=$(jq -n \
-                    --arg packagename "${{ steps.metadata.outputs.package_name }}" \
-                    --arg name "${{ steps.metadata.outputs.name }}" \
-                    --arg description "${{ steps.metadata.outputs.description }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg iconurl "$ICON_URL" \
-                    --arg version "${{ inputs.version }}" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
                     --arg size "${{ steps.checksum.outputs.size }}" \
                     '{
-                      packagename: $packagename,
-                      name: $name,
-                      description: $description,
                       downloadurl: $downloadurl,
                       iconurl: $iconurl,
-                      version: $version,
                       published_at: $published,
                       checksum: $checksum,
                       size: $size
@@ -253,7 +249,7 @@ jobs:
                     echo "Tool metadata updated with ID: $TOOL_ID"
                     echo "Analytics data preserved from previous version"
 
-                    AUTHOR_LIST="${{ steps.metadata.outputs.author }}"
+                    AUTHOR_LIST="${{ inputs.authors }}"
                     if [ -n "$AUTHOR_LIST" ]; then
                       IFS=',' read -ra AUTHORS <<< "$AUTHOR_LIST"
                       for RAW_AUTHOR in "${AUTHORS[@]}"; do

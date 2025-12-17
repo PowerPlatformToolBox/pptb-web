@@ -82,28 +82,57 @@ jobs:
 
                   echo "found=$UPDATES_FOUND" >> $GITHUB_OUTPUT
 
-            - name: Run Update Workflow
+            - name: Create tool_updates record in Supabase
               if: steps.check.outputs.found == 'true'
+              env:
+                  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+                  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
               run: |
-                  # Configure git
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  # File mapping package -> tool_updates.id for later API calls
+                  : > tool_update_ids.txt
+                  while IFS=',' read -r PACKAGE CURRENT_VERSION LATEST_VERSION; do
+                    if [ -z "$PACKAGE" ]; then
+                      continue
+                    fi
+                    RESPONSE=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/tool_updates" \
+                      -H "apikey: $SUPABASE_ANON_KEY" \
+                      -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+                      -H "Content-Type: application/json" \
+                      -H "Prefer: return=representation" \
+                      -d "{\"package_name\":\"$PACKAGE\",\"version\":\"$CURRENT_VERSION\"}")
 
-                  # Process each update
-                  while IFS=',' read -r NPM_PACKAGE CURRENT LATEST; do
-                    echo "Processing update: $NPM_PACKAGE $CURRENT → $LATEST"
-                    
-                    # Trigger conversion workflow and capture the workflow run
-                    # Pass the branch name so the workflow commits to the correct branch
-                    gh workflow run update-convert-tool.yml \
-                      -f tool_id="$NPM_PACKAGE" \
-                      -f version="$LATEST" \
-                      -f branch="$BRANCH_NAME"
-                    
-                    # Wait a moment for the workflow to start
-                    sleep 10
-                    
+                    echo "Supabase tools response for $PACKAGE: $RESPONSE"
+
+                    # Extract the inserted id (Supabase returns an array when using return=representation)
+                    TOOL_UPDATES_ID=$(echo "$RESPONSE" | jq -r '.[0].id // empty')
+
+                    # Persist mapping for the next step
+                    if [ -n "$TOOL_UPDATES_ID" ]; then
+                      echo "$PACKAGE,$TOOL_UPDATES_ID" >> tool_update_ids.txt
+                    else
+                      echo "Warning: No tool_updates id returned for $PACKAGE"
+                    fi
                   done < updates.txt
 
+            - name: Invoke NextJS Update Tool API
+              if: steps.check.outputs.found == 'true'
               env:
-                  GH_TOKEN: ${{ github.token }}
+                  UPDATE_TOOL_API_URL: ${{ secrets.UPDATE_TOOL_API_URL }}
+              run: |
+                  if [ -z "$UPDATE_TOOL_API_URL" ]; then
+                    echo "❌ Secret UPDATE_TOOL_API_URL is not set."
+                    exit 1
+                  fi
+                  # Iterate over created tool_update ids and notify API per package
+                  if [ ! -f tool_update_ids.txt ]; then
+                    echo "No tool_update_ids.txt found; skipping API notifications."
+                    exit 0
+                  fi
+                  while IFS=',' read -r PACKAGE TOOL_UPDATES_ID; do
+                    if [ -z "$PACKAGE" ] || [ -z "$TOOL_UPDATES_ID" ]; then
+                      continue
+                    fi
+                    curl -sS -X POST "$UPDATE_TOOL_API_URL" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"packageName\":\"$PACKAGE\",\"toolUpdateId\":\"$TOOL_UPDATES_ID\"}"
+                  done < tool_update_ids.txt

@@ -1,6 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    // Verify request origin
+    const referer = request.headers.get("referer");
+    const origin = referer ? new URL(referer).origin + "/" : null;
+    const allowedOrigins = ["http://localhost:3000/", "https://powerplatformtoolbox.com/"];
+
+    if (!allowedOrigins.includes(origin || "")) {
+        return NextResponse.json({ error: "Unauthorized origin" }, { status: 403 });
+    }
+
     const url = process.env.SUPABASE_URL;
     const anonKey = process.env.SUPABASE_ANON_KEY;
 
@@ -8,6 +17,5 @@ export async function GET() {
         return NextResponse.json({ error: "Supabase environment variables not configured." }, { status: 500 });
     }
 
-    // The anon key is safe to expose. This endpoint intentionally returns it for client initialization.
     return NextResponse.json({ url, anonKey });
 }

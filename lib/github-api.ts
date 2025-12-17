@@ -85,6 +85,12 @@ export interface ConvertWorkflowInputs {
     icon_url?: string;
 }
 
+export interface UpdateWorkflowInputs {
+    tool_id: string;
+    version: string;
+    authors: string;
+}
+
 async function ghFetch(url: string, token: string, init?: RequestInit) {
     const headers = {
         Accept: "application/vnd.github+json",
@@ -95,10 +101,10 @@ async function ghFetch(url: string, token: string, init?: RequestInit) {
     return res;
 }
 
-export async function dispatchConvertToolWorkflow(params: { owner: string; repo: string; token: string; ref?: string; inputs: ConvertWorkflowInputs }) {
-    const { owner, repo, token, inputs } = params;
+export async function dispatchConvertToolWorkflow(params: { owner: string; repo: string; token: string; workflowFile: string; ref?: string; inputs: ConvertWorkflowInputs | UpdateWorkflowInputs }) {
+    const { owner, repo, token, inputs, workflowFile } = params;
     const ref = params.ref ?? "main";
-    const url = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/convert-tool.yml/dispatches`;
+    const url = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/dispatches`;
     const res = await ghFetch(url, token, {
         method: "POST",
         body: JSON.stringify({ ref, inputs }),
@@ -113,7 +119,7 @@ export async function waitForWorkflowCompletion(params: {
     owner: string;
     repo: string;
     token: string;
-    workflowFile?: string; // default convert-tool.yml
+    workflowFile: string; // default convert-tool.yml
     branch?: string; // default main
     timeoutMs?: number; // default 180000
     pollIntervalMs?: number; // default 5000
@@ -122,7 +128,7 @@ export async function waitForWorkflowCompletion(params: {
     const owner = params.owner;
     const repo = params.repo;
     const token = params.token;
-    const workflowFile = params.workflowFile ?? "convert-tool.yml";
+    const workflowFile = params.workflowFile;
     const branch = params.branch ?? "main";
     const timeoutMs = params.timeoutMs ?? 180000;
     const pollIntervalMs = params.pollIntervalMs ?? 5000;
@@ -178,11 +184,29 @@ export async function waitForWorkflowCompletion(params: {
 
 export async function runConvertToolWorkflow(params: { owner: string; repo: string; token: string; inputs: ConvertWorkflowInputs; ref?: string; timeoutMs?: number; pollIntervalMs?: number }) {
     const dispatchedAt = new Date();
-    await dispatchConvertToolWorkflow({ owner: params.owner, repo: params.repo, token: params.token, inputs: params.inputs, ref: params.ref });
+    const workflowFile = "convert-tool.yml";
+    await dispatchConvertToolWorkflow({ owner: params.owner, repo: params.repo, token: params.token, workflowFile: workflowFile, inputs: params.inputs, ref: params.ref });
     const conclusion = await waitForWorkflowCompletion({
         owner: params.owner,
         repo: params.repo,
         token: params.token,
+        workflowFile: workflowFile,
+        timeoutMs: params.timeoutMs,
+        pollIntervalMs: params.pollIntervalMs,
+        dispatchedAt,
+    });
+    return conclusion;
+}
+
+export async function runUpdateToolWorkflow(params: { owner: string; repo: string; token: string; inputs: UpdateWorkflowInputs; ref?: string; timeoutMs?: number; pollIntervalMs?: number }) {
+    const dispatchedAt = new Date();
+    const workflowFile = "update-tool.yml";
+    await dispatchConvertToolWorkflow({ owner: params.owner, repo: params.repo, token: params.token, workflowFile: workflowFile, inputs: params.inputs, ref: params.ref });
+    const conclusion = await waitForWorkflowCompletion({
+        owner: params.owner,
+        repo: params.repo,
+        token: params.token,
+        workflowFile: workflowFile,
         timeoutMs: params.timeoutMs,
         pollIntervalMs: params.pollIntervalMs,
         dispatchedAt,
