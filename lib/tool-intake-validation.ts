@@ -23,6 +23,10 @@ export interface Configurations {
     readmeUrl?: string;
 }
 
+export interface Features {
+    "multi-connections"?: boolean;
+}
+
 export interface ToolPackageJson {
     name: string;
     version: string;
@@ -32,6 +36,7 @@ export interface ToolPackageJson {
     cspExceptions?: CspExceptions;
     license?: string;
     configurations?: Configurations;
+    features?: Features;
 }
 
 export interface ValidationResult {
@@ -47,6 +52,7 @@ export interface ValidationResult {
         contributors: Contributor[];
         cspExceptions?: CspExceptions;
         configurations: Configurations;
+        features?: Features;
     };
 }
 
@@ -197,6 +203,7 @@ export interface NpmPackageInfo {
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
     configurations?: Configurations;
+    features?: Features;
 }
 
 export async function fetchNpmPackageInfo(packageName: string): Promise<{ success: true; data: NpmPackageInfo } | { success: false; error: string }> {
@@ -241,6 +248,7 @@ export async function fetchNpmPackageInfo(packageName: string): Promise<{ succes
                 contributors: versionData.contributors,
                 cspExceptions: versionData.cspExceptions,
                 configurations: versionData.configurations,
+                features: versionData.features,
             },
         };
     } catch (error) {

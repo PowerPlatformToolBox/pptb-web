@@ -52,6 +52,36 @@ interface SubmitToolRequest {
 
 export async function POST(request: NextRequest) {
     try {
+        const supabase = getSupabaseClient();
+
+        if (!supabase) {
+            return NextResponse.json(
+                {
+                    error: "Database connection not configured",
+                    step: "database",
+                },
+                { status: 500 },
+            );
+        }
+
+        // Verify authorization and identify user
+        const authHeader = request.headers.get("authorization");
+        let userId: string | null = null;
+
+        if (authHeader?.startsWith("Bearer ")) {
+            const token = authHeader.slice(7);
+            const {
+                data: { user },
+                error: authError,
+            } = await supabase.auth.getUser(token);
+
+            if (!authError && user) {
+                userId = user.id;
+            } else {
+                return NextResponse.json({ error: "Unauthorized. Valid user token required." }, { status: 401 });
+            }
+        }
+
         // Parse request body
         const body = (await request.json()) as SubmitToolRequest;
         const { packageName, categoryIds } = body;
@@ -97,6 +127,7 @@ export async function POST(request: NextRequest) {
             cspExceptions: npmResult.data.cspExceptions,
             license: npmResult.data.license,
             configurations: npmResult.data.configurations,
+            features: npmResult.data.features,
         };
 
         const validationResult = validatePackageJson(packageJson);
@@ -115,9 +146,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Step 3: Get Supabase client and store the intake request
-        const supabase = getSupabaseClient();
-
+        // Step 3: Store the intake request
         if (!supabase) {
             return NextResponse.json(
                 {
@@ -126,22 +155,6 @@ export async function POST(request: NextRequest) {
                 },
                 { status: 500 },
             );
-        }
-
-        // Get user from authorization header (if using Supabase auth)
-        const authHeader = request.headers.get("authorization");
-        let userId: string | null = null;
-
-        if (authHeader?.startsWith("Bearer ")) {
-            const token = authHeader.slice(7);
-            const {
-                data: { user },
-                error: authError,
-            } = await supabase.auth.getUser(token);
-
-            if (!authError && user) {
-                userId = user.id;
-            }
         }
 
         // Check if this package already exists in tool_intakes
@@ -183,6 +196,7 @@ export async function POST(request: NextRequest) {
                 submitted_by: userId,
                 status: "pending_review",
                 validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
+                features: packageInfo.features || null,
             })
             .select()
             .single();
