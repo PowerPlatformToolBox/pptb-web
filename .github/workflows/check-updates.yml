@@ -82,28 +82,11 @@ jobs:
 
                   echo "found=$UPDATES_FOUND" >> $GITHUB_OUTPUT
 
-            - name: Run Update Workflow
+            - name: Invoke NextJS Update Tool API
               if: steps.check.outputs.found == 'true'
               run: |
-                  # Configure git
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-
-                  # Process each update
-                  while IFS=',' read -r NPM_PACKAGE CURRENT LATEST; do
-                    echo "Processing update: $NPM_PACKAGE $CURRENT → $LATEST"
-                    
-                    # Trigger conversion workflow and capture the workflow run
-                    # Pass the branch name so the workflow commits to the correct branch
-                    gh workflow run update-convert-tool.yml \
-                      -f tool_id="$NPM_PACKAGE" \
-                      -f version="$LATEST" \
-                      -f branch="$BRANCH_NAME"
-                    
-                    # Wait a moment for the workflow to start
-                    sleep 10
-                    
+                  while IFS=',' read -r PACKAGE CURRENT_VERSION LATEST_VERSION; do
+                    curl -X POST https://powerplatformtoolbox.com/app/api/updateTool \
+                      -H "Content-Type: application/json" \
+                      -d "{\"packageName\":\"$PACKAGE\",\"currentVersion\":\"$CURRENT_VERSION\",\"latestVersion\":\"$LATEST_VERSION\"}"
                   done < updates.txt
-
-              env:
-                  GH_TOKEN: ${{ github.token }}

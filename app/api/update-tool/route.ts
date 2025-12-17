@@ -1,3 +1,4 @@
+import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-intake-validation";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -114,6 +115,21 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Update tool table entry with latest validated package info
+        await supabase
+            .from("tools")
+            .update({
+                name: packageJson.displayName,
+                description: packageJson.description,
+                iconurl: packageJson.configurations?.iconUrl || null,
+                readmeurl: packageJson.configurations?.readmeUrl || null,
+                version: packageJson.version,
+                csp_exceptions: packageJson.cspExceptions,
+                license: packageJson.license,
+                features: packageJson.features || null,
+            })
+            .eq("package_name", packageJson.name);
+
         // Invoke GH action to process the tool update
         // Trigger GitHub Actions workflow to build and publish the tool and wait for completion
         // TODO: update workflow will handle downloadurl and iconurl
@@ -125,20 +141,23 @@ export async function POST(request: NextRequest) {
         const repoOwner = "PowerPlatformToolBox";
         const repoName = "pptb-web";
 
-        // Update tool table entry with latest validated package info
-        await supabase
-            .from("tools")
-            .update({
-                name: packageJson.displayName,
-                description: packageJson.description,
-                contributors: packageJson.contributors,
-                csp_exceptions: packageJson.cspExceptions,
-                license: packageJson.license,
-                configurations: packageJson.configurations,
+        const conclusion = await runUpdateToolWorkflow({
+            owner: repoOwner,
+            repo: repoName,
+            token: ghToken,
+            inputs: {
+                tool_id: packageJson.name,
                 version: packageJson.version,
-                features: packageJson.features || null,
-            })
-            .eq("package_name", packageJson.name);
+                authors: (packageJson.contributors || []).map((c) => (typeof c === "string" ? c : c.name)).join(", "),
+            },
+            ref: "main",
+            timeoutMs: 180000,
+            pollIntervalMs: 30000,
+        });
+
+        if (conclusion !== "success") {
+            return NextResponse.json({ error: "Conversion workflow did not complete successfully" }, { status: 500 });
+        }
 
         // Update tool update record as validated
         await supabase.from("tool_updates").update({ status: "validated", validation_warnings: validationResult }).eq("id", toolUpdateId);
