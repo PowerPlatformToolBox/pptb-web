@@ -51,7 +51,7 @@ export interface ValidationResult {
 }
 
 // List of approved open source licenses (from intake-validation.yml)
-const APPROVED_LICENSES = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "GPL-2.0", "GPL-3.0", "LGPL-3.0", "ISC"];
+const APPROVED_LICENSES = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "GPL-2.0", "GPL-3.0", "LGPL-3.0", "ISC", "AGPL-3.0-only"];
 
 export function isValidUrl(url: string): boolean {
     try {
@@ -134,12 +134,14 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
             warnings.push("configurations.funding has an invalid URL format");
         }
 
-        if (!configs.iconUrl || typeof configs.iconUrl !== "string") {
-            errors.push("configurations.iconUrl is required and must be a URL");
-        } else if (!isValidUrl(configs.iconUrl)) {
-            errors.push("configurations.iconUrl has an invalid URL format");
-        } else if (isGithubDomain(configs.iconUrl)) {
-            errors.push("configurations.iconUrl cannot be hosted on github.com; use raw.githubusercontent.com or another domain");
+        if (configs.iconUrl) {
+            if (typeof configs.iconUrl !== "string") {
+                errors.push("configurations.iconUrl must be a URL");
+            } else if (!isValidUrl(configs.iconUrl)) {
+                errors.push("configurations.iconUrl has an invalid URL format");
+            } else if (isGithubDomain(configs.iconUrl)) {
+                errors.push("configurations.iconUrl cannot be hosted on github.com; use raw.githubusercontent.com or another domain");
+            }
         }
 
         if (!configs.readmeUrl || typeof configs.readmeUrl !== "string") {
