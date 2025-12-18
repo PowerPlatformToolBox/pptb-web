@@ -99,7 +99,7 @@ jobs:
                       -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                       -H "Content-Type: application/json" \
                       -H "Prefer: resolution=merge-duplicates,return=representation" \
-                      -d "{\"package_name\":\"$PACKAGE\",\"version\":\"$CURRENT_VERSION\"}")
+                      -d "{\"package_name\":\"$PACKAGE\",\"version\":\"$LATEST_VERSION\"}")
 
                     echo "Supabase tools response for $PACKAGE: $RESPONSE"
 

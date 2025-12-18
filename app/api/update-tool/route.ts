@@ -129,6 +129,9 @@ export async function POST(request: NextRequest) {
             })
             .eq("package_name", packageJson.name);
 
+        // Update tool update record as validated
+        await supabase.from("tool_updates").update({ status: "validated", validation_warnings: validationResult }).eq("id", toolUpdateId);
+
         // Invoke GH action to process the tool update
         const ghToken = process.env.GH_PAT_TOKEN;
         if (!ghToken) {
@@ -155,9 +158,6 @@ export async function POST(request: NextRequest) {
         if (conclusion !== "success") {
             return NextResponse.json({ error: "Conversion workflow did not complete successfully" }, { status: 500 });
         }
-
-        // Update tool update record as validated
-        await supabase.from("tool_updates").update({ status: "validated", validation_warnings: validationResult }).eq("id", toolUpdateId);
 
         return NextResponse.json({
             success: true,
