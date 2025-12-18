@@ -50,7 +50,6 @@ jobs:
 
                   TOOL_NAME=$(echo "$NPM_INFO" | jq -r '.displayName // .name // "${{ inputs.tool_id }}"')
                   TOOL_DESC=$(echo "$NPM_INFO" | jq -r '.description // "Power Platform Tool"')
-                  TOOL_AUTHOR=$(echo "$NPM_INFO" | jq -r '.author.name // .author // ""')
                   README_URL=$(echo "$NPM_INFO" | jq -r '.repository.url // .homepage // ""' | sed 's/^git+//')
                   ICON_URL=$(echo "$NPM_INFO" | jq -r '.icon // .iconUrl // empty')
 
@@ -58,7 +57,6 @@ jobs:
                   echo "package_name=$TOOL_PACKAGE_NAME" >> $GITHUB_OUTPUT
                   echo "name=$TOOL_NAME" >> $GITHUB_OUTPUT
                   echo "description=$TOOL_DESC" >> $GITHUB_OUTPUT
-                  echo "author=$TOOL_AUTHOR" >> $GITHUB_OUTPUT
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
 
@@ -200,7 +198,6 @@ jobs:
                     --arg name "${{ steps.metadata.outputs.name }}" \
                     --arg description "${{ steps.metadata.outputs.description }}" \
                     --arg readmeurl "${{ steps.metadata.outputs.readme_url }}" \
-                    --arg author "${{ steps.metadata.outputs.author }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg iconurl "$ICON_URL" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
