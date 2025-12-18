@@ -80,9 +80,14 @@ export interface ConvertWorkflowInputs {
     npm_package_name: string;
     display_name: string;
     description: string;
-    author?: string;
-    readme_url?: string;
     icon_url?: string;
+    readme_url: string;
+    version: string;
+    license: string;
+    csp_exceptions?: string;
+    submitted_by: string;
+    features?: string;
+    authors: string;
 }
 
 export interface UpdateWorkflowInputs {

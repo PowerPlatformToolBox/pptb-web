@@ -108,9 +108,14 @@ export async function POST(request: NextRequest) {
                 npm_package_name: intake.package_name,
                 display_name: intake.display_name,
                 description: intake.description,
-                author: authorString,
-                readme_url: intake.configurations?.readmeUrl || "",
                 icon_url: intake.configurations?.iconUrl || "",
+                readme_url: intake.configurations?.readmeUrl || "",
+                version: intake.version || "1.0.0",
+                license: intake.license || "MIT",
+                csp_exceptions: intake.csp_exceptions ? JSON.stringify(intake.csp_exceptions) : "",
+                submitted_by: intake.submitted_by || "",
+                features: intake.features ? JSON.stringify(intake.features) : "",
+                authors: authorString,
             },
             ref: "main",
             timeoutMs: 180000,
@@ -132,37 +137,37 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Tool not found after workflow" }, { status: 500 });
         }
 
-        // Backfill fields not set by workflow (non-fatal on failure)
-        const updates: Partial<{
-            readmeurl: string;
-            license: string;
-            csp_exceptions: unknown;
-            user_id: string;
-        }> = {};
-        if (intake.configurations?.readmeUrl) updates.readmeurl = intake.configurations.readmeUrl;
-        if (intake.license) updates.license = intake.license;
-        if (intake.csp_exceptions) updates.csp_exceptions = intake.csp_exceptions;
-        if (intake.submitted_by) updates.user_id = intake.submitted_by;
-        // repository/website backfill omitted until schema fields confirmed
-        if (Object.keys(updates).length > 0) {
-            const { error: backfillError } = await supabase.from("tools").update(updates).eq("id", newTool.id);
-            if (backfillError) {
-                console.warn("Non-fatal: failed to backfill some tool fields", backfillError);
-            }
-        }
+        // // Backfill fields not set by workflow (non-fatal on failure)
+        // const updates: Partial<{
+        //     readmeurl: string;
+        //     license: string;
+        //     csp_exceptions: unknown;
+        //     user_id: string;
+        // }> = {};
+        // if (intake.configurations?.readmeUrl) updates.readmeurl = intake.configurations.readmeUrl;
+        // if (intake.license) updates.license = intake.license;
+        // if (intake.csp_exceptions) updates.csp_exceptions = intake.csp_exceptions;
+        // if (intake.submitted_by) updates.user_id = intake.submitted_by;
+        // // repository/website backfill omitted until schema fields confirmed
+        // if (Object.keys(updates).length > 0) {
+        //     const { error: backfillError } = await supabase.from("tools").update(updates).eq("id", newTool.id);
+        //     if (backfillError) {
+        //         console.warn("Non-fatal: failed to backfill some tool fields", backfillError);
+        //     }
+        // }
 
-        // Insert contributor relationships for the new tool
-        const toolContributorRelations =
-            intakeWithContrib.tool_intake_contributors?.map((tic: { contributor_id: number }) => ({
-                tool_id: newTool.id,
-                contributor_id: tic.contributor_id,
-            })) || [];
-        if (toolContributorRelations.length > 0) {
-            const { error: toolContribError } = await supabase.from("tool_contributors").insert(toolContributorRelations);
-            if (toolContribError) {
-                console.error("Error inserting tool contributors:", toolContribError);
-            }
-        }
+        // // Insert contributor relationships for the new tool
+        // const toolContributorRelations =
+        //     intakeWithContrib.tool_intake_contributors?.map((tic: { contributor_id: number }) => ({
+        //         tool_id: newTool.id,
+        //         contributor_id: tic.contributor_id,
+        //     })) || [];
+        // if (toolContributorRelations.length > 0) {
+        //     const { error: toolContribError } = await supabase.from("tool_contributors").insert(toolContributorRelations);
+        //     if (toolContribError) {
+        //         console.error("Error inserting tool contributors:", toolContribError);
+        //     }
+        // }
 
         // Insert category relationships for the new tool
         const intakeWithCategories = intake as typeof intake & {
