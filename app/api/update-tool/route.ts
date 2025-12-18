@@ -165,7 +165,6 @@ export async function POST(request: NextRequest) {
             success: true,
             message: "Tool intake request submitted successfully",
         });
-
     } catch (error) {
         console.error("[update-tool] Error:", error);
         const errorMessage = error instanceof Error ? error.message : "Internal server error";
