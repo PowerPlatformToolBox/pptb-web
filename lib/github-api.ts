@@ -200,7 +200,7 @@ export async function runConvertToolWorkflow(params: { owner: string; repo: stri
 
 export async function runUpdateToolWorkflow(params: { owner: string; repo: string; token: string; inputs: UpdateWorkflowInputs; ref?: string; timeoutMs?: number; pollIntervalMs?: number }) {
     const dispatchedAt = new Date();
-    const workflowFile = "update-tool.yml";
+    const workflowFile = "update-convert-tool.yml";
     await dispatchConvertToolWorkflow({ owner: params.owner, repo: params.repo, token: params.token, workflowFile: workflowFile, inputs: params.inputs, ref: params.ref });
     const conclusion = await waitForWorkflowCompletion({
         owner: params.owner,

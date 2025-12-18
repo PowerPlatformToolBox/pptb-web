@@ -130,8 +130,6 @@ export async function POST(request: NextRequest) {
             .eq("package_name", packageJson.name);
 
         // Invoke GH action to process the tool update
-        // Trigger GitHub Actions workflow to build and publish the tool and wait for completion
-        // TODO: update workflow will handle downloadurl and iconurl
         const ghToken = process.env.GH_PAT_TOKEN;
         if (!ghToken) {
             return NextResponse.json({ error: "GitHub token not configured" }, { status: 500 });
