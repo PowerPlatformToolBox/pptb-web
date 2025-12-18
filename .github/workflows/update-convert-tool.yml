@@ -52,6 +52,7 @@ jobs:
                   TOOL_DESC=$(echo "$NPM_INFO" | jq -r '.description // "Power Platform Tool"')
                   README_URL=$(echo "$NPM_INFO" | jq -r '.repository.url // .homepage // ""' | sed 's/^git+//')
                   ICON_URL=$(echo "$NPM_INFO" | jq -r '.icon // .iconUrl // empty')
+                  LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // ""')
 
                   echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
                   echo "package_name=$TOOL_PACKAGE_NAME" >> $GITHUB_OUTPUT
@@ -59,6 +60,7 @@ jobs:
                   echo "description=$TOOL_DESC" >> $GITHUB_OUTPUT
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
+                  echo "license=$LICENSE" >> $GITHUB_OUTPUT
 
             - name: Download and build tool
               id: build
@@ -198,6 +200,7 @@ jobs:
                     --arg name "${{ steps.metadata.outputs.name }}" \
                     --arg description "${{ steps.metadata.outputs.description }}" \
                     --arg readmeurl "${{ steps.metadata.outputs.readme_url }}" \
+                    --arg license "${{ steps.metadata.outputs.license }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg iconurl "$ICON_URL" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -209,6 +212,7 @@ jobs:
                       name: $name,
                       description: $description,
                       readmeurl: $readmeurl,
+                      license: $license,
                       downloadurl: $downloadurl,
                       iconurl: $iconurl,
                       published_at: $published,
