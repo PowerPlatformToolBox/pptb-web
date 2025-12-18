@@ -26,14 +26,14 @@ jobs:
               id: check
               env:
                   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-                  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+                  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
               run: |
                   UPDATES_FOUND=false
 
                   # Fetch tools from Supabase
                   HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/tools_response.json "$SUPABASE_URL/rest/v1/tools?select=packagename,version" \
-                    -H "apikey: $SUPABASE_ANON_KEY" \
-                    -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+                    -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                    -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
                   TOOLS_RESPONSE=$(cat /tmp/tools_response.json)
 
                   # Check HTTP status code
@@ -86,7 +86,7 @@ jobs:
               if: steps.check.outputs.found == 'true'
               env:
                   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-                  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+                  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
               run: |
                   # File mapping package -> tool_updates.id for later API calls
                   : > tool_update_ids.txt
@@ -94,17 +94,23 @@ jobs:
                     if [ -z "$PACKAGE" ]; then
                       continue
                     fi
-                    RESPONSE=$(curl -sS -X POST "$SUPABASE_URL/rest/v1/tool_updates" \
-                      -H "apikey: $SUPABASE_ANON_KEY" \
-                      -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+                    RESPONSE=$(curl -sS -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tool_updates" \
+                      -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                      -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                       -H "Content-Type: application/json" \
-                      -H "Prefer: return=representation" \
+                      -H "Prefer: resolution=merge-duplicates,return=representation" \
                       -d "{\"package_name\":\"$PACKAGE\",\"version\":\"$CURRENT_VERSION\"}")
 
                     echo "Supabase tools response for $PACKAGE: $RESPONSE"
 
+                    # Check if response is an error object
+                    if echo "$RESPONSE" | jq -e '.code' > /dev/null 2>&1; then
+                      echo "❌ Error creating tool_updates record for $PACKAGE: $RESPONSE"
+                      continue
+                    fi
+
                     # Extract the inserted id (Supabase returns an array when using return=representation)
-                    TOOL_UPDATES_ID=$(echo "$RESPONSE" | jq -r '.[0].id // empty')
+                    TOOL_UPDATES_ID=$(echo "$RESPONSE" | jq -r 'if type == "array" then .[0].id else .id end // empty')
 
                     # Persist mapping for the next step
                     if [ -n "$TOOL_UPDATES_ID" ]; then
@@ -132,7 +138,7 @@ jobs:
                     if [ -z "$PACKAGE" ] || [ -z "$TOOL_UPDATES_ID" ]; then
                       continue
                     fi
-                    curl -sS -X POST "$UPDATE_TOOL_API_URL" \
+                    curl -sS -X POST "${{ secrets.UPDATE_TOOL_API_URL }}" \
                       -H "Content-Type: application/json" \
                       -d "{\"packageName\":\"$PACKAGE\",\"toolUpdateId\":\"$TOOL_UPDATES_ID\"}"
                   done < tool_update_ids.txt
