@@ -112,7 +112,7 @@ jobs:
 
             - name: Download icon
               id: icon
-              if: steps.metadata.outputs.icon_url != ''
+              if: ${{ steps.metadata.outputs.icon_url != '' }}
               run: |
                   ICON_URL="${{ steps.metadata.outputs.icon_url }}"
 
@@ -214,7 +214,7 @@ jobs:
                       readmeurl: $readmeurl,
                       license: $license,
                       downloadurl: $downloadurl,
-                      iconurl: $iconurl,
+                      iconurl: (if $iconurl == "" then null else $iconurl end),
                       published_at: $published,
                       checksum: $checksum,
                       size: ($size|tonumber)

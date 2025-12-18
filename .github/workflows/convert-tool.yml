@@ -136,7 +136,7 @@ jobs:
 
             - name: Download icon
               id: icon
-              if: steps.tool.outputs.icon_url != ''
+              if: ${{ steps.tool.outputs.icon_url != '' }}
               run: |
                   ICON_URL="${{ steps.tool.outputs.icon_url }}"
 
@@ -230,7 +230,7 @@ jobs:
                       packagename: $packageName,
                       name: $name,
                       description: $description,
-                      iconurl: $iconUrl,
+                      iconurl: (if $iconurl == "" then null else $iconurl end),
                       version: $version,
                       downloadurl: $downloadurl,
                       checksum: $checksum,
