@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Verify authorization and identify user
+        // Verify authorization and identify user (optional for external calls)
         const authHeader = request.headers.get("authorization");
         let userId: string | null = null;
 
@@ -47,9 +47,8 @@ export async function POST(request: NextRequest) {
 
             if (!authError && user) {
                 userId = user.id;
-            } else {
-                return NextResponse.json({ error: "Unauthorized. Valid user token required." }, { status: 401 });
             }
+            // Note: Auth is optional - external calls can proceed without token
         }
 
         // Parse request body
@@ -167,8 +166,9 @@ export async function POST(request: NextRequest) {
             message: "Tool intake request submitted successfully",
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        console.error("[update-tool] Error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: "Internal server error", details: errorMessage }, { status: 500 });
     }
 }
