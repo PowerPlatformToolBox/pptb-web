@@ -236,19 +236,40 @@ jobs:
                       size: ($size|tonumber)
                     }')
 
-                  # Update existing tool metadata in Supabase (not insert - tool should already exist)
+                  # Update existing tool metadata in Supabase (falls back to upsert if missing)
                   ENCODED_PACKAGE=$(echo "${{ steps.metadata.outputs.package_name }}" | jq -sRr @uri)
-                  RESPONSE=$(curl -X PATCH "${{ secrets.SUPABASE_URL }}/rest/v1/tools?packagename=eq.$ENCODED_PACKAGE" \
+                  PATCH_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "${{ secrets.SUPABASE_URL }}/rest/v1/tools?packagename=eq.$ENCODED_PACKAGE&select=id" \
                     -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                     -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                     -H "Content-Type: application/json" \
                     -H "Prefer: return=representation" \
                     -d "$TOOL_PAYLOAD")
 
-                  echo "Supabase tools response: $RESPONSE"
+                  PATCH_BODY=$(echo "$PATCH_RESPONSE" | head -n1)
+                  PATCH_STATUS=$(echo "$PATCH_RESPONSE" | tail -n1)
 
-                  # Extract the tool_id from response (response is array)
-                  TOOL_ID=$(echo "$RESPONSE" | jq -r '.[0].id // empty')
+                  echo "Supabase tools patch status: $PATCH_STATUS"
+                  echo "Supabase tools patch body: $PATCH_BODY"
+
+                  TOOL_ID=$(echo "$PATCH_BODY" | jq -r '.[0].id // empty')
+
+                  # If PATCH returned nothing, try upsert
+                  if [ -z "$TOOL_ID" ]; then
+                    UPSERT_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tools?on_conflict=packagename&select=id" \
+                      -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                      -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+                      -H "Content-Type: application/json" \
+                      -H "Prefer: resolution=merge-duplicates,return=representation" \
+                      -d "$TOOL_PAYLOAD")
+
+                    UPSERT_BODY=$(echo "$UPSERT_RESPONSE" | head -n1)
+                    UPSERT_STATUS=$(echo "$UPSERT_RESPONSE" | tail -n1)
+
+                    echo "Supabase tools upsert status: $UPSERT_STATUS"
+                    echo "Supabase tools upsert body: $UPSERT_BODY"
+
+                    TOOL_ID=$(echo "$UPSERT_BODY" | jq -r '.[0].id // empty')
+                  fi
 
                   if [ -n "$TOOL_ID" ]; then
                     echo "Tool metadata updated with ID: $TOOL_ID"
