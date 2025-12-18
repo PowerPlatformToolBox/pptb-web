@@ -4,15 +4,19 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create Supabase client with service role for server-side operations
-function getSupabaseClient() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+async function getSupabaseClient() {
+    // const supabaseUrl = process.env.SUPABASE_URL;
+    // const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return null;
-    }
+    // if (!supabaseUrl || !supabaseServiceKey) {
+    //     return null;
+    // }
 
-    return createClient(supabaseUrl, supabaseServiceKey);
+    const res = await fetch("/api/supabase-config");
+    if (!res.ok) throw new Error("Failed to retrieve Supabase configuration");
+    const { url, anonKey } = await res.json();
+
+    return createClient(url, anonKey);
 }
 
 interface UpdateToolRequest {
@@ -22,7 +26,7 @@ interface UpdateToolRequest {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = getSupabaseClient();
+        const supabase = await getSupabaseClient();
 
         if (!supabase) {
             return NextResponse.json(
