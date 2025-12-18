@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const defaultAllowedOrigins = ["http://localhost:3000", "https://powerplatformtoolbox.com"];
+const defaultAllowedOrigins = ["http://localhost:3000", "https://powerplatformtoolbox.com", "https://www.powerplatformtoolbox.com"];
 
 function isAllowedOrigin(request: NextRequest) {
     const configured = process.env.SUPABASE_CONFIG_ALLOWED_ORIGINS?.split(",")
