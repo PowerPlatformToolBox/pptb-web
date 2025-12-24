@@ -262,9 +262,9 @@ jobs:
                       readmeurl: $readmeurl,
                       published_at: $published,
                       license: $license,
-                      csp_exceptions: if $csp_exceptions == "" then null else $csp_exceptions end,
+                      csp_exceptions: (if $csp_exceptions == "" then null else $csp_exceptions end),
                       user_id: $submitted_by,
-                      features: if $features == "" then null else $features end
+                      features: (if $features == "" then null else $features end)
                     }')
 
                   # Insert or update tool metadata in Supabase
