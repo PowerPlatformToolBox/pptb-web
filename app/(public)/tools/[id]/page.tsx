@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Image from "next/image";
@@ -14,13 +15,12 @@ interface Tool {
     name: string;
     description: string;
     iconurl: string;
-    category: string;
+    categories: string[];
     downloads: number;
     rating: number;
-    aum?: number; // Active User Months
+    mau?: number; // Monthly Active Users
     longDescription?: string;
-    features?: string[];
-    author?: string;
+    contributors?: string[];
     version?: string;
     lastUpdated?: string;
 }
@@ -34,14 +34,13 @@ const mockTools: Record<string, Tool> = {
         longDescription:
             "Solution Manager is a comprehensive tool for managing your Power Platform solutions. It provides an intuitive interface for exporting, importing, and tracking versions of your solutions. With advanced features like dependency analysis, solution comparison, and bulk operations, you can streamline your solution lifecycle management.",
         iconurl: "📦",
-        category: "Solutions",
+        categories: ["Solutions"],
         downloads: 1250,
         rating: 4.8,
-        aum: 850,
-        author: "PPTB Team",
+        mau: 850,
+        contributors: ["PPTB Team"],
         version: "2.1.0",
         lastUpdated: "2024-01-15",
-        features: ["Export and import solutions", "Version control integration", "Dependency analysis", "Solution comparison", "Bulk operations", "Automated backups"],
     },
     "2": {
         id: "2",
@@ -50,14 +49,13 @@ const mockTools: Record<string, Tool> = {
         longDescription:
             "Environment Tools helps you manage multiple Power Platform environments with ease. Compare configurations, copy settings between environments, and ensure consistency across your development, test, and production environments.",
         iconurl: "🌍",
-        category: "Environments",
+        categories: ["Environments"],
         downloads: 980,
         rating: 4.6,
-        aum: 620,
-        author: "PPTB Team",
+        mau: 620,
+        contributors: ["PPTB Team"],
         version: "1.8.5",
         lastUpdated: "2024-01-10",
-        features: ["Environment comparison", "Configuration copying", "Settings management", "Multi-environment support", "Change tracking"],
     },
     "3": {
         id: "3",
@@ -66,14 +64,13 @@ const mockTools: Record<string, Tool> = {
         longDescription:
             "Code Generator automates the creation of strongly-typed code from your Dataverse metadata. Generate early-bound classes for .NET, TypeScript definitions for web resources, and more to improve your development productivity and code quality.",
         iconurl: "⚡",
-        category: "Development",
+        categories: ["Development"],
         downloads: 2100,
         rating: 4.9,
-        aum: 1450,
-        author: "PPTB Team",
+        mau: 1450,
+        contributors: ["PPTB Team"],
         version: "3.0.2",
         lastUpdated: "2024-01-18",
-        features: ["Early-bound class generation", "TypeScript definitions", "Action/Function proxies", "Custom templates", "Incremental updates", "Multiple language support"],
     },
     "4": {
         id: "4",
@@ -82,14 +79,13 @@ const mockTools: Record<string, Tool> = {
         longDescription:
             "Plugin Manager provides a modern interface for managing your Dataverse plugins and custom workflow activities. Register new plugins, update existing ones, and manage plugin steps with an intuitive visual interface.",
         iconurl: "🔌",
-        category: "Development",
+        categories: ["Development"],
         downloads: 1450,
         rating: 4.7,
-        aum: 920,
-        author: "PPTB Team",
+        mau: 920,
+        contributors: ["PPTB Team"],
         version: "2.5.1",
         lastUpdated: "2024-01-12",
-        features: ["Plugin registration", "Step management", "Assembly upload", "Profiling integration", "Bulk updates", "Plugin testing"],
     },
     "5": {
         id: "5",
@@ -98,14 +94,13 @@ const mockTools: Record<string, Tool> = {
         longDescription:
             "Data Import/Export tool makes it easy to move data in and out of your Dataverse environment. Support for multiple formats including Excel, CSV, and JSON, with advanced features like data transformation, validation, and bulk operations.",
         iconurl: "📊",
-        category: "Data",
+        categories: ["Data"],
         downloads: 1800,
         rating: 4.5,
-        aum: 1100,
-        author: "PPTB Team",
+        mau: 1100,
+        contributors: ["PPTB Team"],
         version: "2.3.0",
         lastUpdated: "2024-01-14",
-        features: ["Multiple format support", "Data transformation", "Validation rules", "Bulk operations", "Scheduled imports", "Error handling"],
     },
     "6": {
         id: "6",
@@ -114,14 +109,13 @@ const mockTools: Record<string, Tool> = {
         longDescription:
             "Performance Monitor helps you track and analyze the performance of your Power Platform solutions. Identify bottlenecks, monitor resource usage, and get actionable insights to optimize your applications.",
         iconurl: "📈",
-        category: "Monitoring",
+        categories: ["Monitoring"],
         downloads: 750,
         rating: 4.4,
-        aum: 480,
-        author: "PPTB Team",
+        mau: 480,
+        contributors: ["PPTB Team"],
         version: "1.5.3",
         lastUpdated: "2024-01-08",
-        features: ["Real-time monitoring", "Performance metrics", "Bottleneck detection", "Resource usage tracking", "Historical analysis", "Optimization recommendations"],
     },
 };
 
@@ -148,7 +142,13 @@ export default function ToolDetailsPage() {
         }
         (async () => {
             try {
-                const { data: toolData, error } = await supabase.from("tools").select("id, name, description, iconurl, category, tool_analytics (downloads, rating, aum)").eq("id", toolId).single();
+                const { data: toolData, error } = await supabase
+                    .from("tools")
+                    .select(
+                        "id, name, description, iconurl, version, updated_at, tool_analytics (downloads, rating, mau), tool_categories (categories (name)), tool_contributors (contributors (name))",
+                    )
+                    .eq("id", toolId)
+                    .single();
                 if (error) throw error;
                 if (toolData) {
                     setTool({
@@ -156,10 +156,13 @@ export default function ToolDetailsPage() {
                         name: toolData.name,
                         description: toolData.description,
                         iconurl: toolData.iconurl,
-                        category: toolData.category,
-                        downloads: toolData.tool_analytics?.[0]?.downloads || 0,
-                        rating: toolData.tool_analytics?.[0]?.rating || 0,
-                        aum: toolData.tool_analytics?.[0]?.aum || 0,
+                        contributors: (toolData as any).tool_contributors?.flatMap((tc: any) => tc.contributors?.name) || [],
+                        version: (toolData as any).version,
+                        lastUpdated: (toolData as any).updated_at,
+                        categories: toolData.tool_categories?.flatMap((tc: any) => tc.categories?.name) || [],
+                        downloads: (toolData.tool_analytics as any)?.downloads || 0,
+                        rating: (toolData.tool_analytics as any)?.rating || 0,
+                        mau: (toolData.tool_analytics as any)?.mau || 0,
                     });
                 } else if (mockTools[toolId]) {
                     setTool(mockTools[toolId]);
@@ -217,9 +220,13 @@ export default function ToolDetailsPage() {
                                 )}
                             </div>
                             <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
+                                <div className="flex items-center gap-3 mb-2 flex-wrap">
                                     <h1 className="text-4xl font-bold tracking-tight text-slate-900">{tool.name}</h1>
-                                    <span className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                    {tool.categories.map((category) => (
+                                        <span key={category} className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">
+                                            {category}
+                                        </span>
+                                    ))}
                                 </div>
                                 <p className="text-lg text-slate-600 mb-4">{tool.description}</p>
                                 <div className="flex flex-wrap gap-6 text-sm">
@@ -239,7 +246,7 @@ export default function ToolDetailsPage() {
                                             <strong>{tool.rating.toFixed(1)}</strong> rating
                                         </span>
                                     </div>
-                                    {tool.aum && (
+                                    {tool.mau && (
                                         <div className="flex items-center gap-2">
                                             <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path
@@ -250,7 +257,7 @@ export default function ToolDetailsPage() {
                                                 />
                                             </svg>
                                             <span className="text-slate-700">
-                                                <strong>{tool.aum.toLocaleString()}</strong> AUM
+                                                <strong>{tool.mau.toLocaleString()}</strong> MAU
                                             </span>
                                         </div>
                                     )}
@@ -266,22 +273,6 @@ export default function ToolDetailsPage() {
                                     <h2 className="text-2xl font-semibold text-slate-900 mb-4">About</h2>
                                     <p className="text-slate-700 leading-relaxed">{tool.longDescription || tool.description}</p>
                                 </div>
-
-                                {tool.features && tool.features.length > 0 && (
-                                    <div className="card p-8 shadow-lg border-l-4 border-blue-600">
-                                        <h2 className="text-2xl font-semibold text-slate-900 mb-4">Features</h2>
-                                        <ul className="space-y-3">
-                                            {tool.features.map((feature, index) => (
-                                                <li key={index} className="flex items-start gap-3">
-                                                    <svg className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <span className="text-slate-700">{feature}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Sidebar */}
@@ -295,10 +286,10 @@ export default function ToolDetailsPage() {
                                                 <dd className="text-slate-900 font-medium">{tool.version}</dd>
                                             </>
                                         )}
-                                        {tool.author && (
+                                        {tool.contributors && tool.contributors.length > 0 && (
                                             <>
-                                                <dt className="text-slate-500">Author</dt>
-                                                <dd className="text-slate-900 font-medium">{tool.author}</dd>
+                                                <dt className="text-slate-500">Contributors</dt>
+                                                <dd className="text-slate-900 font-medium">{tool.contributors.join(", ")}</dd>
                                             </>
                                         )}
                                         {tool.lastUpdated && (
