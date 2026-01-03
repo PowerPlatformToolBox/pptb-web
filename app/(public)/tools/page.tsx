@@ -105,8 +105,6 @@ export default function ToolsPage() {
                     .eq("status", "active")
                     .order("name", { ascending: true });
 
-                console.log(data);
-
                 if (error) throw error;
                 if (data) {
                     const transformed: Tool[] = data.map(
