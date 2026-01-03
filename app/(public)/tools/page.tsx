@@ -12,9 +12,11 @@ interface Tool {
     name: string;
     description: string;
     iconurl: string;
-    category: string;
+    categories: string[];
     downloads: number;
     rating: number;
+    contributors: string[];
+    mau?: number;
 }
 
 // Mock data for tools (will be replaced with Supabase data)
@@ -24,54 +26,66 @@ const mockTools: Tool[] = [
         name: "Solution Manager",
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
         iconurl: "📦",
-        category: "Solutions",
+        contributors: ["PowerPlatformToolBox"],
+        categories: ["Solutions"],
         downloads: 1250,
         rating: 4.8,
+        mau: 320,
     },
     {
         id: "2",
         name: "Environment Tools",
         description: "Compare environments, copy configurations, and manage environment settings efficiently.",
         iconurl: "🌍",
-        category: "Environments",
+        contributors: ["PowerPlatformToolBox"],
+        categories: ["Environments"],
         downloads: 980,
         rating: 4.6,
+        mau: 280,
     },
     {
         id: "3",
         name: "Code Generator",
         description: "Generate early-bound classes, TypeScript definitions, and more from your Dataverse metadata.",
         iconurl: "⚡",
-        category: "Development",
+        contributors: ["PowerPlatformToolBox"],
+        categories: ["Development"],
         downloads: 2100,
         rating: 4.9,
+        mau: 450,
     },
     {
         id: "4",
         name: "Plugin Manager",
         description: "Register, update, and manage your plugins and custom workflow activities with a modern interface.",
         iconurl: "🔌",
-        category: "Development",
+        contributors: ["PowerPlatformToolBox"],
+        categories: ["Development"],
         downloads: 1450,
         rating: 4.7,
+        mau: 380,
     },
     {
         id: "5",
         name: "Data Import/Export",
         description: "Import and export data using Excel, CSV, or JSON. Support for bulk operations and data transformation.",
         iconurl: "📊",
-        category: "Data",
+        contributors: ["PowerPlatformToolBox"],
+        categories: ["Data"],
         downloads: 1800,
         rating: 4.5,
+        mau: 410,
     },
     {
         id: "6",
         name: "Performance Monitor",
         description: "Monitor and analyze the performance of your Power Platform solutions. Identify bottlenecks and optimize.",
         iconurl: "📈",
-        category: "Monitoring",
+        contributors: ["PowerPlatformToolBox"],
+        categories: ["Monitoring"],
         downloads: 750,
         rating: 4.4,
+        mau: 200,
     },
 ];
 
@@ -87,19 +101,33 @@ export default function ToolsPage() {
             try {
                 const { data, error } = await supabase
                     .from("tools")
-                    .select(`id,name,description,iconurl,category,tool_analytics (downloads,rating)`) // simplified select
+                    .select(`id,name,description,iconurl,tool_analytics (downloads,rating,mau),tool_categories (categories (name)),tool_contributors (contributors (name))`)
+                    .eq("status", "active")
                     .order("name", { ascending: true });
+
+                console.log(data);
+
                 if (error) throw error;
                 if (data) {
                     const transformed: Tool[] = data.map(
-                        (tool: { id: string; name: string; description: string; iconurl: string; category: string; tool_analytics?: Array<{ downloads: number; rating: number }> }) => ({
+                        (tool: {
+                            id: string;
+                            name: string;
+                            description: string;
+                            iconurl: string;
+                            tool_analytics?: unknown;
+                            tool_categories?: Array<{ categories: unknown }>;
+                            tool_contributors?: Array<{ contributors: unknown }>;
+                        }) => ({
                             id: tool.id,
                             name: tool.name,
                             description: tool.description,
                             iconurl: tool.iconurl || "📦",
-                            category: tool.category,
-                            downloads: tool.tool_analytics?.[0]?.downloads || 0,
-                            rating: tool.tool_analytics?.[0]?.rating || 0,
+                            contributors: tool.tool_contributors?.flatMap((tc) => (tc.contributors as { name: string }).name) || [],
+                            categories: tool.tool_categories?.flatMap((tc) => (tc.categories as { name: string }).name) || ["\u00A0"],
+                            downloads: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.downloads || 0,
+                            rating: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.rating || 0,
+                            mau: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.mau || 0,
                         }),
                     );
                     setTools(transformed);
@@ -113,8 +141,8 @@ export default function ToolsPage() {
         })();
     }, [supabase]);
 
-    const categories = ["All", ...Array.from(new Set(tools.map((t) => t.category)))];
-    const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.category === selectedCategory);
+    const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories)))];
+    const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.categories.includes(selectedCategory));
 
     return (
         <main>
@@ -156,10 +184,23 @@ export default function ToolsPage() {
                                 <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                                     {filteredTools.map((tool, index) => (
                                         <FadeIn key={tool.id} direction="up" delay={0.5 + index * 0.05}>
-                                            <Link href={`/tools/${tool.id}`} className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                                                <div className="p-6">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="w-16 h-16 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
+                                            <Link
+                                                href={`/tools/${tool.id}`}
+                                                className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col rounded-2xl bg-gradient-to-br from-blue-500/70 via-purple-500/70 to-blue-600/70 p-[1.5px]"
+                                            >
+                                                <div className="p-6 flex flex-col h-full bg-white rounded-2xl">
+                                                    {/* Tags Section */}
+                                                    <div className="flex flex-wrap gap-2 mb-4 h-7">
+                                                        {tool.categories.slice(0, 3).map((category) => (
+                                                            <span key={category} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                                                                {category}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Icon and Name Section */}
+                                                    <div className="flex items-start gap-4 mb-4 h-20">
+                                                        <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
                                                             {tool.iconurl && tool.iconurl.startsWith("http") ? (
                                                                 <Image
                                                                     src={tool.iconurl}
@@ -168,7 +209,6 @@ export default function ToolsPage() {
                                                                     height={48}
                                                                     className="object-contain"
                                                                     onError={(e) => {
-                                                                        // Fallback to emoji if image fails to load
                                                                         e.currentTarget.style.display = "none";
                                                                         if (e.currentTarget.nextSibling) {
                                                                             (e.currentTarget.nextSibling as HTMLElement).style.display = "block";
@@ -179,11 +219,27 @@ export default function ToolsPage() {
                                                                 <span className="text-4xl">{tool.iconurl || "📦"}</span>
                                                             )}
                                                         </div>
-                                                        <span className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">{tool.category}</span>
+                                                        <div className="flex-1 flex flex-col justify-between">
+                                                            <p className="text-lg font-semibold text-slate-900 group-hover:text-gradient transition-colors line-clamp-2" title={tool.name}>
+                                                                {tool.name}
+                                                            </p>
+                                                            <p className="text-xs text-slate-600">
+                                                                by {tool.contributors.slice(0, 2).join(", ")}
+                                                                {tool.contributors.length > 2 && ` +${tool.contributors.length - 2}`}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <h3 className="text-xl font-semibold text-slate-900 group-hover:text-gradient transition-colors">{tool.name}</h3>
-                                                    <p className="mt-3 text-sm text-slate-600">{tool.description}</p>
-                                                    <div className="mt-6 flex items-center justify-between text-sm">
+
+                                                    {/* Description Section (2 lines max) */}
+                                                    <p className="text-sm text-slate-600 mb-4 line-clamp-2 flex-1" title={tool.description}>
+                                                        {tool.description}
+                                                    </p>
+
+                                                    {/* Stats Section */}
+                                                    <div
+                                                        className="flex items-center justify-between text-sm pt-4 border-t border-slate-200"
+                                                        title={`${tool.downloads.toLocaleString()} downloads • ${tool.rating.toFixed(1)} rating • ${tool.mau?.toLocaleString() || "0"} MAU`}
+                                                    >
                                                         <div className="flex items-center gap-1 text-slate-600">
                                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -195,6 +251,15 @@ export default function ToolsPage() {
                                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                                             </svg>
                                                             <span>{tool.rating.toFixed(1)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-purple-600">
+                                                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                                                                <circle cx="9" cy="7" r="4" />
+                                                                <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                                                                <path d="M16 3.13a4 4 0 010 7.75" />
+                                                            </svg>
+                                                            <span className="text-xs">{tool.mau?.toLocaleString() || "0"}</span>
                                                         </div>
                                                     </div>
                                                 </div>
