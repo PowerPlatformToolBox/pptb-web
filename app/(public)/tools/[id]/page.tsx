@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { marked } from "marked";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ interface Tool {
     rating: number;
     mau?: number; // Monthly Active Users
     longDescription?: string;
+    readmeUrl?: string;
     contributors?: string[];
     version?: string;
     lastUpdated?: string;
@@ -127,6 +129,8 @@ export default function ToolDetailsPage() {
 
     const [tool, setTool] = useState<Tool | null>(null);
     const [loading, setLoading] = useState(true);
+    const [readmeContent, setReadmeContent] = useState<string>("");
+    const [loadingReadme, setLoadingReadme] = useState(false);
 
     useEffect(() => {
         if (!toolId) {
@@ -145,7 +149,7 @@ export default function ToolDetailsPage() {
                 const { data: toolData, error } = await supabase
                     .from("tools")
                     .select(
-                        "id, name, description, iconurl, version, updated_at, tool_analytics (downloads, rating, mau), tool_categories (categories (name)), tool_contributors (contributors (name))",
+                        "id, name, description, iconurl, version, updated_at, readmeurl, tool_analytics (downloads, rating, mau), tool_categories (categories (name)), tool_contributors (contributors (name))",
                     )
                     .eq("id", toolId)
                     .single();
@@ -156,6 +160,7 @@ export default function ToolDetailsPage() {
                         name: toolData.name,
                         description: toolData.description,
                         iconurl: toolData.iconurl,
+                        readmeUrl: (toolData as any).readmeurl,
                         contributors: (toolData as any).tool_contributors?.flatMap((tc: any) => tc.contributors?.name) || [],
                         version: (toolData as any).version,
                         lastUpdated: (toolData as any).updated_at,
@@ -179,6 +184,29 @@ export default function ToolDetailsPage() {
             }
         })();
     }, [toolId, supabase, router]);
+
+    // Fetch and convert markdown from readme URL using marked
+    useEffect(() => {
+        if (!tool?.readmeUrl) return;
+
+        const fetchReadme = async () => {
+            setLoadingReadme(true);
+            try {
+                const response = await fetch(tool.readmeUrl!);
+                if (!response.ok) throw new Error("Failed to fetch README");
+                const markdown = await response.text();
+                const html = await marked(markdown);
+                setReadmeContent(html);
+            } catch (error) {
+                console.error("Error fetching README:", error);
+                setReadmeContent("");
+            } finally {
+                setLoadingReadme(false);
+            }
+        };
+
+        fetchReadme();
+    }, [tool?.readmeUrl]);
 
     if (loading) {
         return (
@@ -271,7 +299,19 @@ export default function ToolDetailsPage() {
                             <div className="lg:col-span-2 space-y-8">
                                 <div className="card p-8 shadow-lg hover:shadow-xl transition-shadow">
                                     <h2 className="text-2xl font-semibold text-slate-900 mb-4">About</h2>
-                                    <p className="text-slate-700 leading-relaxed">{tool.longDescription || tool.description}</p>
+                                    {loadingReadme ? (
+                                        <div className="flex items-center gap-2 text-slate-600">
+                                            <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
+                                            <span>Loading documentation...</span>
+                                        </div>
+                                    ) : readmeContent ? (
+                                        <div
+                                            className="prose prose-slate max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-pre:bg-slate-100"
+                                            dangerouslySetInnerHTML={{ __html: readmeContent }}
+                                        />
+                                    ) : (
+                                        <p className="text-slate-700 leading-relaxed">{tool.longDescription || tool.description}</p>
+                                    )}
                                 </div>
                             </div>
 
