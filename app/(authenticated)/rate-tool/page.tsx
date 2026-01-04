@@ -126,7 +126,7 @@ export default function RateToolPage() {
 
     return (
         <main>
-            <Container className="mt-16 sm:mt-32">
+            <Container className="mt-2 sm:mt-4">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl">
                         {/* Back button */}

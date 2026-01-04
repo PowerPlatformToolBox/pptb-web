@@ -144,7 +144,7 @@ export default function ToolsPage() {
 
     return (
         <main>
-            <Container className="mt-8 sm:mt-16">
+            <Container className="mt-2 sm:mt-4">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl lg:max-w-7xl">
                         <header className="max-w-2xl mb-16">
