@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Link from "next/link";
@@ -125,7 +124,6 @@ export default function AdminToolIntakesPage() {
         }
 
         initPage();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusFilter, supabase]);
 
     async function handleReviewAction(intakeId: string, action: "approve" | "reject" | "needs_changes") {
@@ -370,16 +368,20 @@ export default function AdminToolIntakesPage() {
                                                         <div>
                                                             <strong className="text-slate-700">Contributors:</strong>
                                                             <ul className="text-slate-600 mt-1">
-                                                                {intake.contributors.map((contrib, idx) => (
-                                                                    <li key={idx}>
-                                                                        {contrib.name}
-                                                                        {contrib.url && (
-                                                                            <a href={contrib.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline">
-                                                                                (link)
-                                                                            </a>
-                                                                        )}
-                                                                    </li>
-                                                                ))}
+                                                                {intake.contributors && intake.contributors.length > 0 ? (
+                                                                    intake.contributors.map((contrib, idx) => (
+                                                                        <li key={idx}>
+                                                                            {contrib.name}
+                                                                            {contrib.url && (
+                                                                                <a href={contrib.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline">
+                                                                                    (link)
+                                                                                </a>
+                                                                            )}
+                                                                        </li>
+                                                                    ))
+                                                                ) : (
+                                                                    <li className="text-slate-400">No contributors listed</li>
+                                                                )}
                                                             </ul>
                                                         </div>
                                                         <div>
