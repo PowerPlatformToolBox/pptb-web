@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
+import { useSupabase } from "@/lib/useSupabase";
 
 interface Category {
     id: number;
@@ -34,6 +35,7 @@ interface SubmitSuccessResponse {
 }
 
 export default function SubmitToolPage() {
+    const { supabase } = useSupabase();
     const [packageName, setPackageName] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -61,7 +63,17 @@ export default function SubmitToolPage() {
     }, []);
 
     const handleCategoryToggle = (categoryId: number) => {
-        setSelectedCategories((prev) => (prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]));
+        setSelectedCategories((prev) => {
+            if (prev.includes(categoryId)) {
+                // Remove if already selected
+                return prev.filter((id) => id !== categoryId);
+            } else if (prev.length < 3) {
+                // Add only if less than 3 selected
+                return [...prev, categoryId];
+            }
+            // Don't add if already at limit
+            return prev;
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -74,6 +86,11 @@ export default function SubmitToolPage() {
 
         if (selectedCategories.length === 0) {
             setError({ error: "Please select at least one category" });
+            return;
+        }
+
+        if (selectedCategories.length > 3) {
+            setError({ error: "Please select no more than 3 categories" });
             return;
         }
 
@@ -297,21 +314,21 @@ export default function SubmitToolPage() {
                                                                     ? "bg-blue-50 border-blue-500 text-blue-900"
                                                                     : "bg-white border-slate-300 text-slate-700 hover:border-blue-300"
                                                             }
-                                                            ${loading ? "opacity-50 cursor-not-allowed" : ""}
+                                                            ${loading || (selectedCategories.length >= 3 && !selectedCategories.includes(category.id)) ? "opacity-50 cursor-not-allowed" : ""}
                                                         `}
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedCategories.includes(category.id)}
                                                             onChange={() => handleCategoryToggle(category.id)}
-                                                            disabled={loading}
+                                                            disabled={loading || (selectedCategories.length >= 3 && !selectedCategories.includes(category.id))}
                                                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                                         />
                                                         <span className="text-sm font-medium">{category.name}</span>
                                                     </label>
                                                 ))}
                                             </div>
-                                            <p className="mt-2 text-xs text-slate-500">Select one or more categories that best describe your tool</p>
+                                            <p className="mt-2 text-xs text-slate-500">Select up to 3 categories that best describe your tool ({selectedCategories.length}/3 selected)</p>
                                         </>
                                     )}
                                 </div>

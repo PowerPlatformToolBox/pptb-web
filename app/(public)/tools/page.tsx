@@ -176,7 +176,7 @@ export default function ToolsPage() {
                                         <FadeIn key={tool.id} direction="up" delay={0.5 + index * 0.05}>
                                             <Link
                                                 href={`/tools/${tool.id}`}
-                                                className="card group block h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col rounded-2xl bg-gradient-to-br from-blue-500/70 via-purple-500/70 to-blue-600/70 p-[1.5px]"
+                                                className="card group h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col rounded-2xl bg-linear-to-br from-blue-500/70 via-purple-500/70 to-blue-600/70 p-[1.5px]"
                                             >
                                                 <div className="p-6 flex flex-col h-full bg-white rounded-2xl">
                                                     {/* Tags Section */}
@@ -190,7 +190,7 @@ export default function ToolsPage() {
 
                                                     {/* Icon and Name Section */}
                                                     <div className="flex items-start gap-4 mb-4 h-20">
-                                                        <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
+                                                        <div className="w-16 h-16 shrink-0 flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
                                                             {tool.iconurl && tool.iconurl.startsWith("http") ? (
                                                                 <Image
                                                                     src={tool.iconurl}

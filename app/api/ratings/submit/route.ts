@@ -62,25 +62,3 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to submit rating" }, { status: 500 });
     }
 }
-
-export async function GET(request: NextRequest, { params }: { params: { toolId: string } }) {
-    try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-            return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
-        }
-
-        const { toolId } = params;
-
-        const { data: reviews, error } = await supabase.from("ratings").select("*").eq("tool_id", toolId).order("created_at", { ascending: false });
-
-        if (error) {
-            throw error;
-        }
-
-        return NextResponse.json(reviews || []);
-    } catch (error) {
-        console.error("Error fetching reviews:", error);
-        return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
-    }
-}
