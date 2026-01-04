@@ -50,8 +50,11 @@ jobs:
 
                   TOOL_NAME=$(echo "$NPM_INFO" | jq -r '.displayName // .name // "${{ inputs.tool_id }}"')
                   TOOL_DESC=$(echo "$NPM_INFO" | jq -r '.description // "Power Platform Tool"')
-                  README_URL=$(echo "$NPM_INFO" | jq -r '.repository.url // .homepage // ""' | sed 's/^git+//')
-                  ICON_URL=$(echo "$NPM_INFO" | jq -r '.icon // .iconUrl // empty')
+
+                  # Extract iconUrl and readmeUrl from configurations section
+                  ICON_URL=$(echo "$NPM_INFO" | jq -r '.configurations.iconUrl // .icon // .iconUrl // empty')
+                  README_URL=$(echo "$NPM_INFO" | jq -r '.configurations.readmeUrl // .repository.url // .homepage // ""' | sed 's/^git+//')
+
                   LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // ""')
 
                   echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
