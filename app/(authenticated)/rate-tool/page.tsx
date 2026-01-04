@@ -40,11 +40,25 @@ export default function RateToolPage() {
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [authToken, setAuthToken] = useState<string>("");
 
     useEffect(() => {
         if (!supabase) return;
         (async () => {
             try {
+                const {
+                    data: { session },
+                } = await supabase.auth.getSession();
+                if (!session) {
+                    router.push("/auth/signin");
+                    return;
+                }
+
+                if (session.access_token) {
+                    setAuthToken(session.access_token);
+                    sessionStorage.setItem("supabaseToken", session.access_token);
+                }
+
                 const {
                     data: { user },
                 } = await supabase.auth.getUser();
@@ -53,11 +67,27 @@ export default function RateToolPage() {
                     router.push("/tools");
                     return;
                 }
-                const { data: toolData, error: toolError } = await supabase.from("tools").select("id, name, description, iconurl").eq("id", toolId).single();
-                if (toolError) throw toolError;
-                if (toolData) setTool(toolData);
-                else if (toolId && mockTools[toolId]) setTool(mockTools[toolId]);
-                else router.push("/tools");
+
+                // Fetch tool using API
+                const response = await fetch(`/api/tools/${toolId}`);
+                if (response.ok) {
+                    const toolData = await response.json();
+                    if (toolData) {
+                        setTool({
+                            id: toolData.id,
+                            name: toolData.name,
+                            description: toolData.description,
+                            iconurl: toolData.iconurl,
+                        });
+                    } else if (toolId && mockTools[toolId]) {
+                        setTool(mockTools[toolId]);
+                    } else {
+                        router.push("/tools");
+                    }
+                } else {
+                    if (toolId && mockTools[toolId]) setTool(mockTools[toolId]);
+                    else router.push("/tools");
+                }
             } catch (err) {
                 console.error("Error loading data:", err);
                 if (toolId && mockTools[toolId]) setTool(mockTools[toolId]);
@@ -76,7 +106,7 @@ export default function RateToolPage() {
             return;
         }
 
-        if (!supabase || !user || !tool) {
+        if (!user || !tool || !authToken) {
             setError("Unable to submit rating at this time");
             return;
         }
@@ -85,15 +115,22 @@ export default function RateToolPage() {
         setError(null);
 
         try {
-            const { error: submitError } = await supabase.from("ratings").insert({
-                tool_id: tool.id,
-                user_id: user.id,
-                rating,
-                comment: comment.trim() || null,
-                created_at: new Date().toISOString(),
+            const response = await fetch("/api/ratings/submit", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    toolId: tool.id,
+                    rating,
+                    comment: comment.trim() || null,
+                }),
             });
 
-            if (submitError) throw submitError;
+            if (!response.ok) {
+                throw new Error("Failed to submit rating");
+            }
 
             setSuccess(true);
             setTimeout(() => {

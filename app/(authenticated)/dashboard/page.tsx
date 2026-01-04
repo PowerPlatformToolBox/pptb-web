@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
 import { TOOL_STATUSES } from "@/lib/constants/tool-statuses";
-import { useSupabase } from "@/lib/useSupabase";
 
 const PLACEHOLDER_ICON_PATH = "/images/placeholders/tool-icon-placeholder.svg";
 
@@ -37,7 +36,7 @@ interface Tool {
     tool_analytics?: {
         downloads: number;
         rating: number;
-        aum?: number; // Active User Months
+        mau?: number; // Monthly Active Users
     };
 }
 
@@ -45,74 +44,51 @@ export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(true);
-    const [sortBy, setSortBy] = useState<"downloads" | "rating" | "aum">("downloads");
+    const [sortBy, setSortBy] = useState<"downloads" | "rating" | "mau">("downloads");
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
-    const { supabase } = useSupabase();
     const [isAdmin, setIsAdmin] = useState(false);
+    const [authToken, setAuthToken] = useState<string>("");
 
     useEffect(() => {
-        if (!supabase) return;
+        // Get auth token from sessionStorage (set by layout)
+        const token = sessionStorage.getItem("supabaseToken");
+        if (!token) {
+            // If no token, auth check will be done in layout
+            return;
+        }
+        setAuthToken(token);
+
+        // Fetch dashboard data
         (async () => {
             try {
-                const {
-                    data: { user },
-                } = await supabase.auth.getUser();
+                const response = await fetch("/api/dashboard", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
 
-                if (user) {
-                    setUser(user);
+                if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
-                    // Check if user is admin (avoid single/maybeSingle to prevent 406)
-                    const { data: roleRows, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").limit(1);
+                const { user: dashUser, isAdmin: admin, tools: dashTools } = await response.json();
 
-                    if (roleError) {
-                        console.warn("Role check failed:", roleError);
-                    }
-                    setIsAdmin(!!roleRows && roleRows.length > 0);
-                }
-
-                // Fetch tools data with analytics and categories
-                const { data: toolsData, error } = await supabase
-                    .from("tools")
-                    .select(
-                        `
-                        id, 
-                        name, 
-                        description, 
-                        iconurl, 
-                        user_id,
-                        status,
-                        tool_analytics (downloads, rating, aum),
-                        tool_categories (
-                            categories (id, name)
-                        )
-                    `,
-                    )
-                    .order("name", { ascending: true });
-                if (error) throw error;
-                if (toolsData) {
-                    // Transform tool_categories for easier rendering
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const transformedTools = toolsData.map((tool: any) => ({
-                        ...tool,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
-                    })) as Tool[];
-                    setTools(transformedTools);
-                    console.log(transformedTools);
+                if (dashUser) {
+                    setUser(dashUser);
+                    setIsAdmin(admin);
+                    setTools(dashTools);
                 }
             } catch (error) {
-                console.error("Error fetching data:", error);
+                console.error("Error fetching dashboard data:", error);
                 setTools([]);
             } finally {
                 setLoading(false);
             }
         })();
-    }, [supabase]);
+    }, []);
 
     // Sign out logic handled in Header component.
 
     const handleToolAction = async (toolId: string, action: "deprecate" | "delete") => {
-        if (!supabase || !user) return;
+        if (!user || !authToken) return;
 
         const confirmMessage =
             action === "deprecate"
@@ -124,15 +100,11 @@ export default function DashboardPage() {
         try {
             const newStatus = action === "deprecate" ? TOOL_STATUSES.DEPRECATED : TOOL_STATUSES.DELETED;
 
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-
             const response = await fetch("/api/tools/update-status", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token}`,
+                    Authorization: `Bearer ${authToken}`,
                 },
                 body: JSON.stringify({ toolId, status: newStatus }),
             });
@@ -163,8 +135,8 @@ export default function DashboardPage() {
                 return (bAnalytics?.downloads || 0) - (aAnalytics?.downloads || 0);
             case "rating":
                 return (bAnalytics?.rating || 0) - (aAnalytics?.rating || 0);
-            case "aum":
-                return (bAnalytics?.aum || 0) - (aAnalytics?.aum || 0);
+            case "mau":
+                return (bAnalytics?.mau || 0) - (aAnalytics?.mau || 0);
             default:
                 return 0;
         }
@@ -308,12 +280,12 @@ export default function DashboardPage() {
                                     <select
                                         id="sort"
                                         value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value as "downloads" | "rating" | "aum")}
+                                        onChange={(e) => setSortBy(e.target.value as "downloads" | "rating" | "mau")}
                                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                                     >
                                         <option value="downloads">Downloads</option>
                                         <option value="rating">Rating</option>
-                                        <option value="aum">Active Users</option>
+                                        <option value="mau">Monthly Active Users</option>
                                     </select>
                                 </div>
                             </div>
@@ -353,7 +325,7 @@ export default function DashboardPage() {
                                                     {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>}
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Downloads</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rating</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">AUM</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">MAU</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                                                 </tr>
                                             </thead>
@@ -412,7 +384,7 @@ export default function DashboardPage() {
                                                                     <span className="text-sm text-slate-900">{(analytics?.rating || 0).toFixed(1)}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.aum?.toLocaleString() || "N/A"}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "N/A"}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                                 <div className="flex gap-2">
                                                                     {viewMode === "my" ? (

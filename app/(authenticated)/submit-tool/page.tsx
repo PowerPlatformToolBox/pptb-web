@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
-import { useSupabase } from "@/lib/useSupabase";
 
 interface Category {
     id: number;
@@ -35,7 +34,6 @@ interface SubmitSuccessResponse {
 }
 
 export default function SubmitToolPage() {
-    const { supabase } = useSupabase();
     const [packageName, setPackageName] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -44,22 +42,14 @@ export default function SubmitToolPage() {
     const [error, setError] = useState<ValidationError | null>(null);
     const [success, setSuccess] = useState<SubmitSuccessResponse["data"] | null>(null);
 
-    // Fetch categories from Supabase on mount
+    // Fetch categories from API on mount
     useEffect(() => {
         async function fetchCategories() {
-            if (!supabase) {
-                setLoadingCategories(false);
-                return;
-            }
-
             try {
-                const { data, error: fetchError } = await supabase.from("categories").select("id, name").order("name");
-
-                if (fetchError) {
-                    console.error("Error fetching categories:", fetchError);
-                } else {
-                    setCategories(data || []);
-                }
+                const response = await fetch("/api/categories");
+                if (!response.ok) throw new Error("Failed to fetch categories");
+                const data = await response.json();
+                setCategories(data || []);
             } catch (err) {
                 console.error("Error fetching categories:", err);
             } finally {
@@ -68,7 +58,7 @@ export default function SubmitToolPage() {
         }
 
         fetchCategories();
-    }, [supabase]);
+    }, []);
 
     const handleCategoryToggle = (categoryId: number) => {
         setSelectedCategories((prev) => (prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]));

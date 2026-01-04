@@ -19,7 +19,7 @@ export interface Tool {
     category: string;
     downloads: number;
     rating: number;
-    aum?: number;
+    mau?: number;
     author?: string;
     version?: string;
     last_updated?: string;

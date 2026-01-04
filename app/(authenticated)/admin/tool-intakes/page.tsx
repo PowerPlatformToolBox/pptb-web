@@ -57,53 +57,23 @@ export default function AdminToolIntakesPage() {
     const [reviewNotes, setReviewNotes] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [authToken, setAuthToken] = useState<string>("");
 
-    const refreshIntakes = async () => {
-        if (!supabase) {
-            setError("Database not configured");
-            setLoading(false);
-            return;
-        }
-
+    const refreshIntakes = async (token: string) => {
         try {
-            let query = supabase
-                .from("tool_intakes")
-                .select(
-                    `
-                    *,
-                    tool_intake_categories(
-                        categories(id, name)
-                    ),
-                    tool_intake_contributors(
-                        contributor_id,
-                        contributors(id, name, profile_url)
-                    )
-                `,
-                )
-                .order("created_at", { ascending: false });
+            const statusParam = statusFilter !== "all" ? statusFilter : "";
+            const response = await fetch(`/api/admin/tool-intakes?status=${statusParam}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
-            if (statusFilter !== "all") {
-                query = query.eq("status", statusFilter);
+            if (!response.ok) {
+                throw new Error("Failed to fetch tool intakes");
             }
 
-            const { data, error: fetchError } = await query;
-
-            if (fetchError) throw fetchError;
-
-            // Transform the data to flatten categories
-            const transformedData = (data || []).map((intake: any) => ({
-                ...intake,
-                categories: intake.tool_intake_categories?.map((tic: any) => tic.categories).filter(Boolean) || [],
-                contributors:
-                    intake.tool_intake_contributors
-                        ?.map((tic: any) => ({
-                            name: tic.contributors?.name,
-                            url: tic.contributors?.profile_url || undefined,
-                        }))
-                        .filter((c: any) => c.name) || [],
-            }));
-
-            setIntakes(transformedData);
+            const { data } = await response.json();
+            setIntakes(data || []);
         } catch (err) {
             console.error("Error fetching intakes:", err);
             setError("Failed to load tool intake requests");
@@ -115,48 +85,59 @@ export default function AdminToolIntakesPage() {
     useEffect(() => {
         if (!supabase) return; // wait for client init
 
-        async function checkAdminStatus() {
+        async function initPage() {
             try {
                 const {
-                    data: { user },
-                } = await supabase!.auth.getUser();
-                if (!user) {
+                    data: { session },
+                } = await supabase!.auth.getSession();
+
+                if (!session) {
                     setIsAdmin(false);
                     return;
                 }
-                // Count-based head query to avoid 406 and reduce payload
-                const { count, error: roleError } = await supabase!.from("user_roles").select("role", { head: true, count: "exact" }).eq("user_id", user.id).eq("role", "admin");
-                if (roleError) {
-                    console.warn("Admin role check failed:", roleError);
-                    setIsAdmin(false);
-                } else {
-                    setIsAdmin((count || 0) > 0);
+
+                if (session.access_token) {
+                    setAuthToken(session.access_token);
+                    sessionStorage.setItem("supabaseToken", session.access_token);
+
+                    // Fetch intakes using API
+                    const statusParam = statusFilter !== "all" ? statusFilter : "";
+                    const response = await fetch(`/api/admin/tool-intakes?status=${statusParam}`, {
+                        headers: {
+                            Authorization: `Bearer ${session.access_token}`,
+                        },
+                    });
+
+                    if (response.ok) {
+                        const { data } = await response.json();
+                        setIntakes(data || []);
+                        setIsAdmin(true);
+                    } else {
+                        setIsAdmin(false);
+                    }
                 }
             } catch (err) {
-                console.error("Error checking admin status:", err);
+                console.error("Error initializing admin page:", err);
                 setIsAdmin(false);
+            } finally {
+                setLoading(false);
             }
         }
 
-        refreshIntakes();
-        checkAdminStatus();
+        initPage();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusFilter, supabase]);
 
     async function handleReviewAction(intakeId: string, action: "approve" | "reject" | "needs_changes") {
-        if (!supabase) return;
+        if (!authToken) return;
 
         setActionLoading(true);
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-
             const response = await fetch("/api/admin/tool-intakes", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                    Authorization: `Bearer ${authToken}`,
                 },
                 body: JSON.stringify({
                     intakeId,
@@ -172,7 +153,7 @@ export default function AdminToolIntakesPage() {
             }
 
             // Refresh the list
-            await refreshIntakes();
+            await refreshIntakes(authToken);
             setSelectedIntake(null);
             setReviewNotes("");
         } catch (err) {
@@ -184,19 +165,15 @@ export default function AdminToolIntakesPage() {
     }
 
     async function handleConvertToTool(intakeId: string) {
-        if (!supabase) return;
+        if (!authToken) return;
 
         setActionLoading(true);
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-
             const response = await fetch("/api/admin/tool-intakes/convert", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                    Authorization: `Bearer ${authToken}`,
                 },
                 body: JSON.stringify({ intakeId }),
             });
@@ -208,7 +185,7 @@ export default function AdminToolIntakesPage() {
             }
 
             // Refresh the list
-            await refreshIntakes();
+            await refreshIntakes(authToken);
             setSelectedIntake(null);
         } catch (err) {
             console.error("Error converting intake:", err);

@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
-import { useSupabase } from "@/lib/useSupabase";
 
 interface Tool {
     id: string;
@@ -124,7 +123,6 @@ const mockTools: Record<string, Tool> = {
 export default function ToolDetailsPage() {
     const params = useParams();
     const router = useRouter();
-    const { supabase } = useSupabase();
     const toolId = params?.id as string;
 
     const [tool, setTool] = useState<Tool | null>(null);
@@ -137,23 +135,13 @@ export default function ToolDetailsPage() {
             router.push("/tools");
             return;
         }
-        if (!supabase) {
-            // Fallback to mock data if Supabase not ready/configured
-            const mockTool = mockTools[toolId];
-            if (mockTool) setTool(mockTool);
-            setLoading(false);
-            return;
-        }
+
         (async () => {
             try {
-                const { data: toolData, error } = await supabase
-                    .from("tools")
-                    .select(
-                        "id, name, description, iconurl, version, updated_at, readmeurl, tool_analytics (downloads, rating, mau), tool_categories (categories (name)), tool_contributors (contributors (name))",
-                    )
-                    .eq("id", toolId)
-                    .single();
-                if (error) throw error;
+                const response = await fetch(`/api/tools/${toolId}`);
+                if (!response.ok) throw new Error("Failed to fetch tool");
+
+                const toolData = await response.json();
                 if (toolData) {
                     setTool({
                         id: toolData.id,
@@ -183,7 +171,7 @@ export default function ToolDetailsPage() {
                 setLoading(false);
             }
         })();
-    }, [toolId, supabase, router]);
+    }, [toolId, router]);
 
     // Fetch and convert markdown from readme URL using marked
     useEffect(() => {

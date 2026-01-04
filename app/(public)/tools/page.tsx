@@ -2,7 +2,6 @@
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
-import { useSupabase } from "@/lib/useSupabase";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -19,7 +18,7 @@ interface Tool {
     mau?: number;
 }
 
-// Mock data for tools (will be replaced with Supabase data)
+// Mock data for tools (fallback if API fails)
 const mockTools: Tool[] = [
     {
         id: "1",
@@ -93,43 +92,36 @@ export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
-    const { supabase } = useSupabase();
 
     useEffect(() => {
-        if (!supabase) return;
         (async () => {
             try {
-                const { data, error } = await supabase
-                    .from("tools")
-                    .select(`id,name,description,iconurl,tool_analytics (downloads,rating,mau),tool_categories (categories (name)),tool_contributors (contributors (name))`)
-                    .eq("status", "active")
-                    .order("name", { ascending: true });
+                const response = await fetch("/api/tools");
+                if (!response.ok) throw new Error("Failed to fetch tools");
 
-                if (error) throw error;
-                if (data) {
-                    const transformed: Tool[] = data.map(
-                        (tool: {
-                            id: string;
-                            name: string;
-                            description: string;
-                            iconurl: string;
-                            tool_analytics?: unknown;
-                            tool_categories?: Array<{ categories: unknown }>;
-                            tool_contributors?: Array<{ contributors: unknown }>;
-                        }) => ({
-                            id: tool.id,
-                            name: tool.name,
-                            description: tool.description,
-                            iconurl: tool.iconurl || "📦",
-                            contributors: tool.tool_contributors?.flatMap((tc) => (tc.contributors as { name: string }).name) || [],
-                            categories: tool.tool_categories?.flatMap((tc) => (tc.categories as { name: string }).name) || ["\u00A0"],
-                            downloads: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.downloads || 0,
-                            rating: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.rating || 0,
-                            mau: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.mau || 0,
-                        }),
-                    );
-                    setTools(transformed);
-                }
+                const data = await response.json();
+                const transformed: Tool[] = data.map(
+                    (tool: {
+                        id: string;
+                        name: string;
+                        description: string;
+                        iconurl: string;
+                        tool_analytics?: unknown;
+                        tool_categories?: Array<{ categories: unknown }>;
+                        tool_contributors?: Array<{ contributors: unknown }>;
+                    }) => ({
+                        id: tool.id,
+                        name: tool.name,
+                        description: tool.description,
+                        iconurl: tool.iconurl || "📦",
+                        contributors: tool.tool_contributors?.flatMap((tc) => (tc.contributors as { name: string }).name) || [],
+                        categories: tool.tool_categories?.flatMap((tc) => (tc.categories as { name: string }).name) || ["\u00A0"],
+                        downloads: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.downloads || 0,
+                        rating: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.rating || 0,
+                        mau: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.mau || 0,
+                    }),
+                );
+                setTools(transformed);
             } catch (err) {
                 console.error("Error fetching tools:", err);
                 setTools(mockTools);
@@ -137,7 +129,7 @@ export default function ToolsPage() {
                 setLoading(false);
             }
         })();
-    }, [supabase]);
+    }, []);
 
     const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories)))];
     const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.categories.includes(selectedCategory));

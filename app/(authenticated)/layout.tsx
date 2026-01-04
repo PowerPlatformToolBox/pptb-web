@@ -17,12 +17,19 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
         (async () => {
             try {
                 const {
-                    data: { user },
-                } = await supabase.auth.getUser();
-                if (!user) {
+                    data: { session },
+                } = await supabase.auth.getSession();
+
+                if (!session) {
                     router.push("/auth/signin");
                     return;
                 }
+
+                // Store token in sessionStorage for API calls
+                if (session.access_token) {
+                    sessionStorage.setItem("supabaseToken", session.access_token);
+                }
+
                 setLoading(false);
             } catch (error) {
                 console.error("Error checking auth:", error);

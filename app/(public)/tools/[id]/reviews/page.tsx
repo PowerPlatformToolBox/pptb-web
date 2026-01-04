@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
-import { useSupabase } from "@/lib/useSupabase";
 
 interface Rating {
     id: string;
@@ -22,7 +21,6 @@ interface Rating {
 export default function ToolReviewsPage() {
     const params = useParams();
     const router = useRouter();
-    const { supabase } = useSupabase();
     const toolId = params?.id as string;
 
     const [toolName, setToolName] = useState<string>("");
@@ -43,21 +41,18 @@ export default function ToolReviewsPage() {
             return;
         }
 
-        if (!supabase) {
-            setLoading(false);
-            return;
-        }
-
         (async () => {
             try {
-                // Fetch tool name
-                const { data: toolData } = await supabase.from("tools").select("name").eq("id", toolId).single();
-
-                if (toolData) {
-                    setToolName(toolData.name);
+                // Fetch tool name and ratings using APIs
+                const toolResponse = await fetch(`/api/tools/${toolId}`);
+                if (toolResponse.ok) {
+                    const toolData = await toolResponse.json();
+                    if (toolData) {
+                        setToolName(toolData.name);
+                    }
                 }
 
-                // Fetch ratings with user info from server-side API
+                // Fetch ratings from API
                 const response = await fetch(`/api/ratings/${toolId}`);
                 if (!response.ok) {
                     throw new Error("Failed to fetch ratings");
@@ -87,7 +82,7 @@ export default function ToolReviewsPage() {
                 setLoading(false);
             }
         })();
-    }, [toolId, supabase, router]);
+    }, [toolId, router]);
 
     const renderStars = (rating: number) => {
         return (
