@@ -15,6 +15,14 @@ on:
                 description: "Authors of the tool"
                 required: true
                 type: string
+            repository:
+                description: "Repository URL"
+                required: false
+                type: string
+            website:
+                description: "Website URL"
+                required: false
+                type: string
             branch:
                 description: "Branch to commit to (optional, defaults to current branch)"
                 required: false
@@ -49,13 +57,15 @@ jobs:
                   NPM_INFO=$(npm view "${{ inputs.tool_id }}@${{ inputs.version }}" --json || echo '{}')
 
                   TOOL_NAME=$(echo "$NPM_INFO" | jq -r '.displayName // .name // "${{ inputs.tool_id }}"')
-                  TOOL_DESC=$(echo "$NPM_INFO" | jq -r '.description // "Power Platform Tool"')
+                  TOOL_DESC=$(echo "$NPM_INFO" | jq -r '.description // ""')
 
                   # Extract iconUrl and readmeUrl from configurations section
-                  ICON_URL=$(echo "$NPM_INFO" | jq -r '.configurations.iconUrl // .icon // .iconUrl // empty')
-                  README_URL=$(echo "$NPM_INFO" | jq -r '.configurations.readmeUrl // .repository.url // .homepage // ""' | sed 's/^git+//')
+                  ICON_URL=$(echo "$NPM_INFO" | jq -r '.configurations.iconUrl // empty')
+                  README_URL=$(echo "$NPM_INFO" | jq -r '.configurations.readmeUrl // empty')
 
-                  LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // ""')
+                  LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // "")
+                  REPOSITORY=$(echo "$NPM_INFO" | jq -r '.configurations.repository // empty')
+                  WEBSITE=$(echo "$NPM_INFO" | jq -r '.configurations.website // empty')
 
                   echo "id=$TOOL_ID" >> $GITHUB_OUTPUT
                   echo "package_name=$TOOL_PACKAGE_NAME" >> $GITHUB_OUTPUT
@@ -64,6 +74,8 @@ jobs:
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
                   echo "license=$LICENSE" >> $GITHUB_OUTPUT
+                  echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
+                  echo "website=$WEBSITE" >> $GITHUB_OUTPUT
 
             - name: Download and build tool
               id: build
@@ -209,6 +221,8 @@ jobs:
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
                     --arg size "${{ steps.checksum.outputs.size }}" \
+                    --arg repository "${{ inputs.repository }}" \
+                    --arg website "${{ inputs.website }}" \
                     '{
                       packagename: $packagename,
                       version: $version,
@@ -220,7 +234,9 @@ jobs:
                       iconurl: (if $iconurl == "" then null else $iconurl end),
                       published_at: $published,
                       checksum: $checksum,
-                      size: ($size|tonumber)
+                      size: ($size|tonumber),
+                      repository: (if $repository == "" then null else $repository end),
+                      website: (if $website == "" then null else $website end)
                     }')
 
                   # Update existing tool metadata in Supabase (falls back to upsert if missing)

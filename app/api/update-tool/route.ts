@@ -126,6 +126,8 @@ export async function POST(request: NextRequest) {
                 csp_exceptions: packageJson.cspExceptions,
                 license: packageJson.license,
                 features: packageJson.features || null,
+                repository: packageJson.configurations?.repository || null,
+                website: packageJson.configurations?.website || null,
             })
             .eq("package_name", packageJson.name);
 
@@ -149,6 +151,8 @@ export async function POST(request: NextRequest) {
                 tool_id: packageJson.name,
                 version: packageJson.version,
                 authors: (packageJson.contributors || []).map((c) => (typeof c === "string" ? c : c.name)).join(", "),
+                repository: packageJson.configurations?.repository || "",
+                website: packageJson.configurations?.website || "",
             },
             ref: "main",
             timeoutMs: 180000,

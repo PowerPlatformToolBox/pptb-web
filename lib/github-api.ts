@@ -96,6 +96,8 @@ export interface UpdateWorkflowInputs {
     tool_id: string;
     version: string;
     authors: string;
+    repository?: string;
+    website?: string;
 }
 
 async function ghFetch(url: string, token: string, init?: RequestInit) {
