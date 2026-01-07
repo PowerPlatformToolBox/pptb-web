@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
                 submitted_by: intake.submitted_by || "",
                 features: intake.features ? JSON.stringify(intake.features) : "",
                 authors: authorString,
+                repository: intake.configurations?.repository || "",
+                website: intake.configurations?.website || "",
             },
             ref: "main",
             timeoutMs: 180000,

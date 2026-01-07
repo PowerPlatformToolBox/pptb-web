@@ -49,6 +49,14 @@ on:
                 description: "Author(s)"
                 required: false
                 type: string
+            repository:
+                description: "Repository URL"
+                required: false
+                type: string
+            website:
+                description: "Website URL"
+                required: false
+                type: string
 
 jobs:
     convert:
@@ -85,6 +93,8 @@ jobs:
                     AUTHORS=$(echo "$JSON" | jq -r '.authors')
                     README_URL=$(echo "$JSON" | jq -r '.readme_url')
                     ICON_URL=$(echo "$JSON" | jq -r '.icon_url // empty')
+                    REPOSITORY=$(echo "$JSON" | jq -r '.repository // empty')
+                    WEBSITE=$(echo "$JSON" | jq -r '.website // empty')
                   else
                     PACKAGE_NAME='${{ inputs.npm_package_name }}'
                     DISPLAY_NAME='${{ inputs.display_name }}'
@@ -92,6 +102,8 @@ jobs:
                     AUTHORS='${{ inputs.authors }}'
                     README_URL='${{ inputs.readme_url }}'
                     ICON_URL='${{ inputs.icon_url }}'
+                    REPOSITORY='${{ inputs.repository }}'
+                    WEBSITE='${{ inputs.website }}'
                   fi
 
                   echo "package=$PACKAGE_NAME" >> $GITHUB_OUTPUT
@@ -100,6 +112,8 @@ jobs:
                   echo "authors=$AUTHORS" >> $GITHUB_OUTPUT
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
+                  echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
+                  echo "website=$WEBSITE" >> $GITHUB_OUTPUT
 
             - name: Download and build tool
               id: build
@@ -250,6 +264,8 @@ jobs:
                     --arg csp_exceptions "${{ inputs.csp_exceptions }}" \
                     --arg submitted_by "${{ inputs.submitted_by }}" \
                     --arg features "${{ inputs.features }}" \
+                    --arg repository "${{ steps.tool.outputs.repository }}" \
+                    --arg website "${{ steps.tool.outputs.website }}" \
                     '{
                       packagename: $packageName,
                       name: $name,
@@ -264,7 +280,9 @@ jobs:
                       license: $license,
                       csp_exceptions: (if $csp_exceptions == "" then null else $csp_exceptions end),
                       user_id: $submitted_by,
-                      features: (if $features == "" then null else $features end)
+                      features: (if $features == "" then null else $features end),
+                      repository: (if $repository == "" then null else $repository end),
+                      website: (if $website == "" then null else $website end)
                     }')
 
                   # Insert or update tool metadata in Supabase

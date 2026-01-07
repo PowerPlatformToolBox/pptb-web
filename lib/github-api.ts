@@ -88,6 +88,8 @@ export interface ConvertWorkflowInputs {
     submitted_by: string;
     features?: string;
     authors: string;
+    repository?: string;
+    website?: string;
 }
 
 export interface UpdateWorkflowInputs {
