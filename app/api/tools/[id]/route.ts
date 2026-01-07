@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             .from("tools")
             .select(
                 `id, name, description, iconurl, status,
-                readmeurl, downloadurl, version,
+                readmeurl, downloadurl, version, repository, website,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,

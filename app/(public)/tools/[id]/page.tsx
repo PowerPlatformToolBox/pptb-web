@@ -24,6 +24,8 @@ interface Tool {
     contributors?: string[];
     version?: string;
     lastUpdated?: string;
+    repository?: string;
+    website?: string;
 }
 
 // Mock data for a tool (will be replaced with Supabase data)
@@ -42,6 +44,8 @@ const mockTools: Record<string, Tool> = {
         contributors: ["PPTB Team"],
         version: "2.1.0",
         lastUpdated: "2024-01-15",
+        repository: "https://github.com/PowerPlatformToolBox/solution-manager",
+        website: "https://powerplatformtoolbox.com",
     },
     "2": {
         id: "2",
@@ -142,6 +146,7 @@ export default function ToolDetailsPage() {
                 if (!response.ok) throw new Error("Failed to fetch tool");
 
                 const toolData = await response.json();
+
                 if (toolData) {
                     setTool({
                         id: toolData.id,
@@ -156,6 +161,8 @@ export default function ToolDetailsPage() {
                         downloads: (toolData.tool_analytics as any)?.downloads || 0,
                         rating: (toolData.tool_analytics as any)?.rating || 0,
                         mau: (toolData.tool_analytics as any)?.mau || 0,
+                        repository: (toolData as any).repository,
+                        website: (toolData as any).website,
                     });
                 } else if (mockTools[toolId]) {
                     setTool(mockTools[toolId]);
@@ -312,6 +319,31 @@ export default function ToolDetailsPage() {
                                             <>
                                                 <dt className="text-slate-500">Version</dt>
                                                 <dd className="text-slate-900 font-medium">{tool.version}</dd>
+                                            </>
+                                        )}
+                                        {tool.repository && (
+                                            <>
+                                                <dt className="text-slate-500">Repository</dt>
+                                                <dd className="text-slate-900 font-medium">
+                                                    <a
+                                                        href={tool.repository}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 hover:text-purple-600 hover:underline transition-colors"
+                                                    >
+                                                        View on GitHub
+                                                    </a>
+                                                </dd>
+                                            </>
+                                        )}
+                                        {tool.website && (
+                                            <>
+                                                <dt className="text-slate-500">Website</dt>
+                                                <dd className="text-slate-900 font-medium">
+                                                    <a href={tool.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-purple-600 hover:underline transition-colors">
+                                                        Visit Website
+                                                    </a>
+                                                </dd>
                                             </>
                                         )}
                                         {tool.contributors && tool.contributors.length > 0 && (
