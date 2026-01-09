@@ -63,7 +63,7 @@ jobs:
                   ICON_URL=$(echo "$NPM_INFO" | jq -r '.configurations.iconUrl // empty')
                   README_URL=$(echo "$NPM_INFO" | jq -r '.configurations.readmeUrl // empty')
 
-                  LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // "")
+                  LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // ""')
                   REPOSITORY=$(echo "$NPM_INFO" | jq -r '.configurations.repository // empty')
                   WEBSITE=$(echo "$NPM_INFO" | jq -r '.configurations.website // empty')
 
