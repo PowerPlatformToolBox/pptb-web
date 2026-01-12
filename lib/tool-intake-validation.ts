@@ -24,7 +24,7 @@ export interface Configurations {
 }
 
 export interface Features {
-    "multi-connections"?: boolean;
+    multiConnection?: "required" | "optional" | "none";
 }
 
 export interface ToolPackageJson {
@@ -58,6 +58,10 @@ export interface ValidationResult {
 
 // List of approved open source licenses (from intake-validation.yml)
 const APPROVED_LICENSES = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "GPL-2.0", "GPL-3.0", "LGPL-3.0", "ISC", "AGPL-3.0-only"];
+
+// List of valid multiConnection values
+const VALID_MULTI_CONNECTION_VALUES = ["required", "optional", "none"] as const;
+type MultiConnectionValue = (typeof VALID_MULTI_CONNECTION_VALUES)[number];
 
 export function isValidUrl(url: string): boolean {
     try {
@@ -175,6 +179,19 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
         });
     }
 
+    // Features validation (optional but validated if present)
+    if (packageJson.features) {
+        if (packageJson.features.multiConnection !== undefined) {
+            const isValidValue = (value: string): value is MultiConnectionValue => {
+                return VALID_MULTI_CONNECTION_VALUES.includes(value as MultiConnectionValue);
+            };
+            
+            if (!isValidValue(packageJson.features.multiConnection)) {
+                errors.push(`features.multiConnection must be one of: ${VALID_MULTI_CONNECTION_VALUES.join(", ")}`);
+            }
+        }
+    }
+
     const valid = errors.length === 0;
 
     return {
@@ -191,6 +208,7 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
                   contributors: packageJson.contributors!,
                   cspExceptions: packageJson.cspExceptions,
                   configurations: packageJson.configurations!,
+                  features: packageJson.features,
               }
             : undefined,
     };
