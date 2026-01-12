@@ -61,6 +61,7 @@ const APPROVED_LICENSES = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", 
 
 // List of valid multiConnection values
 const VALID_MULTI_CONNECTION_VALUES = ["required", "optional", "none"] as const;
+type MultiConnectionValue = (typeof VALID_MULTI_CONNECTION_VALUES)[number];
 
 export function isValidUrl(url: string): boolean {
     try {
@@ -181,7 +182,11 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
     // Features validation (optional but validated if present)
     if (packageJson.features) {
         if (packageJson.features.multiConnection !== undefined) {
-            if (!(VALID_MULTI_CONNECTION_VALUES as readonly string[]).includes(packageJson.features.multiConnection)) {
+            const isValidValue = (value: string): value is MultiConnectionValue => {
+                return VALID_MULTI_CONNECTION_VALUES.includes(value as MultiConnectionValue);
+            };
+            
+            if (!isValidValue(packageJson.features.multiConnection)) {
                 errors.push(`features.multiConnection must be one of: ${VALID_MULTI_CONNECTION_VALUES.join(", ")}`);
             }
         }
