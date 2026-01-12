@@ -24,7 +24,7 @@ export interface Configurations {
 }
 
 export interface Features {
-    "multi-connections"?: boolean;
+    multiConnection?: "required" | "optional" | "none";
 }
 
 export interface ToolPackageJson {
@@ -175,6 +175,16 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
         });
     }
 
+    // Features validation (optional but validated if present)
+    if (packageJson.features) {
+        if (packageJson.features.multiConnection !== undefined) {
+            const validMultiConnectionValues = ["required", "optional", "none"];
+            if (!validMultiConnectionValues.includes(packageJson.features.multiConnection)) {
+                errors.push(`features.multiConnection must be one of: ${validMultiConnectionValues.join(", ")}`);
+            }
+        }
+    }
+
     const valid = errors.length === 0;
 
     return {
@@ -191,6 +201,7 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
                   contributors: packageJson.contributors!,
                   cspExceptions: packageJson.cspExceptions,
                   configurations: packageJson.configurations!,
+                  features: packageJson.features,
               }
             : undefined,
     };
