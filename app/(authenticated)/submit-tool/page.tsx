@@ -170,19 +170,35 @@ export default function SubmitToolPage() {
                                 </p>
                                 <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                                     <li>
-                                        <strong>displayName</strong> - Human-readable name for your tool
+                                        <strong>displayName</strong> - Human-readable name for your tool (required)
                                     </li>
                                     <li>
-                                        <strong>description</strong> - A brief description of what your tool does
+                                        <strong>description</strong> - A brief description of what your tool does (required)
                                     </li>
                                     <li>
-                                        <strong>contributors</strong> - Array of contributor objects with name and optional URL
+                                        <strong>contributors</strong> - Array of contributor objects with name and optional URL (required, at least one)
                                     </li>
                                     <li>
-                                        <strong>license</strong> - Must be an approved open-source license (MIT, Apache-2.0, GPL-3.0, etc.)
+                                        <strong>license</strong> - Must be an approved open-source license: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, GPL-2.0, GPL-3.0, LGPL-3.0, ISC, or
+                                        AGPL-3.0-only (required)
                                     </li>
                                     <li>
-                                        <strong>configurations</strong> - Optional object with repository, website, iconUrl, readmeUrl
+                                        <strong>configurations.repository</strong> - GitHub repository URL (required)
+                                    </li>
+                                    <li>
+                                        <strong>configurations.readmeUrl</strong> - README URL, must be hosted on <code className="bg-blue-100 px-1 rounded">raw.githubusercontent.com</code> (required)
+                                    </li>
+                                    <li>
+                                        <strong>configurations.iconUrl</strong> - Icon URL, must be hosted on <code className="bg-blue-100 px-1 rounded">raw.githubusercontent.com</code> (optional)
+                                    </li>
+                                    <li>
+                                        <strong>configurations.website</strong> - Project website URL (optional)
+                                    </li>
+                                    <li>
+                                        <strong>cspExceptions</strong> - Content Security Policy exceptions if your tool needs to access external resources (optional)
+                                    </li>
+                                    <li>
+                                        <strong>features.multiConnection</strong> - Set to &quot;required&quot; or &quot;optional&quot; if your tool supports multiple connections (optional)
                                     </li>
                                 </ul>
                                 <p className="text-sm text-blue-800 mt-3">
@@ -376,14 +392,14 @@ export default function SubmitToolPage() {
     "connect-src": ["https://*.dynamics.com"],
     "script-src": ["https://cdn.example.com"]
   },
-    "features": {
+  "features": {
        "multiConnection": "required"/"optional"
   },
   "configurations": {
     "repository": "https://github.com/yourorg/your-tool",
     "website": "https://your-tool.example.com",
-    "iconUrl": "https://example.com/icon.png",
-    "readmeUrl": "https://github.com/yourorg/your-tool/blob/main/README.md"
+    "iconUrl": "https://raw.githubusercontent.com/yourorg/your-tool/main/icon.png",
+    "readmeUrl": "https://raw.githubusercontent.com/yourorg/your-tool/main/README.md"
   }
 }`}
                                 </pre>

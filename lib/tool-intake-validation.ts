@@ -149,8 +149,15 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
                 errors.push("configurations.iconUrl must be a URL");
             } else if (!isValidUrl(configs.iconUrl)) {
                 errors.push("configurations.iconUrl has an invalid URL format");
-            } else if (isGithubDomain(configs.iconUrl)) {
-                errors.push("configurations.iconUrl cannot be hosted on github.com; use raw.githubusercontent.com or another domain");
+            } else {
+                try {
+                    const iconHostname = new URL(configs.iconUrl).hostname.toLowerCase();
+                    if (iconHostname !== "raw.githubusercontent.com") {
+                        errors.push("configurations.iconUrl must be hosted on raw.githubusercontent.com");
+                    }
+                } catch {
+                    errors.push("configurations.iconUrl has an invalid URL format");
+                }
             }
         }
 
