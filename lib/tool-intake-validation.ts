@@ -181,7 +181,7 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
     // Features validation (optional but validated if present)
     if (packageJson.features) {
         if (packageJson.features.multiConnection !== undefined) {
-            if (!VALID_MULTI_CONNECTION_VALUES.includes(packageJson.features.multiConnection as (typeof VALID_MULTI_CONNECTION_VALUES)[number])) {
+            if (!(VALID_MULTI_CONNECTION_VALUES as readonly string[]).includes(packageJson.features.multiConnection)) {
                 errors.push(`features.multiConnection must be one of: ${VALID_MULTI_CONNECTION_VALUES.join(", ")}`);
             }
         }
