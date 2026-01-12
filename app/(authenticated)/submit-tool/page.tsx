@@ -376,6 +376,9 @@ export default function SubmitToolPage() {
     "connect-src": ["https://*.dynamics.com"],
     "script-src": ["https://cdn.example.com"]
   },
+    "features": {
+       "multiConnection": "required"/"optional"
+  },
   "configurations": {
     "repository": "https://github.com/yourorg/your-tool",
     "website": "https://your-tool.example.com",
