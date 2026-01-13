@@ -4,6 +4,8 @@ import { fetchLatestRelease, findAssetForOS, formatFileSize, type GitHubAsset } 
 import { detectOS, getOSDisplayName, type OperatingSystem } from "@/lib/os-detection";
 import { useEffect, useState } from "react";
 
+const COMMAND = 'xattr -cr "/Applications/Power Platform ToolBox.app"';
+
 export default function DownloadButton() {
     const [os, setOS] = useState<OperatingSystem>("unknown");
     const [asset, setAsset] = useState<GitHubAsset | null>(null);
@@ -71,12 +73,21 @@ export default function DownloadButton() {
                         <strong className="text-amber-700">⚠️ macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following
                         command in Terminal:
                     </p>
-                    <code
-                        className="block bg-surface p-3 rounded-lg border border-slate-200 font-mono text-xs break-all text-dark shadow-card"
-                        aria-label="Terminal command to remove quarantine attribute"
-                    >
-                        xattr -cr &quot;/Applications/Power Platform Tool Box.app&quot;
-                    </code>
+                    <div className="flex gap-2">
+                        <code
+                            className="flex-1 bg-surface p-3 rounded-lg border border-slate-200 font-mono text-xs break-all text-dark shadow-card"
+                            aria-label="Terminal command to remove quarantine attribute"
+                        >
+                            xattr -cr &quot;/Applications/Power Platform ToolBox.app&quot;
+                        </code>
+                        <button
+                            onClick={() => navigator.clipboard.writeText(COMMAND)}
+                            className="px-3 py-2 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg font-medium text-sm transition-colors whitespace-nowrap"
+                            title="Copy command to clipboard"
+                        >
+                            Copy
+                        </button>
+                    </div>
                 </div>
             )}
             <div className="text-sm">
