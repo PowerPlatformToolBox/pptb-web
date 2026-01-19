@@ -26,6 +26,9 @@ interface ToolIntake {
     license: string;
     contributors: Contributor[];
     csp_exceptions: Record<string, string[]> | null;
+    features: {
+        multiConnection?: "required" | "optional" | "none";
+    } | null;
     configurations: {
         repository?: string;
         website?: string;
@@ -421,6 +424,41 @@ export default function AdminToolIntakesPage() {
                                                             </ul>
                                                         </div>
                                                     </div>
+
+                                                    {/* Features Section */}
+                                                    {intake.features && (
+                                                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                                                            <strong className="text-blue-900">Features:</strong>
+                                                            <ul className="text-blue-800 mt-1 space-y-1">
+                                                                {intake.features.multiConnection && (
+                                                                    <li>
+                                                                        <span className="font-medium">Multi-Connection:</span> {intake.features.multiConnection}
+                                                                    </li>
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {/* CSP Exceptions Section */}
+                                                    {intake.csp_exceptions && Object.keys(intake.csp_exceptions).length > 0 && (
+                                                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
+                                                            <strong className="text-amber-900">CSP Exceptions Requested:</strong>
+                                                            <div className="text-amber-800 mt-2 space-y-2">
+                                                                {Object.entries(intake.csp_exceptions).map(([directive, values]) => (
+                                                                    <div key={directive}>
+                                                                        <span className="font-medium">{directive}:</span>
+                                                                        <ul className="list-disc list-inside ml-4 mt-1">
+                                                                            {values.map((value, idx) => (
+                                                                                <li key={idx} className="font-mono text-xs">
+                                                                                    {value}
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
 
                                                     {/* Review Notes */}
                                                     <div className="mb-4">

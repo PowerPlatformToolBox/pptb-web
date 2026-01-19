@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS tool_intakes (
     contributors JSONB NOT NULL,
     csp_exceptions JSONB,
     configurations JSONB NOT NULL,
+    features JSONB,
     submitted_by UUID REFERENCES auth.users(id),
     status TEXT NOT NULL DEFAULT 'pending_review',
     validation_warnings TEXT[],
