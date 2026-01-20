@@ -92,3 +92,14 @@ export function getOSDisplayName(os: OperatingSystem): string {
       return 'Your Platform';
   }
 }
+
+export function getArchitectureDisplayName(arch: Architecture): string {
+  switch (arch) {
+    case 'x64':
+      return 'x64';
+    case 'arm64':
+      return 'ARM64';
+    default:
+      return 'Unknown';
+  }
+}
