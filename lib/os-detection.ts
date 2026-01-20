@@ -4,6 +4,7 @@ export type Architecture = 'x64' | 'arm64' | 'unknown';
 export interface PlatformInfo {
   os: OperatingSystem;
   arch: Architecture;
+  osVersion?: string;
 }
 
 export function detectOS(): OperatingSystem {
@@ -73,10 +74,86 @@ export function detectArchitecture(): Architecture {
   return 'unknown';
 }
 
+export function detectOSVersion(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const userAgent = window.navigator.userAgent;
+  const os = detectOS();
+
+  if (os === 'windows') {
+    // Detect Windows version
+    if (userAgent.includes('Windows NT 10.0')) {
+      // Windows 10 or 11 - check build number if available
+      const buildMatch = userAgent.match(/Windows NT 10\.0[^)]*Build (\d+)/);
+      if (buildMatch) {
+        const buildNumber = parseInt(buildMatch[1]);
+        if (buildNumber >= 22000) {
+          return 'Windows 11';
+        }
+      }
+      return 'Windows 10';
+    } else if (userAgent.includes('Windows NT 6.3')) {
+      return 'Windows 8.1';
+    } else if (userAgent.includes('Windows NT 6.2')) {
+      return 'Windows 8';
+    } else if (userAgent.includes('Windows NT 6.1')) {
+      return 'Windows 7';
+    }
+    return 'Windows';
+  } else if (os === 'mac') {
+    // Detect macOS version
+    const versionMatch = userAgent.match(/Mac OS X (\d+)[_.](\d+)([_.](\d+))?/);
+    if (versionMatch) {
+      const major = parseInt(versionMatch[1]);
+      const minor = parseInt(versionMatch[2]);
+      
+      // macOS version names (approximate)
+      const versionNames: { [key: string]: string } = {
+        '15': 'Sequoia',
+        '14': 'Sonoma',
+        '13': 'Ventura',
+        '12': 'Monterey',
+        '11': 'Big Sur',
+        '10.15': 'Catalina',
+        '10.14': 'Mojave',
+        '10.13': 'High Sierra',
+      };
+      
+      const versionKey = major >= 11 ? major.toString() : `${major}.${minor}`;
+      const versionName = versionNames[versionKey];
+      
+      if (versionName) {
+        return `macOS ${versionName}`;
+      }
+      return `macOS ${major}.${minor}`;
+    }
+    return 'macOS';
+  } else if (os === 'linux') {
+    // Try to detect Linux distribution from user agent
+    if (userAgent.includes('Ubuntu')) {
+      return 'Linux Ubuntu';
+    } else if (userAgent.includes('Fedora')) {
+      return 'Linux Fedora';
+    } else if (userAgent.includes('Debian')) {
+      return 'Linux Debian';
+    } else if (userAgent.includes('CentOS')) {
+      return 'Linux CentOS';
+    } else if (userAgent.includes('Red Hat')) {
+      return 'Linux Red Hat';
+    }
+    return 'Linux';
+  }
+
+  return undefined;
+}
+
 export function detectPlatform(): PlatformInfo {
   return {
     os: detectOS(),
     arch: detectArchitecture(),
+    osVersion: detectOSVersion(),
   };
 }
 

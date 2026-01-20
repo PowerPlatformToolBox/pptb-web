@@ -88,7 +88,7 @@ export default function DownloadButton() {
                 Download for {getOSDisplayName(platform.os)}
             </a>
             <div className="text-xs text-light opacity-70">
-                Detected: {getOSDisplayName(platform.os)} {getArchitectureDisplayName(platform.arch)}
+                Detected: {platform.osVersion || getOSDisplayName(platform.os)} {getArchitectureDisplayName(platform.arch)}
             </div>
             <div className="text-sm text-light">
                 {version && (
