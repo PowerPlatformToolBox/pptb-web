@@ -387,7 +387,7 @@ jobs:
                               `**Name**: ${{ steps.tool.outputs.name }}\n` +
                               `**Version**: ${{ steps.build.outputs.version }}\n` +
                               `**Download URL**: https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz\n\n` +
-                              `@${creator} your tool is now available in the Power Platform Tool Box marketplace!`
+                              `@${creator} your tool is now available in the Power Platform ToolBox marketplace!`
                       });
                       await github.rest.issues.update({
                         owner: context.repo.owner,

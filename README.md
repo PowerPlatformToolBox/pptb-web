@@ -1,12 +1,12 @@
 # pptb-web
 
-The official website for Power Platform Tool Box - showcasing features and providing easy downloads for the desktop application.
+The official website for Power Platform ToolBox - showcasing features and providing easy downloads for the desktop application.
 
 ## Overview
 
 This is a Next.js-based static website built with TypeScript and Tailwind CSS that:
 
-- Showcases the key features of Power Platform Tool Box
+- Showcases the key features of Power Platform ToolBox
 - Automatically detects the user's operating system (Windows, macOS, or Linux)
 - Provides smart download links from the latest GitHub release of the [desktop-app](https://github.com/PowerPlatformToolBox/desktop-app)
 - Features a responsive, modern design

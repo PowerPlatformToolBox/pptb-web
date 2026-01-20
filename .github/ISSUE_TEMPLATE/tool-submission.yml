@@ -1,115 +1,115 @@
 name: Tool Submission
-description: Submit a new tool to the Power Platform Tool Box registry
+description: Submit a new tool to the Power Platform ToolBox registry
 title: "[Tool Submission] "
 labels: ["tool-intake", "pending-review"]
 type: "task"
 body:
-  - type: markdown
-    attributes:
-      value: |
-        ## Submit Your Tool
-        Thank you for contributing to the Power Platform Tool Box ecosystem!
-        
-        Fill out this form to submit your tool to the registry.
-  
-  - type: input
-    id: npm_package
-    attributes:
-      label: npm Package Name
-      description: The name of your published npm package
-      placeholder: "@username/tool-name or tool-name"
-    validations:
-      required: true
-  
-  - type: input
-    id: display_name
-    attributes:
-      label: Display Name
-      description: How your tool will appear in the Tool Box
-      placeholder: "My Awesome Tool"
-    validations:
-      required: true
-  
-  - type: textarea
-    id: description
-    attributes:
-      label: Description
-      description: Brief description of what your tool does (1-2 sentences)
-      placeholder: "This tool helps you..."
-    validations:
-      required: true
+    - type: markdown
+      attributes:
+          value: |
+              ## Submit Your Tool
+              Thank you for contributing to the Power Platform ToolBox ecosystem!
 
-  - type: input
-    id: author
-    attributes:
-      label: Author
-      description: Your name or organization
-      placeholder: "John Doe"
-    validations:
-      required: true
-  
-  - type: input
-    id: repository
-    attributes:
-      label: Repository URL
-      description: GitHub repository for source code review
-      placeholder: "https://github.com/username/tool-name"
-    validations:
-      required: true
+              Fill out this form to submit your tool to the registry.
 
-  - type: input
-    id: readme_url
-    attributes:
-      label: README URL
-      description: URL to the tool's RAW README file
-      placeholder: "https://raw.githubusercontent.com/username/tool-name/main/README.md"
-    validations:
-      required: true
+    - type: input
+      id: npm_package
+      attributes:
+          label: npm Package Name
+          description: The name of your published npm package
+          placeholder: "@username/tool-name or tool-name"
+      validations:
+          required: true
 
-  - type: input
-    id: icon_url
-    attributes:
-      label: Icon URL
-      description: URL to the tool's icon image (PNG, SVG, or JPG, recommended size 256x256px)
-      placeholder: "https://raw.githubusercontent.com/username/tool-name/main/icon.png"
-    validations:
-      required: false
+    - type: input
+      id: display_name
+      attributes:
+          label: Display Name
+          description: How your tool will appear in the ToolBox
+          placeholder: "My Awesome Tool"
+      validations:
+          required: true
 
-  - type: dropdown
-    id: category
-    attributes:
-      label: Category
-      options:
-        - Data Management
-        - Development
-        - Utilities
-        - Reporting
-        - Administration
-        - Other
-    validations:
-      required: true
-  
-  - type: input
-    id: license
-    attributes:
-      label: License
-      description: Software license (must be open source)
-      placeholder: "MIT"
-    validations:
-      required: true
-  
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Submission Checklist
-      options:
-        - label: I have published my tool to npm
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: Brief description of what your tool does (1-2 sentences)
+          placeholder: "This tool helps you..."
+      validations:
           required: true
-        - label: I have tested my tool in the Tool Box debug mode
+
+    - type: input
+      id: author
+      attributes:
+          label: Author
+          description: Your name or organization
+          placeholder: "John Doe"
+      validations:
           required: true
-        - label: My tool follows the development guidelines
+
+    - type: input
+      id: repository
+      attributes:
+          label: Repository URL
+          description: GitHub repository for source code review
+          placeholder: "https://github.com/username/tool-name"
+      validations:
           required: true
-        - label: My tool does not contain malicious code
+
+    - type: input
+      id: readme_url
+      attributes:
+          label: README URL
+          description: URL to the tool's RAW README file
+          placeholder: "https://raw.githubusercontent.com/username/tool-name/main/README.md"
+      validations:
           required: true
-        - label: I agree to the terms of service
+
+    - type: input
+      id: icon_url
+      attributes:
+          label: Icon URL
+          description: URL to the tool's icon image (PNG, SVG, or JPG, recommended size 256x256px)
+          placeholder: "https://raw.githubusercontent.com/username/tool-name/main/icon.png"
+      validations:
+          required: false
+
+    - type: dropdown
+      id: category
+      attributes:
+          label: Category
+          options:
+              - Data Management
+              - Development
+              - Utilities
+              - Reporting
+              - Administration
+              - Other
+      validations:
           required: true
+
+    - type: input
+      id: license
+      attributes:
+          label: License
+          description: Software license (must be open source)
+          placeholder: "MIT"
+      validations:
+          required: true
+
+    - type: checkboxes
+      id: terms
+      attributes:
+          label: Submission Checklist
+          options:
+              - label: I have published my tool to npm
+                required: true
+              - label: I have tested my tool in the ToolBox debug mode
+                required: true
+              - label: My tool follows the development guidelines
+                required: true
+              - label: My tool does not contain malicious code
+                required: true
+              - label: I agree to the terms of service
+                required: true

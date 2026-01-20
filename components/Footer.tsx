@@ -36,7 +36,7 @@ export function Footer() {
                             </svg>
                         </Link>
                     </div>
-                    <p className="mt-6 text-sm text-slate-500 sm:mt-0">Copyright &copy; {new Date().getFullYear()} Power Platform Tool Box. All rights reserved.</p>
+                    <p className="mt-6 text-sm text-slate-500 sm:mt-0">Copyright &copy; {new Date().getFullYear()} Power Platform ToolBox. All rights reserved.</p>
                 </div>
             </Container>
         </footer>
