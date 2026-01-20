@@ -109,7 +109,8 @@ export function detectOSVersion(): string | undefined {
       const major = parseInt(versionMatch[1]);
       const minor = parseInt(versionMatch[2]);
       
-      // macOS version names (approximate)
+      // macOS version names (as of January 2026)
+      // Note: This mapping should be updated as new macOS versions are released
       const versionNames: { [key: string]: string } = {
         '15': 'Sequoia',
         '14': 'Sonoma',
@@ -132,6 +133,8 @@ export function detectOSVersion(): string | undefined {
     return 'macOS';
   } else if (os === 'linux') {
     // Try to detect Linux distribution from user agent
+    // Note: Most browsers don't include distribution info in user agent,
+    // so this will often fall back to generic "Linux"
     if (userAgent.includes('Ubuntu')) {
       return 'Linux Ubuntu';
     } else if (userAgent.includes('Fedora')) {
