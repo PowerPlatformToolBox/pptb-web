@@ -1,20 +1,20 @@
 "use client";
 
 import { fetchLatestRelease, findAssetForOS, formatFileSize, type GitHubAsset } from "@/lib/github-api";
-import { detectPlatform, getOSDisplayName, getArchitectureDisplayName, type OperatingSystem, type PlatformInfo } from "@/lib/os-detection";
+import { detectPlatform, getArchitectureDisplayName, getOSDisplayName, type PlatformInfo } from "@/lib/os-detection";
 import { useEffect, useState } from "react";
 
 const COMMAND = 'xattr -cr "/Applications/Power Platform ToolBox.app"';
 
 export default function DownloadButton() {
-    const [platform, setPlatform] = useState<PlatformInfo>({ os: "unknown", arch: "unknown" });
+    const [platform, setPlatform] = useState<PlatformInfo | null>(null);
     const [asset, setAsset] = useState<GitHubAsset | null>(null);
     const [version, setVersion] = useState<string>("");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadReleaseAndDetectOS = async () => {
-            const detectedPlatform = detectPlatform();
+            const detectedPlatform = await detectPlatform();
             setPlatform(detectedPlatform);
 
             const release = await fetchLatestRelease();
@@ -39,6 +39,8 @@ export default function DownloadButton() {
 
     // Render OS-specific icon
     const renderOSIcon = () => {
+        if (!platform) return null;
+
         switch (platform.os) {
             case "windows":
                 return (
@@ -70,7 +72,7 @@ export default function DownloadButton() {
         </svg>
     );
 
-    if (!asset || platform.os === "unknown") {
+    if (!asset || !platform || platform.os === "unknown") {
         return (
             <div className="text-center">
                 <a href="https://github.com/PowerPlatformToolBox/desktop-app/releases" target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-3 text-lg">
@@ -81,6 +83,9 @@ export default function DownloadButton() {
         );
     }
 
+    const osDisplay = platform?.osVersion || (platform ? getOSDisplayName(platform.os) : "Your Platform");
+    const archDisplay = getArchitectureDisplayName(platform?.arch ?? "unknown");
+
     return (
         <div className="flex flex-col items-center gap-6">
             <a href={asset.browser_download_url} className="btn-primary inline-flex items-center gap-3 text-lg">
@@ -88,7 +93,7 @@ export default function DownloadButton() {
                 Download for {getOSDisplayName(platform.os)}
             </a>
             <div className="text-xs text-light opacity-70">
-                Detected: {platform.osVersion || getOSDisplayName(platform.os)} {getArchitectureDisplayName(platform.arch)}
+                Detected: {osDisplay} {archDisplay}
             </div>
             <div className="text-sm text-light">
                 {version && (
