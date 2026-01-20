@@ -87,23 +87,23 @@ export function detectOSVersion(): string | undefined {
     if (userAgent.includes('Windows NT 10.0')) {
       // Windows 10 or 11 - check build number if available
       // Try different build number patterns (case-insensitive)
-      // Pattern 1: "Build" keyword followed by number
-      // Pattern 2: Version format like "10.0.26200"
-      const buildMatch = userAgent.match(/(?:Build[:\s]+(\d+)|Windows NT 10\.0[;\s,]+(\d+)\.(\d+)\.(\d+))/i);
+      // Pattern 1: "Build" keyword followed by number (e.g., "Build 26200")
+      // Pattern 2: Version format after "NT 10.0" (e.g., "Windows NT 10.0; 10.0.26200")
+      const buildMatch = userAgent.match(/(?:Build[:\s]+(\d+)|;\s*(\d+)\.(\d+)\.(\d+))/i);
       if (buildMatch) {
+        let buildNumber;
+        
         // Check Build keyword format first
         if (buildMatch[1]) {
-          const buildNumber = parseInt(buildMatch[1]);
-          if (buildNumber >= 22000) {
-            return 'Windows 11';
-          }
+          buildNumber = parseInt(buildMatch[1]);
         } 
-        // Check version format (10.0.XXXXX)
-        else if (buildMatch[2]) {
-          const buildNumber = parseInt(buildMatch[4]); // The last number in 10.0.26200
-          if (buildNumber >= 22000) {
-            return 'Windows 11';
-          }
+        // Check version format (X.Y.BuildNumber after semicolon)
+        else if (buildMatch[4]) {
+          buildNumber = parseInt(buildMatch[4]); // The build number is the last part
+        }
+        
+        if (buildNumber && buildNumber >= 22000) {
+          return 'Windows 11';
         }
       }
       return 'Windows 10';
