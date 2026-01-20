@@ -70,8 +70,13 @@ export function findAssetForOS(assets: GitHubAsset[], os: string, arch?: string)
     }
 
     // If no architecture-specific match, try OS-only match but exclude wrong architecture
-    // This prevents x64 systems from getting arm64 builds
-    const wrongArchPatterns = arch === 'x64' ? ['arm64', 'aarch64'] : arch === 'arm64' ? ['x64', 'x86_64', 'amd64'] : [];
+    // This prevents x64 systems from getting arm64 builds and vice versa
+    let wrongArchPatterns: string[] = [];
+    if (arch === 'x64') {
+        wrongArchPatterns = ['arm64', 'aarch64'];
+    } else if (arch === 'arm64') {
+        wrongArchPatterns = ['x64', 'x86_64', 'amd64'];
+    }
     
     for (const pattern of patterns) {
         const asset = assets.find((a) => {

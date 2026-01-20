@@ -52,23 +52,14 @@ export function detectArchitecture(): Architecture {
 
   const userAgent = window.navigator.userAgent.toLowerCase();
 
-  // Check for ARM64 indicators
-  // WOW64 indicates x64 Windows, ARM64 indicates ARM Windows
+  // Check for ARM64 indicators first (ARM64 is less common, so check it first)
   if (userAgent.includes('arm64') || userAgent.includes('aarch64')) {
     return 'arm64';
   }
 
-  // Check platform from userAgentData if available
-  if ('userAgentData' in window.navigator && window.navigator.userAgentData) {
-    const uaData = window.navigator.userAgentData as any;
-    // Check if getHighEntropyValues is available
-    if (uaData.getHighEntropyValues) {
-      // Note: This is async, but we need sync detection
-      // Fall through to other checks
-    }
-  }
-
   // Check for x64 indicators
+  // WOW64 indicates 64-bit Windows (x64 architecture)
+  // Note: WOW64 means "Windows 32-bit on Windows 64-bit" - the presence of WOW64 indicates 64-bit Windows
   if (userAgent.includes('x64') || userAgent.includes('x86_64') || userAgent.includes('amd64') || userAgent.includes('win64') || userAgent.includes('wow64')) {
     return 'x64';
   }
