@@ -174,6 +174,48 @@ export async function detectOSVersion(osOverride?: OperatingSystem): Promise<str
         return "Windows";
     } else if (os === "mac") {
         // Detect macOS version
+        // Preferred: use User-Agent Client Hints platformVersion when available (Chromium-based browsers)
+        // Modern Chromium browsers freeze user agent at macOS 10.15.7 for privacy, so we need Client Hints
+        const uaData = (window.navigator as Navigator & { userAgentData?: { getHighEntropyValues?: (hints: string[]) => Promise<{ platformVersion?: string }> } }).userAgentData;
+        if (uaData?.getHighEntropyValues) {
+            try {
+                const { platformVersion } = await uaData.getHighEntropyValues(["platformVersion"]);
+                if (platformVersion) {
+                    // platformVersion for macOS returns the actual version (e.g., "15.2.0")
+                    const parts = platformVersion.split(".");
+                    const major = parseInt(parts[0]);
+                    const minor = parseInt(parts[1] || "0");
+                    
+                    if (!Number.isNaN(major)) {
+                        // macOS version names (as of January 2026)
+                        // Note: This mapping should be updated as new macOS versions are released
+                        const versionNames: { [key: string]: string } = {
+                            "15": "Sequoia",
+                            "14": "Sonoma",
+                            "13": "Ventura",
+                            "12": "Monterey",
+                            "11": "Big Sur",
+                            "10.15": "Catalina",
+                            "10.14": "Mojave",
+                            "10.13": "High Sierra",
+                        };
+                        
+                        const versionKey = major >= 11 ? major.toString() : `${major}.${minor}`;
+                        const versionName = versionNames[versionKey];
+                        
+                        if (versionName) {
+                            return `macOS ${versionName}`;
+                        }
+                        // For unknown future versions, return generic format
+                        return `macOS ${major}.${minor}`;
+                    }
+                }
+            } catch {
+                // fall back to userAgent parsing
+            }
+        }
+        
+        // Fallback: parse from user agent (may be frozen at 10.15.7 in modern browsers)
         const versionMatch = userAgent.match(/Mac OS X (\d+)[_.](\d+)([_.](\d+))?/);
         if (versionMatch) {
             const major = parseInt(versionMatch[1]);
