@@ -1,26 +1,26 @@
 "use client";
 
 import { fetchLatestRelease, findAssetForOS, formatFileSize, type GitHubAsset } from "@/lib/github-api";
-import { detectOS, getOSDisplayName, type OperatingSystem } from "@/lib/os-detection";
+import { detectPlatform, getOSDisplayName, type OperatingSystem, type PlatformInfo } from "@/lib/os-detection";
 import { useEffect, useState } from "react";
 
 const COMMAND = 'xattr -cr "/Applications/Power Platform ToolBox.app"';
 
 export default function DownloadButton() {
-    const [os, setOS] = useState<OperatingSystem>("unknown");
+    const [platform, setPlatform] = useState<PlatformInfo>({ os: "unknown", arch: "unknown" });
     const [asset, setAsset] = useState<GitHubAsset | null>(null);
     const [version, setVersion] = useState<string>("");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadReleaseAndDetectOS = async () => {
-            const detectedOS = detectOS();
-            setOS(detectedOS);
+            const detectedPlatform = detectPlatform();
+            setPlatform(detectedPlatform);
 
             const release = await fetchLatestRelease();
             if (release) {
                 setVersion(release.tag_name);
-                const matchedAsset = findAssetForOS(release.assets, detectedOS);
+                const matchedAsset = findAssetForOS(release.assets, detectedPlatform.os, detectedPlatform.arch);
                 setAsset(matchedAsset);
             }
             setLoading(false);
@@ -37,7 +37,7 @@ export default function DownloadButton() {
         );
     }
 
-    if (!asset) {
+    if (!asset || platform.os === "unknown") {
         return (
             <div className="text-center">
                 <a href="https://github.com/PowerPlatformToolBox/desktop-app/releases" target="_blank" rel="noopener noreferrer" className="btn-primary inline-block">
@@ -53,7 +53,7 @@ export default function DownloadButton() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Download for {getOSDisplayName(os)}
+                Download for {getOSDisplayName(platform.os)}
             </a>
             <div className="text-sm text-light">
                 {version && (
@@ -67,7 +67,7 @@ export default function DownloadButton() {
                     </span>
                 )}
             </div>
-            {os === "mac" && (
+            {platform.os === "mac" && (
                 <div className="card max-w-2xl mt-2 bg-amber-50 border-2 border-amber-200">
                     <p className="mb-3 text-dark">
                         <strong className="text-amber-700">⚠️ macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following

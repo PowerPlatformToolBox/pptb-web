@@ -38,30 +38,55 @@ export async function fetchLatestRelease(): Promise<GitHubRelease | null> {
     }
 }
 
-export function findAssetForOS(assets: GitHubAsset[], os: string): GitHubAsset | null {
+export function findAssetForOS(assets: GitHubAsset[], os: string, arch?: string): GitHubAsset | null {
     if (!assets || assets.length === 0) {
         return null;
     }
 
     // Mapping of OS to file patterns
     const osPatterns: Record<string, string[]> = {
-        windows: [".exe", "-win", "-windows", "win32", "win64"],
-        mac: [".dmg", "-mac", "-macos", "-darwin", "darwin"],
-        linux: [".appimage", ".deb", ".rpm", "-linux", "linux"],
+        windows: [".exe", "-win", "-windows"],
+        mac: [".dmg", "-mac", "-macos", "-darwin"],
+        linux: [".appimage", ".deb", ".rpm", "-linux"],
     };
 
     const patterns = osPatterns[os] || [];
+    
+    // If architecture is provided, try to find OS + architecture match first
+    if (arch && arch !== 'unknown') {
+        const archPatterns = arch === 'arm64' ? ['arm64', 'aarch64'] : ['x64', 'x86_64', 'amd64', 'win64'];
+        
+        for (const osPattern of patterns) {
+            for (const archPattern of archPatterns) {
+                const asset = assets.find((a) => {
+                    const name = a.name.toLowerCase();
+                    return name.includes(osPattern) && name.includes(archPattern);
+                });
+                if (asset) {
+                    return asset;
+                }
+            }
+        }
+    }
 
-    // Try to find a matching asset
+    // If no architecture-specific match, try OS-only match but exclude wrong architecture
+    // This prevents x64 systems from getting arm64 builds
+    const wrongArchPatterns = arch === 'x64' ? ['arm64', 'aarch64'] : arch === 'arm64' ? ['x64', 'x86_64', 'amd64'] : [];
+    
     for (const pattern of patterns) {
-        const asset = assets.find((a) => a.name.toLowerCase().includes(pattern));
+        const asset = assets.find((a) => {
+            const name = a.name.toLowerCase();
+            const hasOsPattern = name.includes(pattern);
+            const hasWrongArch = wrongArchPatterns.some((wrongArch) => name.includes(wrongArch));
+            return hasOsPattern && !hasWrongArch;
+        });
         if (asset) {
             return asset;
         }
     }
 
-    // If no specific match, return the first asset as fallback
-    return assets[0];
+    // If still no match, return null to indicate no suitable asset found
+    return null;
 }
 
 export function formatFileSize(bytes: number): string {
