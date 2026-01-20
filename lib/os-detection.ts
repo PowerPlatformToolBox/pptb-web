@@ -190,6 +190,7 @@ export async function detectOSVersion(osOverride?: OperatingSystem): Promise<str
                         // macOS version names (as of January 2026)
                         // Note: This mapping should be updated as new macOS versions are released
                         const versionNames: { [key: string]: string } = {
+                            "26": "Tahoe",
                             "15": "Sequoia",
                             "14": "Sonoma",
                             "13": "Ventura",
@@ -224,6 +225,7 @@ export async function detectOSVersion(osOverride?: OperatingSystem): Promise<str
             // macOS version names (as of January 2026)
             // Note: This mapping should be updated as new macOS versions are released
             const versionNames: { [key: string]: string } = {
+                "26": "Tahoe",
                 "15": "Sequoia",
                 "14": "Sonoma",
                 "13": "Ventura",
