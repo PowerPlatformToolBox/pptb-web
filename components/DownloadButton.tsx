@@ -1,8 +1,13 @@
 "use client";
 
+import Image from "next/image";
+import { useEffect, useState } from "react";
+
+import appleLogo from "@/images/logos/apple.svg";
+import linuxLogo from "@/images/logos/linux.svg";
+import windowsLogo from "@/images/logos/windows.svg";
 import { fetchLatestRelease, findAssetForOS, formatFileSize, type GitHubAsset } from "@/lib/github-api";
 import { detectPlatform, getArchitectureDisplayName, getOSDisplayName, type PlatformInfo } from "@/lib/os-detection";
-import { useEffect, useState } from "react";
 
 const COMMAND = 'xattr -cr "/Applications/Power Platform ToolBox.app"';
 
@@ -43,23 +48,11 @@ export default function DownloadButton() {
 
         switch (platform.os) {
             case "windows":
-                return (
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" role="img" aria-label="Windows">
-                        <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
-                    </svg>
-                );
+                return <Image src={windowsLogo} alt="Windows logo" className="h-6 w-6" />;
             case "mac":
-                return (
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" role="img" aria-label="Apple">
-                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                    </svg>
-                );
+                return <Image src={appleLogo} alt="Apple logo" className="h-6 w-6" />;
             case "linux":
-                return (
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" role="img" aria-label="Linux">
-                        <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.705-.127 2.528.283.823 1.002 1.607 1.918 2.013 1.832.812 3.951-.13 4.69-1.856.738-1.726.201-4.022-.54-5.75-.74-1.728-1.857-2.64-1.857-2.64s.857-.64 1.857-.64c1 0 1.857.64 1.857.64s-1.117.912-1.857 2.64c-.741 1.728-1.278 4.024-.54 5.75.739 1.726 2.858 2.668 4.69 1.856.916-.406 1.635-1.19 1.918-2.013.283-.823.151-1.688-.127-2.528-.589-1.771-1.831-3.47-2.716-4.521-.75-1.067-.974-1.928-1.05-3.02-.065-1.491 1.056-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021zm-.005 2.024c.075 0 .15.002.225.008 1.846.144 2.002 1.509 2.053 2.973.051 1.464.397 2.679 1.461 4.134.53.725 1.538 2.16 2.048 3.665.255.753.335 1.497-.127 2.013-.462.516-1.335.516-2.048 0-.713-.516-1.538-2.013-1.538-2.013s-.825 1.497-1.538 2.013c-.713.516-1.586.516-2.048 0-.462-.516-.382-1.26-.127-2.013.51-1.505 1.518-2.94 2.048-3.665 1.064-1.455 1.41-2.67 1.461-4.134.051-1.464.207-2.829 2.053-2.973.075-.006.15-.008.225-.008z" />
-                    </svg>
-                );
+                return <Image src={linuxLogo} alt="Linux logo" className="h-6 w-6" />;
             default:
                 return null;
         }
