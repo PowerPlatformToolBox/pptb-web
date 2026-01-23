@@ -5,6 +5,21 @@ labels: ["bug", "triage"]
 type: "bug"
 projects: []
 body:
+    - type: dropdown
+      id: issue-category
+      attributes:
+          label: Issue category
+          description: Select the type of issue you're reporting.
+          options:
+              - General website bug
+              - Tool submission problem
+              - Tool listing or search issue
+              - Performance or loading issue
+              - Other
+          default: 0
+      validations:
+          required: true
+          
     - type: markdown
       attributes:
           value: |
@@ -50,7 +65,7 @@ body:
           description: "Example: Edge 130.0.2849.80, Chrome 131.0.6778.86, Safari 17.5."
           placeholder: Browser name and version
       validations:
-          required: true
+          required: false
 
     - type: input
       id: os
@@ -59,22 +74,7 @@ body:
           description: "Example: Windows 11 (desktop), macOS 15 (MacBook), iOS 26 (iPhone), Android 14 (Pixel 8)."
           placeholder: OS and device
       validations:
-          required: true
-
-    - type: dropdown
-      id: issue-category
-      attributes:
-          label: Issue category
-          description: Select the type of issue you're reporting.
-          options:
-              - General website bug
-              - Tool submission problem
-              - Tool listing or search issue
-              - Performance or loading issue
-              - Other
-          default: 0
-      validations:
-          required: true
+          required: false
 
     - type: textarea
       id: console-logs
@@ -94,3 +94,4 @@ body:
       attributes:
           label: Additional context
           description: Anything else we should know (feature flags, ad blockers, VPN, etc.).
+
