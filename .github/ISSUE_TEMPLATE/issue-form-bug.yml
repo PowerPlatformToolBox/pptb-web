@@ -3,7 +3,7 @@ description: Report an issue with the Power Platform ToolBox website.
 title: "[Bug]: "
 labels: ["bug", "triage"]
 type: "bug"
-projects: []
+projects: ["PowerPlatformToolBox/1"]
 body:
     - type: markdown
       attributes:
@@ -94,5 +94,6 @@ body:
       attributes:
           label: Additional context
           description: Anything else we should know (feature flags, ad blockers, VPN, etc.).
+
 
 
