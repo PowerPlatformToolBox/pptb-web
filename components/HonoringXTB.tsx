@@ -11,7 +11,7 @@ export function HonoringXTB() {
                     <div className="mb-6 text-6xl">🙏</div>
                     <h2 className="text-3xl font-bold mb-4 text-white">Honoring XrmToolBox and Tanguy</h2>
                     <p className="text-xl text-slate-300 max-w-3xl mx-auto mb-6">
-                        Power Platform Tool Box exists because of the incredible foundation laid by
+                        Power Platform ToolBox exists because of the incredible foundation laid by
                         <span className="text-white font-semibold"> Tanguy Touzard</span> and the
                         <span className="text-white font-semibold"> XrmToolBox</span> community.
                     </p>

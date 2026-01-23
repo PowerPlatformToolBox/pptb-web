@@ -4,7 +4,7 @@ export default function TermsOfService() {
     return (
         <div className="max-w-2xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
-            <p className="mb-4 text-gray-700">By using Power Platform Tool Box, you agree to the following terms and conditions. Please read them carefully.</p>
+            <p className="mb-4 text-gray-700">By using Power Platform ToolBox, you agree to the following terms and conditions. Please read them carefully.</p>
             <h2 className="text-xl font-semibold mt-8 mb-2">Use of Service</h2>
             <ul className="list-disc ml-6 text-gray-700 mb-4">
                 <li>You must be at least 13 years old to use this service.</li>

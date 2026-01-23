@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
                 console.log("Tool Conversion Notification (implement email service):", {
                     to: submitter.user.email,
                     subject: `Your tool "${intake.display_name}" is now live!`,
-                    body: `Great news! Your tool submission "${intake.display_name}" has been converted to a full tool and is now available in the Power Platform Tool Box.`,
+                    body: `Great news! Your tool submission "${intake.display_name}" has been converted to a full tool and is now available in the Power Platform ToolBox.`,
                 });
                 // Example: await sendEmail({ to: submitter.user.email, subject, body });
             }

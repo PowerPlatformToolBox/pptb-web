@@ -157,7 +157,7 @@ export default function SubmitToolPage() {
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Submit a New Tool</h1>
                             <p className="mt-4 text-lg text-slate-600">
-                                Submit your npm package to be added to the Power Platform Tool Box. We&apos;ll validate your package and review it for inclusion.
+                                Submit your npm package to be added to the Power Platform ToolBox. We&apos;ll validate your package and review it for inclusion.
                             </p>
                         </div>
 

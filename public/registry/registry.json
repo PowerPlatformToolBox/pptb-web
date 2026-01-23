@@ -22,7 +22,7 @@
       "id": "pptb-standard-sample-tool",
       "packageName": "pptb-standard-sample-tool",
       "name": "Sample Standard Tool",
-      "description": "A sample HTML tool that showcases various features provided by the Tool Box",
+      "description": "A sample HTML tool that showcases various features provided by the PPTB",
       "author": "PPTB Creator",
       "version": "1.0.5",
       "downloadUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/pptb-standard-sample-tool-1.0.5/pptb-standard-sample-tool-1.0.5.tar.gz",

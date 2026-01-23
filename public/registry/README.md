@@ -1,9 +1,9 @@
 # Power Platform Tool Box - Tool Registry
 
-Official registry for Power Platform Tool Box extensions.
+Official registry for Power Platform ToolBox extensions.
 
 ## For Users
-Tools are automatically synced to the Tool Box marketplace.
+Tools are automatically synced to the Power Platform ToolBox marketplace.
 
 ## For Developers
 Submit your tool via [GitHub Issues](../../issues/new/choose).

@@ -24,7 +24,7 @@ export default function AboutPage() {
                     </FadeIn>
                     <FadeIn direction="up" delay={0.25}>
                         <p className="mx-auto mt-6 max-w-2xl text-lg tracking-tight text-slate-700">
-                            A heartfelt tribute to <strong>Tanguy Touzard</strong> and the <strong>XrmToolBox</strong> project that paved the way for Power Platform Tool Box.
+                            A heartfelt tribute to <strong>Tanguy Touzard</strong> and the <strong>XrmToolBox</strong> project that paved the way for Power Platform ToolBox.
                         </p>
                     </FadeIn>
                 </Container>

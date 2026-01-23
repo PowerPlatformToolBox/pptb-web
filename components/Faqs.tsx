@@ -10,7 +10,7 @@ import backgroundImage from "@/images/background-faqs.jpg";
 const faqs = [
     [
         {
-            question: "What is Power Platform Tool Box (PPTB)?",
+            question: "What is Power Platform ToolBox (PPTB)?",
             answer: "PPTB is a modern, secure, and open-source toolbox for Power Platform makers, admins, and developers. It allows you to discover, run, and manage tools in a streamlined, isolated environment.",
         },
         {
