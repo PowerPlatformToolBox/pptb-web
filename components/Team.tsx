@@ -14,42 +14,49 @@ const lead = {
 const supportingTeam = [
     {
         name: "Matt Berg",
+        alias: "",
         title: "The Product Whisperer",
         blurb: "Turns ideas into features and chaos into clarity.",
         linkedin: "https://www.linkedin.com/in/mattberg11/",
     },
     {
         name: "Carl Cookson",
+        alias: "LinkeD365",
         title: "Bug Crusher 🐞💥",
         blurb: "First to test, first to build, first to break things so others don’t.",
         linkedin: "https://www.linkedin.com/in/carlcookson/",
     },
     {
         name: "Lars Hildebrandt",
+        alias: "",
         title: "The Box Breaker 📦🚀",
         blurb: "Thinks beyond boundaries and makes bold ideas actually work.",
         linkedin: "https://www.linkedin.com/in/lars-hildebrandt-6209a437/",
     },
     {
         name: "Mohsin Mirza",
+        alias: "mohsinonxrm",
         title: "The Triple Threat ⚔️",
         blurb: "Tester, implementor, and tool author — a one-person strike team.",
         linkedin: "https://www.linkedin.com/in/mohsin-mirza-94210615/",
     },
     {
         name: "Oleksandr Olashyn",
+        alias: "dancingwithcrm",
         title: "The UI Polisher 🎨",
         blurb: "Refines the toolbox UI and elevates the overall experience.",
         linkedin: "https://www.linkedin.com/in/dancingwithcrm/",
     },
     {
         name: "Oliver Flint",
+        alias: "",
         title: "The Momentum Engine ⚡",
         blurb: "Generates ideas and relentlessly pushes the team forward.",
         linkedin: "https://www.linkedin.com/in/oliverflint/",
     },
     {
         name: "Mike Ochs",
+        alias: "",
         title: "The Idea Factory 💡",
         blurb: "Constantly brainstorming new features and improvements.",
         linkedin: "https://www.linkedin.com/in/mikefactorial/",
@@ -59,8 +66,9 @@ const supportingTeam = [
 export function Team() {
     return (
         <section id="team" className="relative overflow-hidden bg-slate-950 pt-20 pb-28 sm:py-32">
-            <div className="absolute inset-0 opacity-80" aria-hidden="true">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#050810] via-[#101b37] to-[#2a0d46]" />
+            <div className="absolute inset-0" aria-hidden="true">
+                <div className="absolute inset-0 bg-slate-950" />
+                <div className="absolute inset-0 bg-pptb-gradient opacity-50" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.35),transparent_55%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_30%,rgba(147,51,234,0.4),transparent_50%)]" />
             </div>
@@ -75,39 +83,42 @@ export function Team() {
                 </FadeIn>
 
                 <FadeIn direction="up" delay={0.2}>
-                    <div className="mt-16 grid gap-6 rounded-3xl bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-blue-600/20 p-8 shadow-2xl backdrop-blur">
-                        <div className="flex flex-col gap-6 md:flex-row md:items-center">
-                            <div className="flex-1">
-                                <p className="text-sm uppercase tracking-[0.3em] text-blue-200">Created & maintained by</p>
-                                <h3 className="mt-2 text-3xl font-semibold text-white">
-                                    <Link href={lead.linkedin} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 hover:text-blue-200 transition-colors">
-                                        {lead.name}
-                                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                            <path d="M20.447 20.452H16.89v-5.569c0-1.328-.024-3.037-1.852-3.037-1.853 0-2.136 1.447-2.136 2.941v5.665H9.345V9h3.41v1.561h.048c.476-.9 1.637-1.852 3.368-1.852 3.602 0 4.268 2.37 4.268 5.452v6.291zM5.337 7.433a1.985 1.985 0 01-1.985-1.983 1.985 1.985 0 011.985-1.984 1.985 1.985 0 11-.001 3.967zM7.119 20.452H3.554V9h3.565v11.452z" />
-                                        </svg>
-                                    </Link>
-                                </h3>
-                                <p className="text-lg text-slate-200">
-                                    ({lead.alias}) — {lead.title}
-                                </p>
+                    <div className="relative mt-16 rounded-3xl shadow-2xl backdrop-blur">
+                        <div className="absolute inset-0 rounded-3xl bg-pptb-gradient opacity-30" aria-hidden="true"></div>
+                        <div className="relative grid gap-6 rounded-3xl bg-white/5 p-8">
+                            <div className="flex flex-col gap-6 md:flex-row md:items-center">
+                                <div className="flex-1">
+                                    <p className="text-sm uppercase tracking-[0.3em] text-blue-200">Created by</p>
+                                    <h3 className="mt-2 text-3xl font-semibold text-white">
+                                        <Link href={lead.linkedin} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 hover:text-blue-200 transition-colors">
+                                            {lead.name}
+                                            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path d="M20.447 20.452H16.89v-5.569c0-1.328-.024-3.037-1.852-3.037-1.853 0-2.136 1.447-2.136 2.941v5.665H9.345V9h3.41v1.561h.048c.476-.9 1.637-1.852 3.368-1.852 3.602 0 4.268 2.37 4.268 5.452v6.291zM5.337 7.433a1.985 1.985 0 01-1.985-1.983 1.985 1.985 0 011.985-1.984 1.985 1.985 0 11-.001 3.967zM7.119 20.452H3.554V9h3.565v11.452z" />
+                                            </svg>
+                                        </Link>
+                                    </h3>
+                                    <p className="text-lg text-slate-200">
+                                        ({lead.alias}) — {lead.title}
+                                    </p>
+                                </div>
+                                <p className="flex-1 text-base text-slate-200">{lead.description}</p>
                             </div>
-                            <p className="flex-1 text-base text-slate-200">{lead.description}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/20 bg-white/5 p-4 text-sm text-slate-200">
-                            If you&apos;d like to join the core team, reach out to {lead.name} ({lead.alias}) for onboarding.
+                            <div className="rounded-2xl border border-white/20 bg-white/5 p-4 text-sm text-slate-200">
+                                If you&apos;d like to join the core team, reach out to {lead.name} ({lead.alias}) for onboarding.
+                            </div>
                         </div>
                     </div>
                 </FadeIn>
 
                 <SlideIn direction="up" delay={0.3}>
-                    <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <p className="mt-8 text-base text-slate-300">These collaborators pour countless hours into testing, shipping fixes, and keeping the toolbox humming for the entire community.</p>
+                    <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {supportingTeam.map((member) => (
                             <div
                                 key={member.name}
                                 className="group h-full rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-100 shadow-xl transition hover:-translate-y-1 hover:border-white/40 hover:bg-white/10"
                             >
-                                <p className="text-sm font-semibold text-blue-200">{member.title}</p>
-                                <h3 className="mt-2 text-xl font-semibold text-white">
+                                <h3 className="text-xl font-semibold text-white">
                                     <Link href={member.linkedin || "#"} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-blue-200 transition-colors">
                                         {member.name}
                                         {member.linkedin && (
@@ -117,7 +128,8 @@ export function Team() {
                                         )}
                                     </Link>
                                 </h3>
-                                <p className="mt-3 text-base text-slate-300">{member.blurb}</p>
+                                <p className="mt-1 text-base text-slate-200">{member.alias ? `(${member.alias}) — ${member.title}` : member.title}</p>
+                                <p className="mt-4 text-base text-slate-300">{member.blurb}</p>
                             </div>
                         ))}
                     </div>

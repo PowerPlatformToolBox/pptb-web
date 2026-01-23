@@ -1,0 +1,31 @@
+%% PPTB Threat Model (starter)
+flowchart LR
+    Maker(Maker / Tool Author)
+    PPTB[PPTB Desktop Client]
+    Github[(GitHub Releases)]
+    EntraID[(Microsoft Entra ID)]
+    Supabase[(Supabase APIs)]
+    Dataverse[(Customer Dataverse / Power Platform)]
+
+    Maker -->|Downloads installer| PPTB
+    PPTB -->|Fetches tools| Github
+    PPTB -->|OAuth flow| EntraID
+    PPTB -->|Calls secured endpoints| Supabase
+    PPTB -->|Executes maker actions| Dataverse
+
+    classDef boundary fill:#fef3c7,stroke:#f59e0b,stroke-width:2px;
+    subgraph TB1 [Local Device]
+        PPTB
+    end
+    class TB1 boundary;
+
+    subgraph TB2 [Microsoft Cloud]
+        EntraID
+        Dataverse
+    end
+    class TB2 boundary;
+
+    subgraph TB3 [PPTB Managed Services]
+        Supabase
+    end
+    class TB3 boundary;
