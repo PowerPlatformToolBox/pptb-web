@@ -5,6 +5,14 @@ labels: ["bug", "triage"]
 type: "bug"
 projects: []
 body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to file a website bug.
+
+              > [!NOTE]
+                > **If this is a documentation issue**, please report it in the [pptb-docs-web repository](https://github.com/PowerPlatformToolBox/pptb-docs-web/issues) instead.
+
     - type: dropdown
       id: issue-category
       attributes:
@@ -19,14 +27,6 @@ body:
           default: 0
       validations:
           required: true
-          
-    - type: markdown
-      attributes:
-          value: |
-              Thanks for taking the time to file a website bug.
-
-              > [!NOTE]
-                > **If this is a documentation issue**, please report it in the [pptb-docs-web repository](https://github.com/PowerPlatformToolBox/pptb-docs-web/issues) instead.
 
     - type: input
       id: page-url
@@ -94,4 +94,5 @@ body:
       attributes:
           label: Additional context
           description: Anything else we should know (feature flags, ad blockers, VPN, etc.).
+
 
