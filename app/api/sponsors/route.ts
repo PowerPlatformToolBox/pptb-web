@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Revalidate every 5 minutes (300 seconds)
+export const revalidate = 300;
+
 interface GitHubSponsor {
     sponsorEntity: {
         login: string;
@@ -80,9 +83,15 @@ export async function GET() {
             throw new Error(result.errors[0]?.message || "GraphQL query failed");
         }
 
-        const sponsors: SponsorData[] = result.data?.organization?.sponsorshipsAsMaintainer?.nodes
-            ?.filter((node: GitHubSponsor) => node.sponsorEntity)
-            ?.map((node: GitHubSponsor) => ({
+        const nodes = result.data?.organization?.sponsorshipsAsMaintainer?.nodes;
+        
+        if (!nodes || !Array.isArray(nodes)) {
+            return NextResponse.json([]);
+        }
+
+        const sponsors: SponsorData[] = nodes
+            .filter((node: GitHubSponsor) => node.sponsorEntity)
+            .map((node: GitHubSponsor) => ({
                 name: node.sponsorEntity.name || node.sponsorEntity.login,
                 login: node.sponsorEntity.login,
                 avatarUrl: node.sponsorEntity.avatarUrl,
@@ -90,7 +99,7 @@ export async function GET() {
                 tier: node.tier?.name || "Sponsor",
                 monthlyAmount: node.tier?.monthlyPriceInDollars || 0,
             }))
-            .sort((a: SponsorData, b: SponsorData) => b.monthlyAmount - a.monthlyAmount) || [];
+            .sort((a: SponsorData, b: SponsorData) => b.monthlyAmount - a.monthlyAmount);
 
         return NextResponse.json(sponsors);
     } catch (error) {

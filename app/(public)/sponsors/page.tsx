@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -26,6 +27,8 @@ export default function SponsorsPage() {
                 if (response.ok) {
                     const data = await response.json();
                     setSponsors(data);
+                } else {
+                    console.error(`Failed to fetch sponsors: ${response.status} ${response.statusText}`);
                 }
             } catch (error) {
                 console.error("Failed to fetch sponsors:", error);
@@ -104,10 +107,12 @@ export default function SponsorsPage() {
                                         className="card p-6 hover:shadow-fluent transition-shadow block"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <img
+                                            <Image
                                                 src={sponsor.avatarUrl}
                                                 alt={sponsor.name}
-                                                className="h-12 w-12 rounded-full"
+                                                width={48}
+                                                height={48}
+                                                className="rounded-full"
                                             />
                                             <div>
                                                 <h3 className="font-semibold text-slate-900">{sponsor.name}</h3>
