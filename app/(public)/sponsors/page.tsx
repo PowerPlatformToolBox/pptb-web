@@ -1,18 +1,41 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
 
-// Placeholder sponsor data structure
-// In a real implementation, this would be fetched from GitHub Sponsors API
-const sponsors = [
-    // Example structure:
-    // { name: "Sponsor Name", tier: "Gold", avatarUrl: "https://...", githubUrl: "https://github.com/..." }
-];
+interface Sponsor {
+    name: string;
+    login: string;
+    avatarUrl: string;
+    githubUrl: string;
+    tier: string;
+    monthlyAmount: number;
+}
 
 export default function SponsorsPage() {
+    const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchSponsors() {
+            try {
+                const response = await fetch("/api/sponsors");
+                if (response.ok) {
+                    const data = await response.json();
+                    setSponsors(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch sponsors:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchSponsors();
+    }, []);
     return (
         <main className="bg-slate-50">
             {/* Slim Hero Banner with CTA */}
@@ -62,21 +85,36 @@ export default function SponsorsPage() {
                         </div>
                     </FadeIn>
 
-                    {sponsors.length > 0 ? (
+                    {loading ? (
+                        <FadeIn direction="up" delay={0.3}>
+                            <div className="text-center py-12">
+                                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                                <p className="mt-4 text-slate-600">Loading sponsors...</p>
+                            </div>
+                        </FadeIn>
+                    ) : sponsors.length > 0 ? (
                         <FadeIn direction="up" delay={0.3}>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {sponsors.map((sponsor, index) => (
-                                    <div key={index} className="card p-6 hover:shadow-fluent transition-shadow">
+                                {sponsors.map((sponsor) => (
+                                    <a
+                                        key={sponsor.login}
+                                        href={sponsor.githubUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="card p-6 hover:shadow-fluent transition-shadow block"
+                                    >
                                         <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                                {sponsor.name.charAt(0)}
-                                            </div>
+                                            <img
+                                                src={sponsor.avatarUrl}
+                                                alt={sponsor.name}
+                                                className="h-12 w-12 rounded-full"
+                                            />
                                             <div>
                                                 <h3 className="font-semibold text-slate-900">{sponsor.name}</h3>
-                                                <p className="text-sm text-slate-600">{sponsor.tier} Sponsor</p>
+                                                <p className="text-sm text-slate-600">{sponsor.tier}</p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 ))}
                             </div>
                         </FadeIn>
