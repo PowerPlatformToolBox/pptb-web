@@ -58,6 +58,7 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
                 <MobileNavLink href="/#team">Teams</MobileNavLink>
                 <MobileNavLink href="/about">About</MobileNavLink>
                 <MobileNavLink href="/security">Security</MobileNavLink>
+                <MobileNavLink href="/sponsors">Sponsors</MobileNavLink>
                 <MobileNavLink href="/faqs">FAQs</MobileNavLink>
                 <hr className="m-2 border-slate-300/40" />
                 {isAuthenticated ? (
@@ -134,6 +135,7 @@ export function Header() {
                             <NavLink href="/#team">Teams</NavLink>
                             <NavLink href="/about">About</NavLink>
                             <NavLink href="/security">Security</NavLink>
+                            <NavLink href="/sponsors">Sponsors</NavLink>
                             <NavLink href="/faqs">FAQs</NavLink>
                         </div>
                     </div>
