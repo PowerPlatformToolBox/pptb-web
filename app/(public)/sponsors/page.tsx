@@ -56,7 +56,7 @@ export default function SponsorsPage() {
                                 </span>
                             </h1>
                             <p className="mx-auto mt-4 max-w-2xl text-base tracking-tight text-slate-700 sm:text-lg">
-                                Power Platform Tool Box is free and open source, made possible by the generous support of our sponsors. Your sponsorship helps us maintain and improve the tools that thousands of developers rely on every day.
+                                Power Platform ToolBox is free and open source, made possible by the generous support of our sponsors. Your sponsorship helps us maintain and improve the tools that thousands of developers rely on every day.
                             </p>
                             <div className="mt-8 flex justify-center gap-4">
                                 <Link
