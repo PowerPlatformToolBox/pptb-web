@@ -181,6 +181,27 @@ SUPABASE_URL=your-project-url.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 ```
 
+#### GitHub Token (Optional but Recommended)
+
+To enable GitHub Sponsors data and increase API rate limits, add a GitHub Personal Access Token:
+
+```bash
+GITHUB_TOKEN=your-github-token
+```
+
+**How to create a GitHub Personal Access Token:**
+
+1. Go to [GitHub Settings → Tokens](https://github.com/settings/tokens)
+2. Click "Generate new token" → "Generate new token (classic)"
+3. Give your token a descriptive name (e.g., "PPTB Web - Sponsors API")
+4. Select the following scopes:
+   - `public_repo` - For public repositories and basic API access
+   - `read:org` - To read organization sponsorship data
+5. Click "Generate token" and copy the token
+6. Add it to your `.env.local` file
+
+**Note:** Never commit your `.env.local` file to version control. Use `.env.example` as a template.
+
 Client components now initialize Supabase via a lightweight hook `useSupabase()` that fetches configuration from an internal API route (`/api/supabase-config`). This prevents accidental exposure of additional server-only environment variables while still allowing the (safe) anon key to be used in the browser.
 
 ### Usage in Client Components

@@ -252,3 +252,106 @@ export async function runUpdateToolWorkflow(params: { owner: string; repo: strin
     });
     return conclusion;
 }
+
+// --- GitHub Sponsors API helpers ---
+
+export interface GitHubSponsor {
+    sponsorEntity: {
+        login: string;
+        name: string | null;
+        avatarUrl: string;
+        url: string;
+    };
+    tier: {
+        name: string;
+        monthlyPriceInDollars: number;
+    } | null;
+}
+
+export interface SponsorData {
+    name: string;
+    login: string;
+    avatarUrl: string;
+    githubUrl: string;
+    tier: string;
+    monthlyAmount: number;
+}
+
+/**
+ * Fetches the list of active GitHub sponsors for an organization using GraphQL API.
+ * 
+ * @param organizationLogin - The GitHub organization login (e.g., "PowerPlatformToolBox")
+ * @param token - GitHub personal access token with appropriate permissions
+ * @returns Array of sponsor data sorted by monthly contribution amount (highest first)
+ * @throws Error if the GraphQL query fails or returns errors
+ */
+export async function fetchGitHubSponsors(organizationLogin: string, token: string): Promise<SponsorData[]> {
+    const query = `
+        query {
+            organization(login: "${organizationLogin}") {
+                sponsorshipsAsMaintainer(first: 100, activeOnly: true) {
+                    nodes {
+                        sponsorEntity {
+                            ... on User {
+                                login
+                                name
+                                avatarUrl
+                                url
+                            }
+                            ... on Organization {
+                                login
+                                name
+                                avatarUrl
+                                url
+                            }
+                        }
+                        tier {
+                            name
+                            monthlyPriceInDollars
+                        }
+                    }
+                }
+            }
+        }
+    `;
+
+    const response = await fetch("https://api.github.com/graphql", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (result.errors) {
+        console.error("GitHub GraphQL errors:", result.errors);
+        throw new Error(result.errors[0]?.message || "GraphQL query failed");
+    }
+
+    const nodes = result.data?.organization?.sponsorshipsAsMaintainer?.nodes;
+    
+    if (!nodes || !Array.isArray(nodes)) {
+        return [];
+    }
+
+    const sponsors: SponsorData[] = nodes
+        .filter((node: GitHubSponsor) => node.sponsorEntity)
+        .map((node: GitHubSponsor) => ({
+            name: node.sponsorEntity.name || node.sponsorEntity.login,
+            login: node.sponsorEntity.login,
+            avatarUrl: node.sponsorEntity.avatarUrl,
+            githubUrl: node.sponsorEntity.url,
+            tier: node.tier?.name || "Sponsor",
+            monthlyAmount: node.tier?.monthlyPriceInDollars || 0,
+        }))
+        .sort((a: SponsorData, b: SponsorData) => b.monthlyAmount - a.monthlyAmount);
+
+    return sponsors;
+}
