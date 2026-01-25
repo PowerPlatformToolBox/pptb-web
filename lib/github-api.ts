@@ -287,8 +287,8 @@ export interface SponsorData {
  */
 export async function fetchGitHubSponsors(organizationLogin: string, token: string): Promise<SponsorData[]> {
     const query = `
-        query {
-            organization(login: "${organizationLogin}") {
+        query($login: String!) {
+            organization(login: $login) {
                 sponsorshipsAsMaintainer(first: 100, activeOnly: true) {
                     nodes {
                         sponsorEntity {
@@ -321,7 +321,10 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ 
+            query,
+            variables: { login: organizationLogin }
+        }),
     });
 
     if (!response.ok) {
