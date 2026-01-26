@@ -2,6 +2,30 @@
 
 This document contains the SQL queries needed to create and update the Supabase tables for the tool intake feature.
 
+## Validation Requirements (Updated)
+
+When submitting a new tool for intake, the package must meet the following requirements:
+
+### Package Metadata Requirements (in package.json)
+- **name**: Valid npm package name
+- **version**: Valid semver version
+- **displayName**: Human-readable display name for the tool
+- **description**: Clear description of what the tool does
+- **license**: Must be one of the approved open source licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, GPL-2.0, GPL-3.0, LGPL-3.0, ISC, or AGPL-3.0-only
+- **contributors**: At least one contributor with name (and optionally URL)
+- **configurations**: Must include:
+  - `repository`: GitHub repository URL
+  - `iconUrl`: Icon URL (must be hosted on raw.githubusercontent.com)
+  - `readmeUrl`: README URL (cannot be hosted on github.com, use raw.githubusercontent.com or another domain)
+  - `website` (optional): Website URL
+  - `funding` (optional): Funding/sponsor URL
+
+### Package Structure Requirements (NEW)
+- **npm-shrinkwrap.json**: REQUIRED - The package must include an npm-shrinkwrap.json file at the root level. This locks down all dependency versions for better reproducibility and security.
+- **dist folder**: REQUIRED - The package must include a dist folder containing built/compiled artifacts ready for distribution.
+
+These structure requirements are validated by downloading and inspecting the package tarball from the npm registry.
+
 ## Create Tool Intakes Table
 
 Run this SQL in your Supabase SQL Editor to create the `tool_intakes` table:
