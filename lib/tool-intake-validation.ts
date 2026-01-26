@@ -427,10 +427,11 @@ export async function fetchNpmPackageInfo(packageName: string): Promise<{ succes
 export interface PackageStructureCheck {
     hasNpmShrinkwrap: boolean;
     hasDistFolder: boolean;
+    hasDistIndexHtml: boolean;
 }
 
 /**
- * Validates package structure by checking if npm-shrinkwrap.json and dist folder exist
+ * Validates package structure by checking if npm-shrinkwrap.json and dist folder with index.html exist
  * This requires downloading and inspecting the package tarball
  */
 export async function validatePackageStructure(packageName: string): Promise<{ success: true; data: PackageStructureCheck } | { success: false; error: string }> {
@@ -480,9 +481,11 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
             const packageDir = path.join(extractDir, "package");
             const shrinkwrapPath = path.join(packageDir, "npm-shrinkwrap.json");
             const distPath = path.join(packageDir, "dist");
+            const distIndexPath = path.join(distPath, "index.html");
 
             let hasNpmShrinkwrap = false;
             let hasDistFolder = false;
+            let hasDistIndexHtml = false;
 
             try {
                 await fs.promises.access(shrinkwrapPath);
@@ -498,11 +501,22 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
                 hasDistFolder = false;
             }
 
+            // Check for index.html inside dist folder
+            if (hasDistFolder) {
+                try {
+                    const indexStat = await fs.promises.stat(distIndexPath);
+                    hasDistIndexHtml = indexStat.isFile();
+                } catch {
+                    hasDistIndexHtml = false;
+                }
+            }
+
             return {
                 success: true,
                 data: {
                     hasNpmShrinkwrap,
                     hasDistFolder,
+                    hasDistIndexHtml,
                 },
             };
         } finally {

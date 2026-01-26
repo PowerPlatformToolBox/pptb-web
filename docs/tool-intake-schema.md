@@ -33,6 +33,7 @@ When submitting a new tool for intake, the package must meet the following requi
 ### Package Structure Requirements
 - **npm-shrinkwrap.json**: REQUIRED - The package must include an npm-shrinkwrap.json file at the root level. This locks down all dependency versions for better reproducibility and security.
 - **dist folder**: REQUIRED - The package must include a dist folder containing built/compiled artifacts ready for distribution.
+- **dist/index.html**: REQUIRED - The dist folder must contain an index.html file as the entry point.
 
 These structure requirements are validated by downloading and inspecting the package tarball from the npm registry.
 

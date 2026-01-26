@@ -192,6 +192,21 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Check if dist/index.html exists
+        if (!structureResult.data.hasDistIndexHtml) {
+            return NextResponse.json(
+                {
+                    error: "Package validation failed",
+                    step: "structure_validation",
+                    details: {
+                        errors: ["dist/index.html is required but not found in the package"],
+                        warnings: [],
+                    },
+                },
+                { status: 400 },
+            );
+        }
+
         // Step 3: Store the intake request
         if (!supabase) {
             return NextResponse.json(
