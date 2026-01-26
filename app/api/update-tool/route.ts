@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
             features: npmResult.data.features,
         };
 
-        const validationResult = validatePackageJson(packageJson);
+        const validationResult = await validatePackageJson(packageJson);
 
         if (!validationResult.valid) {
             // Update status in tool_updates table in Supabase as validation_failed

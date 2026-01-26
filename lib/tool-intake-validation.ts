@@ -72,6 +72,35 @@ export function isValidUrl(url: string): boolean {
     }
 }
 
+/**
+ * Checks if a URL is accessible by making a HEAD request
+ * @param url - The URL to check
+ * @returns Promise that resolves to true if URL is accessible (returns 200-399 status)
+ */
+async function isUrlAccessible(url: string): Promise<boolean> {
+    try {
+        const response = await fetch(url, { method: "HEAD", redirect: "follow" });
+        return response.ok || (response.status >= 200 && response.status < 400);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Validates that iconUrl has a .png or .jpg extension
+ * @param url - The icon URL to validate
+ * @returns true if the URL ends with .png or .jpg
+ */
+function hasValidImageExtension(url: string): boolean {
+    try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname.toLowerCase();
+        return pathname.endsWith(".png") || pathname.endsWith(".jpg") || pathname.endsWith(".jpeg");
+    } catch {
+        return false;
+    }
+}
+
 function isGithubDomain(url: string): boolean {
     try {
         const hostname = new URL(url).hostname.toLowerCase();
@@ -81,7 +110,7 @@ function isGithubDomain(url: string): boolean {
     }
 }
 
-export function validatePackageJson(packageJson: ToolPackageJson): ValidationResult {
+export async function validatePackageJson(packageJson: ToolPackageJson): Promise<ValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -131,19 +160,44 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
     } else {
         const configs = packageJson.configurations;
 
+        // Repository validation
         if (!configs.repository || typeof configs.repository !== "string") {
             errors.push("configurations.repository is required and must be a URL");
         } else if (!isValidUrl(configs.repository)) {
             errors.push("configurations.repository has an invalid URL format");
+        } else {
+            // Check if repository URL is accessible
+            const isAccessible = await isUrlAccessible(configs.repository);
+            if (!isAccessible) {
+                errors.push("configurations.repository URL is not accessible");
+            }
         }
 
-        if (configs.website && !isValidUrl(configs.website)) {
-            warnings.push("configurations.website has an invalid URL format");
-        }
-        if (configs.funding && !isValidUrl(configs.funding)) {
-            warnings.push("configurations.funding has an invalid URL format");
+        // Website validation (optional)
+        if (configs.website) {
+            if (!isValidUrl(configs.website)) {
+                warnings.push("configurations.website has an invalid URL format");
+            } else {
+                const isAccessible = await isUrlAccessible(configs.website);
+                if (!isAccessible) {
+                    warnings.push("configurations.website URL is not accessible");
+                }
+            }
         }
 
+        // Funding validation (optional)
+        if (configs.funding) {
+            if (!isValidUrl(configs.funding)) {
+                warnings.push("configurations.funding has an invalid URL format");
+            } else {
+                const isAccessible = await isUrlAccessible(configs.funding);
+                if (!isAccessible) {
+                    warnings.push("configurations.funding URL is not accessible");
+                }
+            }
+        }
+
+        // IconUrl validation
         if (configs.iconUrl) {
             if (typeof configs.iconUrl !== "string") {
                 errors.push("configurations.iconUrl must be a URL");
@@ -158,21 +212,45 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
                 } catch {
                     errors.push("configurations.iconUrl has an invalid URL format");
                 }
+
+                // Check image extension
+                if (!hasValidImageExtension(configs.iconUrl)) {
+                    errors.push("configurations.iconUrl must have a .png, .jpg, or .jpeg extension");
+                }
+
+                // Check if icon URL is accessible
+                const isAccessible = await isUrlAccessible(configs.iconUrl);
+                if (!isAccessible) {
+                    errors.push("configurations.iconUrl is not accessible");
+                }
             }
         }
 
+        // ReadmeUrl validation
         if (!configs.readmeUrl || typeof configs.readmeUrl !== "string") {
             errors.push("configurations.readmeUrl is required and must be a URL");
         } else if (!isValidUrl(configs.readmeUrl)) {
             errors.push("configurations.readmeUrl has an invalid URL format");
         } else if (isGithubDomain(configs.readmeUrl)) {
             errors.push("configurations.readmeUrl cannot be hosted on github.com; use raw.githubusercontent.com or another domain");
+        } else {
+            // Check if readme URL is accessible
+            const isAccessible = await isUrlAccessible(configs.readmeUrl);
+            if (!isAccessible) {
+                errors.push("configurations.readmeUrl is not accessible");
+            }
         }
     }
 
     // CSP Exceptions validation (optional but validated if present)
     if (packageJson.cspExceptions) {
         const validCspDirectives = ["connect-src", "script-src", "style-src", "img-src", "font-src", "frame-src"];
+
+        // Check if cspExceptions is empty
+        const hasAnyDirectives = Object.keys(packageJson.cspExceptions).length > 0;
+        if (!hasAnyDirectives) {
+            errors.push("cspExceptions cannot be empty. If CSP exceptions are not needed, remove the cspExceptions field");
+        }
 
         Object.keys(packageJson.cspExceptions).forEach((directive) => {
             if (!validCspDirectives.includes(directive)) {
@@ -182,13 +260,26 @@ export function validatePackageJson(packageJson: ToolPackageJson): ValidationRes
             const values = packageJson.cspExceptions?.[directive as keyof CspExceptions];
             if (values && !Array.isArray(values)) {
                 errors.push(`CSP directive "${directive}" must be an array of strings`);
+            } else if (values && values.length === 0) {
+                errors.push(`CSP directive "${directive}" cannot be an empty array`);
             }
         });
     }
 
     // Features validation (optional but validated if present)
     if (packageJson.features) {
-        if (packageJson.features.multiConnection !== undefined) {
+        // Check if features object has only multiConnection property
+        const featureKeys = Object.keys(packageJson.features);
+        const invalidKeys = featureKeys.filter((key) => key !== "multiConnection");
+        
+        if (invalidKeys.length > 0) {
+            errors.push(`features can only contain 'multiConnection' property. Invalid properties: ${invalidKeys.join(", ")}`);
+        }
+
+        // multiConnection must be present if features is provided
+        if (packageJson.features.multiConnection === undefined) {
+            errors.push("features.multiConnection is required when features object is provided");
+        } else {
             const isValidValue = (value: string): value is MultiConnectionValue => {
                 return VALID_MULTI_CONNECTION_VALUES.includes(value as MultiConnectionValue);
             };

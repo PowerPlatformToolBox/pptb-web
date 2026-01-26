@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
             features: npmResult.data.features,
         };
 
-        const validationResult = validatePackageJson(packageJson);
+        const validationResult = await validatePackageJson(packageJson);
 
         if (!validationResult.valid) {
             return NextResponse.json(
