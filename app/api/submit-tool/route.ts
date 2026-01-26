@@ -1,4 +1,4 @@
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-intake-validation";
+import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-intake-validation";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -140,6 +140,52 @@ export async function POST(request: NextRequest) {
                     details: {
                         errors: validationResult.errors,
                         warnings: validationResult.warnings,
+                    },
+                },
+                { status: 400 },
+            );
+        }
+
+        // Step 2.5: Validate package structure (npm-shrinkwrap and dist)
+        const structureResult = await validatePackageStructure(cleanPackageName);
+
+        if (!structureResult.success) {
+            return NextResponse.json(
+                {
+                    error: "Failed to validate package structure",
+                    step: "structure_check",
+                    details: {
+                        error: structureResult.error,
+                    },
+                },
+                { status: 500 },
+            );
+        }
+
+        // Check if npm-shrinkwrap.json exists
+        if (!structureResult.data.hasNpmShrinkwrap) {
+            return NextResponse.json(
+                {
+                    error: "Package validation failed",
+                    step: "structure_validation",
+                    details: {
+                        errors: ["npm-shrinkwrap.json is required but not found in the package"],
+                        warnings: [],
+                    },
+                },
+                { status: 400 },
+            );
+        }
+
+        // Check if dist folder exists
+        if (!structureResult.data.hasDistFolder) {
+            return NextResponse.json(
+                {
+                    error: "Package validation failed",
+                    step: "structure_validation",
+                    details: {
+                        errors: ["dist folder is required but not found in the package"],
+                        warnings: [],
                     },
                 },
                 { status: 400 },

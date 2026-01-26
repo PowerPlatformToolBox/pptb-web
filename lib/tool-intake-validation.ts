@@ -285,3 +285,113 @@ export async function fetchNpmPackageInfo(packageName: string): Promise<{ succes
         };
     }
 }
+
+export interface PackageStructureCheck {
+    hasNpmShrinkwrap: boolean;
+    hasDistFolder: boolean;
+}
+
+/**
+ * Validates package structure by checking if npm-shrinkwrap.json and dist folder exist
+ * This requires downloading and inspecting the package tarball
+ */
+export async function validatePackageStructure(packageName: string): Promise<{ success: true; data: PackageStructureCheck } | { success: false; error: string }> {
+    try {
+        // Fetch package metadata to get tarball URL
+        const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packageName)}`, {
+            headers: {
+                Accept: "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            return { success: false, error: `Failed to fetch package metadata: HTTP ${response.status}` };
+        }
+
+        const packageData = await response.json();
+        const latestVersion = packageData["dist-tags"]?.latest;
+        
+        if (!latestVersion) {
+            return { success: false, error: "Package has no latest version" };
+        }
+
+        const versionData = packageData.versions?.[latestVersion];
+        if (!versionData?.dist?.tarball) {
+            return { success: false, error: "Could not find tarball URL" };
+        }
+
+        const tarballUrl = versionData.dist.tarball;
+
+        // Download the tarball
+        const tarballResponse = await fetch(tarballUrl);
+        if (!tarballResponse.ok) {
+            return { success: false, error: `Failed to download tarball: HTTP ${tarballResponse.status}` };
+        }
+
+        const tarballBuffer = await tarballResponse.arrayBuffer();
+        
+        // We need to use a server-side library to extract the tarball
+        // For now, we'll use the built-in Node.js tar module in the server environment
+        // Import dynamically to ensure this only runs on server
+        const tar = await import("tar");
+        const fs = await import("fs");
+        const path = await import("path");
+        const os = await import("os");
+
+        // Create a temporary directory for extraction
+        const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "npm-validation-"));
+        
+        try {
+            // Write tarball to temp file
+            const tarballPath = path.join(tmpDir, "package.tgz");
+            await fs.promises.writeFile(tarballPath, Buffer.from(tarballBuffer));
+
+            // Extract tarball
+            const extractDir = path.join(tmpDir, "extracted");
+            await fs.promises.mkdir(extractDir, { recursive: true });
+            
+            await tar.x({
+                file: tarballPath,
+                cwd: extractDir,
+            });
+
+            // Check for npm-shrinkwrap.json in the package directory
+            const packageDir = path.join(extractDir, "package");
+            const shrinkwrapPath = path.join(packageDir, "npm-shrinkwrap.json");
+            const distPath = path.join(packageDir, "dist");
+
+            let hasNpmShrinkwrap = false;
+            let hasDistFolder = false;
+
+            try {
+                await fs.promises.access(shrinkwrapPath);
+                hasNpmShrinkwrap = true;
+            } catch {
+                hasNpmShrinkwrap = false;
+            }
+
+            try {
+                const distStat = await fs.promises.stat(distPath);
+                hasDistFolder = distStat.isDirectory();
+            } catch {
+                hasDistFolder = false;
+            }
+
+            return {
+                success: true,
+                data: {
+                    hasNpmShrinkwrap,
+                    hasDistFolder,
+                },
+            };
+        } finally {
+            // Cleanup temp directory
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        }
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error validating package structure",
+        };
+    }
+}
