@@ -233,7 +233,30 @@ export interface NpmPackageInfo {
     features?: Features;
 }
 
-export async function fetchNpmPackageInfo(packageName: string): Promise<{ success: true; data: NpmPackageInfo } | { success: false; error: string }> {
+interface NpmRegistryVersionData {
+    name: string;
+    version: string;
+    description?: string;
+    license?: string;
+    displayName?: string;
+    contributors?: Contributor[];
+    cspExceptions?: CspExceptions;
+    configurations?: Configurations;
+    features?: Features;
+    dist: {
+        tarball: string;
+    };
+}
+
+/**
+ * Fetches package metadata and tarball URL from npm registry
+ * @param packageName - The npm package name
+ * @returns Package metadata including tarball URL or error
+ */
+async function fetchNpmPackageMetadata(packageName: string): Promise<
+    | { success: true; data: { versionData: NpmRegistryVersionData; latestVersion: string; tarballUrl: string } }
+    | { success: false; error: string }
+> {
     try {
         // Fetch package info from npm registry using base endpoint
         // This is more reliable than /latest for packages with pre-release versions
@@ -264,26 +287,50 @@ export async function fetchNpmPackageInfo(packageName: string): Promise<{ succes
             return { success: false, error: `Could not find version data for ${latestVersion}` };
         }
 
+        const tarballUrl = versionData.dist?.tarball;
+        if (!tarballUrl) {
+            return { success: false, error: "Could not find tarball URL" };
+        }
+
         return {
             success: true,
             data: {
-                name: versionData.name,
-                version: versionData.version,
-                description: versionData.description,
-                license: versionData.license,
-                displayName: versionData.displayName,
-                contributors: versionData.contributors,
-                cspExceptions: versionData.cspExceptions,
-                configurations: versionData.configurations,
-                features: versionData.features,
+                versionData,
+                latestVersion,
+                tarballUrl,
             },
         };
     } catch (error) {
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Unknown error fetching package info",
+            error: error instanceof Error ? error.message : "Unknown error fetching package metadata",
         };
     }
+}
+
+export async function fetchNpmPackageInfo(packageName: string): Promise<{ success: true; data: NpmPackageInfo } | { success: false; error: string }> {
+    const metadataResult = await fetchNpmPackageMetadata(packageName);
+
+    if (!metadataResult.success) {
+        return { success: false, error: metadataResult.error };
+    }
+
+    const { versionData } = metadataResult.data;
+
+    return {
+        success: true,
+        data: {
+            name: versionData.name,
+            version: versionData.version,
+            description: versionData.description,
+            license: versionData.license,
+            displayName: versionData.displayName,
+            contributors: versionData.contributors,
+            cspExceptions: versionData.cspExceptions,
+            configurations: versionData.configurations,
+            features: versionData.features,
+        },
+    };
 }
 
 export interface PackageStructureCheck {
@@ -297,30 +344,14 @@ export interface PackageStructureCheck {
  */
 export async function validatePackageStructure(packageName: string): Promise<{ success: true; data: PackageStructureCheck } | { success: false; error: string }> {
     try {
-        // Fetch package metadata to get tarball URL
-        const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packageName)}`, {
-            headers: {
-                Accept: "application/json",
-            },
-        });
-
-        if (!response.ok) {
-            return { success: false, error: `Failed to fetch package metadata: HTTP ${response.status}` };
-        }
-
-        const packageData = await response.json();
-        const latestVersion = packageData["dist-tags"]?.latest;
+        // Fetch package metadata to get tarball URL using shared helper
+        const metadataResult = await fetchNpmPackageMetadata(packageName);
         
-        if (!latestVersion) {
-            return { success: false, error: "Package has no latest version" };
+        if (!metadataResult.success) {
+            return { success: false, error: metadataResult.error };
         }
 
-        const versionData = packageData.versions?.[latestVersion];
-        if (!versionData?.dist?.tarball) {
-            return { success: false, error: "Could not find tarball URL" };
-        }
-
-        const tarballUrl = versionData.dist.tarball;
+        const { tarballUrl } = metadataResult.data;
 
         // Download the tarball
         const tarballResponse = await fetch(tarballUrl);
@@ -330,8 +361,7 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
 
         const tarballBuffer = await tarballResponse.arrayBuffer();
         
-        // We need to use a server-side library to extract the tarball
-        // For now, we'll use the built-in Node.js tar module in the server environment
+        // Use the tar npm package to extract the tarball
         // Import dynamically to ensure this only runs on server
         const tar = await import("tar");
         const fs = await import("fs");
