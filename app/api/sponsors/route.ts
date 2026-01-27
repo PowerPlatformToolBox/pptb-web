@@ -6,10 +6,10 @@ export const revalidate = 300;
 
 export async function GET() {
     try {
-        const token = process.env.GITHUB_TOKEN;
+        const token = process.env.GH_PAT_TOKEN;
 
         if (!token) {
-            console.warn("GITHUB_TOKEN not configured, returning empty sponsors list");
+            console.warn("GH_PAT_TOKEN not configured, returning empty sponsors list");
             return NextResponse.json([]);
         }
 

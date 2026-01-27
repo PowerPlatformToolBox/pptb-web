@@ -181,22 +181,23 @@ SUPABASE_URL=your-project-url.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 ```
 
-#### GitHub Token (Optional but Recommended)
+#### GitHub Personal Access Token (Optional but Recommended)
 
-To enable GitHub Sponsors data and increase API rate limits, add a GitHub Personal Access Token:
+To enable GitHub Sponsors data, trigger GitHub Actions workflows, and increase API rate limits, add a GitHub Personal Access Token:
 
 ```bash
-GITHUB_TOKEN=your-github-token
+GH_PAT_TOKEN=your-github-token
 ```
 
 **How to create a GitHub Personal Access Token:**
 
 1. Go to [GitHub Settings → Tokens](https://github.com/settings/tokens)
 2. Click "Generate new token" → "Generate new token (classic)"
-3. Give your token a descriptive name (e.g., "PPTB Web - Sponsors API")
+3. Give your token a descriptive name (e.g., "PPTB Web - API Access")
 4. Select the following scopes:
    - `public_repo` - For public repositories and basic API access
    - `read:org` - To read organization sponsorship data
+   - `workflow` - To trigger GitHub Actions workflows
 5. Click "Generate token" and copy the token
 6. Add it to your `.env.local` file
 
