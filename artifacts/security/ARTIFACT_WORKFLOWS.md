@@ -46,7 +46,7 @@ Use this guide whenever a customer, partner, or internal reviewer asks for the a
     npm run lint
     npm run build
     ```
-3. Manually review each category (Authentication, Access Control, Input Validation, Logging, etc.) and record the status (`Pass`, `N/A`, or `Follow-up`).
+3. Manually review each category (Authentication, Access Control, Input Validation, Logging, etc.) and record the status (`Pass`, `--`, or `Follow-up`).
 4. Document remediation owners and target dates for any `Follow-up` items.
 5. Store the completed checklist in `docs/security/checklists/` and link it in the ticket or customer response.
 

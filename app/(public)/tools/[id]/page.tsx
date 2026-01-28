@@ -280,7 +280,7 @@ export default function ToolDetailsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-amber-900">Average Rating</p>
-                                        <p className="text-2xl font-bold text-amber-900">{tool.rating.toFixed(1)}</p>
+                                        <p className="text-2xl font-bold text-amber-900">{tool.rating > 0 ? tool.rating.toFixed(1) : "--"}</p>
                                     </div>
                                 </div>
                             </div>
