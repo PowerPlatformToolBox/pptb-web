@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { sendEmail } from "@/lib/resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -18,22 +19,6 @@ interface ReviewRequest {
     intakeId: string;
     action: "approve" | "reject" | "needs_changes";
     reviewerNotes?: string;
-}
-
-// Send notification to the submitter about their review status
-async function sendSubmitterNotification(email: string, subject: string, body: string): Promise<boolean> {
-    // For now, we'll log the notification (in production, integrate with email service)
-    console.log("Submitter Notification:", { to: email, subject, body });
-
-    // Example using Supabase Edge Function (if configured):
-    // const supabase = getSupabaseClient();
-    // if (supabase) {
-    //     await supabase.functions.invoke("send-email", {
-    //         body: { to: email, subject, body }
-    //     });
-    // }
-
-    return true;
 }
 
 export async function POST(request: NextRequest) {
@@ -108,23 +93,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Failed to update tool intake" }, { status: 500 });
         }
 
-        // Send notification to the submitter if they have an email
-        if (updatedIntake.submitted_by) {
-            const { data: submitter } = await supabase.auth.admin.getUserById(updatedIntake.submitted_by);
-
-            if (submitter?.user?.email) {
-                const actionText = {
-                    approve: "approved",
-                    reject: "rejected",
-                    needs_changes: "marked as needing changes",
-                }[action];
-
-                await sendSubmitterNotification(
-                    submitter.user.email,
-                    `Tool Intake Update: ${updatedIntake.display_name}`,
-                    `Your tool submission "${updatedIntake.display_name}" has been ${actionText}.${reviewerNotes ? `\n\nReviewer Notes: ${reviewerNotes}` : ""}`,
-                );
-            }
+        // Notify submitter when changes are requested
+        if (action === "needs_changes") {
+            await sendEmail({
+                type: "tool-review-change-request",
+                supabase,
+                data: {
+                    packageName: updatedIntake.package_name,
+                    toolName: updatedIntake.display_name || updatedIntake.package_name || "Tool submission",
+                    submittedOn: updatedIntake.created_at || new Date().toISOString(),
+                    reviewComments: reviewerNotes || "Please address the requested changes.",
+                },
+            });
         }
 
         return NextResponse.json({

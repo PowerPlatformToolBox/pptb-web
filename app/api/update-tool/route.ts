@@ -1,4 +1,5 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
+import { sendEmail } from "@/lib/resend";
 import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-intake-validation";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -55,6 +56,10 @@ export async function POST(request: NextRequest) {
         const body = (await request.json()) as UpdateToolRequest;
         const { toolUpdateId, packageName } = body;
 
+        if (!toolUpdateId || typeof toolUpdateId !== "string") {
+            return NextResponse.json({ error: "toolUpdateId is required" }, { status: 400 });
+        }
+
         if (!packageName || typeof packageName !== "string") {
             return NextResponse.json({ error: "Package name is required" }, { status: 400 });
         }
@@ -98,8 +103,30 @@ export async function POST(request: NextRequest) {
         const validationResult = await validatePackageJson(packageJson);
 
         if (!validationResult.valid) {
+            const toolName = packageJson.displayName || packageJson.name;
+            const validationErrors = validationResult.errors || [];
             // Update status in tool_updates table in Supabase as validation_failed
             await supabase.from("tool_updates").update({ status: "validation_failed", validation_warnings: validationResult }).eq("id", toolUpdateId);
+
+            await sendEmail({
+                type: "tool-update-admin",
+                data: {
+                    toolName,
+                    version: packageJson.version,
+                    validationErrors,
+                },
+            });
+
+            await sendEmail({
+                type: "tool-update-developer",
+                supabase,
+                data: {
+                    packageName: packageJson.name,
+                    toolName,
+                    version: packageJson.version,
+                    validationErrors,
+                },
+            });
 
             return NextResponse.json(
                 {
@@ -137,6 +164,7 @@ export async function POST(request: NextRequest) {
         // Invoke GH action to process the tool update
         const ghToken = process.env.GH_PAT_TOKEN;
         if (!ghToken) {
+            console.warn("[update-tool] GitHub token not configured; skipping workflow and email notifications.");
             return NextResponse.json({ error: "GitHub token not configured" }, { status: 500 });
         }
 
@@ -160,6 +188,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (conclusion !== "success") {
+            console.warn(`[update-tool] Conversion workflow failed for ${packageJson.name}@${packageJson.version} with conclusion: ${conclusion || "unknown"}`);
             return NextResponse.json({ error: "Conversion workflow did not complete successfully" }, { status: 500 });
         }
 
