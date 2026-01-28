@@ -1,3 +1,4 @@
+import { sendEmail } from "@/lib/resend";
 import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-intake-validation";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,37 +13,6 @@ function getSupabaseClient() {
     }
 
     return createClient(supabaseUrl, supabaseServiceKey);
-}
-
-// Send notification to admins about new tool intake
-async function notifyAdmins(intakeDetails: { packageName: string; displayName: string; version: string; description: string; submittedBy?: string }) {
-    // Log the notification (in production, integrate with email service like Resend, SendGrid, etc.)
-    console.log("=== NEW TOOL INTAKE SUBMITTED ===");
-    console.log(`Package: ${intakeDetails.packageName}`);
-    console.log(`Display Name: ${intakeDetails.displayName}`);
-    console.log(`Version: ${intakeDetails.version}`);
-    console.log(`Description: ${intakeDetails.description}`);
-    console.log(`Submitted By: ${intakeDetails.submittedBy || "Anonymous"}`);
-    console.log("Review at: /admin/tool-intakes");
-    console.log("================================");
-
-    // Example integration with Supabase Edge Function for email:
-    // const supabase = getSupabaseClient();
-    // if (supabase && process.env.ADMIN_NOTIFICATION_EMAIL) {
-    //     await supabase.functions.invoke("send-admin-notification", {
-    //         body: {
-    //             to: process.env.ADMIN_NOTIFICATION_EMAIL,
-    //             subject: `New Tool Intake: ${intakeDetails.displayName}`,
-    //             packageName: intakeDetails.packageName,
-    //             displayName: intakeDetails.displayName,
-    //             version: intakeDetails.version,
-    //             description: intakeDetails.description,
-    //             reviewUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/tool-intakes`,
-    //         },
-    //     });
-    // }
-
-    return true;
 }
 
 interface SubmitToolRequest {
@@ -322,13 +292,22 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Notify admins about the new submission
-        await notifyAdmins({
-            packageName: cleanPackageName,
-            displayName: packageInfo.displayName,
-            version: packageInfo.version,
-            description: packageInfo.description,
-            submittedBy: userId || undefined,
+        console.log("=== NEW TOOL INTAKE SUBMITTED ===");
+        console.log(`Package: ${cleanPackageName}`);
+        console.log(`Display Name: ${packageInfo.displayName}`);
+        console.log(`Version: ${packageInfo.version}`);
+        console.log(`Description: ${packageInfo.description}`);
+        console.log(`Submitted By: ${userId || "Anonymous"}`);
+        console.log("Review at: /admin/tool-intakes");
+        console.log("================================");
+
+        await sendEmail({
+            type: "tool-submission-admin",
+            data: {
+                toolName: packageInfo.displayName,
+                description: packageInfo.description,
+                submissionDate: new Date().toISOString(),
+            },
         });
 
         return NextResponse.json({
