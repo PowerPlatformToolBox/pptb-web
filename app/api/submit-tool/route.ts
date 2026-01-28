@@ -1,4 +1,5 @@
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-intake-validation";
+import { sendEmail } from "@/lib/resend";
+import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-intake-validation";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -12,37 +13,6 @@ function getSupabaseClient() {
     }
 
     return createClient(supabaseUrl, supabaseServiceKey);
-}
-
-// Send notification to admins about new tool intake
-async function notifyAdmins(intakeDetails: { packageName: string; displayName: string; version: string; description: string; submittedBy?: string }) {
-    // Log the notification (in production, integrate with email service like Resend, SendGrid, etc.)
-    console.log("=== NEW TOOL INTAKE SUBMITTED ===");
-    console.log(`Package: ${intakeDetails.packageName}`);
-    console.log(`Display Name: ${intakeDetails.displayName}`);
-    console.log(`Version: ${intakeDetails.version}`);
-    console.log(`Description: ${intakeDetails.description}`);
-    console.log(`Submitted By: ${intakeDetails.submittedBy || "Anonymous"}`);
-    console.log("Review at: /admin/tool-intakes");
-    console.log("================================");
-
-    // Example integration with Supabase Edge Function for email:
-    // const supabase = getSupabaseClient();
-    // if (supabase && process.env.ADMIN_NOTIFICATION_EMAIL) {
-    //     await supabase.functions.invoke("send-admin-notification", {
-    //         body: {
-    //             to: process.env.ADMIN_NOTIFICATION_EMAIL,
-    //             subject: `New Tool Intake: ${intakeDetails.displayName}`,
-    //             packageName: intakeDetails.packageName,
-    //             displayName: intakeDetails.displayName,
-    //             version: intakeDetails.version,
-    //             description: intakeDetails.description,
-    //             reviewUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/tool-intakes`,
-    //         },
-    //     });
-    // }
-
-    return true;
 }
 
 interface SubmitToolRequest {
@@ -130,7 +100,7 @@ export async function POST(request: NextRequest) {
             features: npmResult.data.features,
         };
 
-        const validationResult = validatePackageJson(packageJson);
+        const validationResult = await validatePackageJson(packageJson);
 
         if (!validationResult.valid) {
             return NextResponse.json(
@@ -140,6 +110,67 @@ export async function POST(request: NextRequest) {
                     details: {
                         errors: validationResult.errors,
                         warnings: validationResult.warnings,
+                    },
+                },
+                { status: 400 },
+            );
+        }
+
+        // Step 2.5: Validate package structure (npm-shrinkwrap and dist)
+        const structureResult = await validatePackageStructure(cleanPackageName);
+
+        if (!structureResult.success) {
+            return NextResponse.json(
+                {
+                    error: "Failed to validate package structure",
+                    step: "structure_check",
+                    details: {
+                        error: structureResult.error,
+                    },
+                },
+                { status: 500 },
+            );
+        }
+
+        // Check if npm-shrinkwrap.json exists
+        if (!structureResult.data.hasNpmShrinkwrap) {
+            return NextResponse.json(
+                {
+                    error: "Package validation failed",
+                    step: "structure_validation",
+                    details: {
+                        errors: ["npm-shrinkwrap.json is required but not found in the package"],
+                        warnings: [],
+                    },
+                },
+                { status: 400 },
+            );
+        }
+
+        // Check if dist folder exists
+        if (!structureResult.data.hasDistFolder) {
+            return NextResponse.json(
+                {
+                    error: "Package validation failed",
+                    step: "structure_validation",
+                    details: {
+                        errors: ["dist folder is required but not found in the package"],
+                        warnings: [],
+                    },
+                },
+                { status: 400 },
+            );
+        }
+
+        // Check if dist/index.html exists
+        if (!structureResult.data.hasDistIndexHtml) {
+            return NextResponse.json(
+                {
+                    error: "Package validation failed",
+                    step: "structure_validation",
+                    details: {
+                        errors: ["dist/index.html is required but not found in the package"],
+                        warnings: [],
                     },
                 },
                 { status: 400 },
@@ -261,13 +292,22 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Notify admins about the new submission
-        await notifyAdmins({
-            packageName: cleanPackageName,
-            displayName: packageInfo.displayName,
-            version: packageInfo.version,
-            description: packageInfo.description,
-            submittedBy: userId || undefined,
+        console.log("=== NEW TOOL INTAKE SUBMITTED ===");
+        console.log(`Package: ${cleanPackageName}`);
+        console.log(`Display Name: ${packageInfo.displayName}`);
+        console.log(`Version: ${packageInfo.version}`);
+        console.log(`Description: ${packageInfo.description}`);
+        console.log(`Submitted By: ${userId || "Anonymous"}`);
+        console.log("Review at: /admin/tool-intakes");
+        console.log("================================");
+
+        await sendEmail({
+            type: "tool-submission-admin",
+            data: {
+                toolName: packageInfo.displayName,
+                description: packageInfo.description,
+                submissionDate: new Date().toISOString(),
+            },
         });
 
         return NextResponse.json({
