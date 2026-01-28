@@ -2,28 +2,139 @@
 
 import { Popover, PopoverBackdrop, PopoverButton, PopoverPanel } from "@headlessui/react";
 import clsx from "clsx";
+import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
+import discordLogo from "@/images/logos/discord.png";
+import githubLogo from "@/images/logos/github.png";
+import linkedinLogo from "@/images/logos/linkedin.png";
 import { useSupabase } from "@/lib/useSupabase";
 
-function MobileNavLink({ href, children }: { href: string; children: React.ReactNode }) {
+type NavItem = {
+    label: string;
+    href: string;
+    icon?: StaticImageData;
+    external?: boolean;
+};
+
+type NavGroup = {
+    label: string;
+    items: NavItem[];
+};
+
+const PRIMARY_LINKS: NavItem[] = [
+    { label: "Tools", href: "/tools" },
+    { label: "Sponsors", href: "/sponsors" },
+];
+
+type SocialLink = NavItem & {
+    icon: StaticImageData;
+    external: true;
+};
+
+const SOCIAL_LINKS: SocialLink[] = [
+    { label: "GitHub", href: "https://github.com/PowerPlatformToolBox", icon: githubLogo, external: true },
+    { label: "LinkedIn", href: "https://www.linkedin.com/company/power-platform-toolbox", icon: linkedinLogo, external: true },
+    { label: "Discord", href: "https://discord.gg/efwAu9sXyJ", icon: discordLogo, external: true },
+];
+
+const NAVIGATION_GROUPS: NavGroup[] = [
+    {
+        label: "Platform",
+        items: [
+            { label: "Features", href: "/#features" },
+            { label: "Teams", href: "/#team" },
+            { label: "About", href: "/about" },
+            { label: "Security", href: "/security" },
+        ],
+    },
+    {
+        label: "Resources",
+        items: [
+            { label: "Documentation", href: "https://docs.powerplatformtoolbox.com", external: true },
+            { label: "FAQs", href: "/faqs" },
+        ],
+    },
+    {
+        label: "Social",
+        items: SOCIAL_LINKS.map(({ label, href, icon }) => ({ label, href, icon, external: true })),
+    },
+];
+
+function ChevronIcon({ open }: { open: boolean }) {
     return (
-        <PopoverButton as={Link} href={href} className="block w-full p-2">
-            {children}
-        </PopoverButton>
+        <svg aria-hidden="true" viewBox="0 0 10 6" className={clsx("h-3 w-3 text-slate-500 transition-transform duration-150", open ? "rotate-180 text-slate-900" : "rotate-0")}>
+            <path d="M1 1.25 5 5l4-3.75" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} />
+        </svg>
     );
 }
 
-function MobileNavButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+function DesktopNavGroup({ group }: { group: NavGroup }) {
     return (
-        <PopoverButton as="button" onClick={onClick} className="block w-full p-2 text-left">
+        <Popover className="relative">
+            {({ open, close }) => (
+                <>
+                    <PopoverButton
+                        className={clsx("flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100/80", open && "text-slate-900")}
+                        aria-label={`${group.label} navigation`}
+                    >
+                        {group.label}
+                        <ChevronIcon open={open} />
+                    </PopoverButton>
+                    <PopoverPanel
+                        transition
+                        className="absolute left-1/2 z-50 mt-4 w-60 -translate-x-1/2 rounded-3xl border border-slate-100 bg-white/95 p-3 shadow-2xl ring-1 ring-slate-900/5 backdrop-blur data-closed:scale-95 data-closed:opacity-0 data-enter:duration-150 data-enter:ease-out data-leave:duration-100 data-leave:ease-in"
+                    >
+                        <div className="flex flex-col gap-1">
+                            {group.items.map((item) => (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    target={item.external ? "_blank" : undefined}
+                                    rel={item.external ? "noreferrer" : undefined}
+                                    onClick={() => close()}
+                                    className="flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                >
+                                    {item.icon && <Image src={item.icon} alt={`${item.label} icon`} width={20} height={20} className="h-5 w-5" />}
+                                    {item.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </PopoverPanel>
+                </>
+            )}
+        </Popover>
+    );
+}
+
+interface MobileNavLinkProps {
+    href: string;
+    children: ReactNode;
+    onClick?: () => void;
+    target?: string;
+    rel?: string;
+    icon?: StaticImageData;
+}
+
+function MobileNavLink({ href, children, onClick, target, rel, icon: Icon }: MobileNavLinkProps) {
+    return (
+        <Link href={href} onClick={onClick} target={target} rel={rel} className="flex items-center gap-3 rounded-2xl px-3 py-2 text-base font-semibold text-slate-700 transition hover:bg-slate-100">
+            {Icon && <Image src={Icon} alt="" width={20} height={20} className="h-5 w-5" />}
             {children}
-        </PopoverButton>
+        </Link>
+    );
+}
+
+function MobileNavButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+    return (
+        <button type="button" onClick={onClick} className="flex w-full items-center rounded-2xl px-3 py-2 text-base font-semibold text-slate-700 transition hover:bg-slate-100">
+            {children}
+        </button>
     );
 }
 
@@ -44,32 +155,66 @@ interface MobileNavigationProps {
 function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps) {
     return (
         <Popover>
-            <PopoverButton className="relative z-10 flex h-8 w-8 items-center justify-center focus:not-data-focus:outline-hidden" aria-label="Toggle Navigation">
-                {({ open }) => <MobileNavIcon open={open} />}
-            </PopoverButton>
-            <PopoverBackdrop transition className="fixed inset-0 bg-slate-300/50 duration-150 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in" />
-            <PopoverPanel
-                transition
-                className="absolute inset-x-0 top-full mt-4 flex origin-top flex-col rounded-2xl bg-white p-4 text-lg tracking-tight text-slate-900 shadow-xl ring-1 ring-slate-900/5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-150 data-enter:ease-out data-leave:duration-100 data-leave:ease-in"
-            >
-                <MobileNavLink href="/#features">Features</MobileNavLink>
-                <MobileNavLink href="/tools">Tools</MobileNavLink>
-                <MobileNavLink href="https://docs.powerplatformtoolbox.com">Documentation</MobileNavLink>
-                <MobileNavLink href="/#team">Teams</MobileNavLink>
-                <MobileNavLink href="/about">About</MobileNavLink>
-                <MobileNavLink href="/security">Security</MobileNavLink>
-                <MobileNavLink href="/sponsors">Sponsors</MobileNavLink>
-                <MobileNavLink href="/faqs">FAQs</MobileNavLink>
-                <hr className="m-2 border-slate-300/40" />
-                {isAuthenticated ? (
-                    <>
-                        <MobileNavLink href="/dashboard">Dashboard</MobileNavLink>
-                        <MobileNavButton onClick={onSignOut}>Sign out</MobileNavButton>
-                    </>
-                ) : (
-                    <MobileNavLink href="/auth/signin">Sign in</MobileNavLink>
-                )}
-            </PopoverPanel>
+            {({ open, close }) => (
+                <>
+                    <PopoverButton className="relative z-10 flex h-8 w-8 items-center justify-center focus:not-data-focus:outline-hidden" aria-label="Toggle Navigation">
+                        <MobileNavIcon open={open} />
+                    </PopoverButton>
+                    <PopoverBackdrop transition className="fixed inset-0 bg-slate-900/30 backdrop-blur data-closed:opacity-0" />
+                    <PopoverPanel
+                        transition
+                        className="absolute inset-x-0 top-full mt-4 flex origin-top flex-col rounded-3xl border border-slate-100 bg-white/95 p-5 text-base tracking-tight text-slate-900 shadow-2xl ring-1 ring-slate-900/5 backdrop-blur data-closed:scale-95 data-closed:opacity-0 data-enter:duration-150 data-enter:ease-out data-leave:duration-100 data-leave:ease-in"
+                    >
+                        <div className="flex flex-col gap-4">
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-2">
+                                <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Quick Links</p>
+                                {PRIMARY_LINKS.map((item) => (
+                                    <MobileNavLink key={item.href} href={item.href} onClick={() => close()}>
+                                        {item.label}
+                                    </MobileNavLink>
+                                ))}
+                            </div>
+                            {NAVIGATION_GROUPS.map((group) => (
+                                <div key={group.label} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-2">
+                                    <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</p>
+                                    {group.items.map((item) => (
+                                        <MobileNavLink
+                                            key={item.href}
+                                            href={item.href}
+                                            icon={item.icon}
+                                            target={item.external ? "_blank" : undefined}
+                                            rel={item.external ? "noreferrer" : undefined}
+                                            onClick={() => close()}
+                                        >
+                                            {item.label}
+                                        </MobileNavLink>
+                                    ))}
+                                </div>
+                            ))}
+                            <hr className="m-2 border-slate-300/40" />
+                            {isAuthenticated ? (
+                                <>
+                                    <MobileNavLink href="/dashboard" onClick={() => close()}>
+                                        Dashboard
+                                    </MobileNavLink>
+                                    <MobileNavButton
+                                        onClick={() => {
+                                            close();
+                                            onSignOut();
+                                        }}
+                                    >
+                                        Sign out
+                                    </MobileNavButton>
+                                </>
+                            ) : (
+                                <MobileNavLink href="/auth/signin" onClick={() => close()}>
+                                    Sign in
+                                </MobileNavLink>
+                            )}
+                        </div>
+                    </PopoverPanel>
+                </>
+            )}
         </Popover>
     );
 }
@@ -128,15 +273,15 @@ export function Header() {
                         <Link href="/" aria-label="Home">
                             <Logo className="h-10 w-auto" alt="PPTB" />
                         </Link>
-                        <div className="hidden md:flex md:gap-x-6">
-                            <NavLink href="/#features">Features</NavLink>
-                            <NavLink href="/tools">Tools</NavLink>
-                            <NavLink href="https://docs.powerplatformtoolbox.com">Documentation</NavLink>
-                            <NavLink href="/#team">Teams</NavLink>
-                            <NavLink href="/about">About</NavLink>
-                            <NavLink href="/security">Security</NavLink>
-                            <NavLink href="/sponsors">Sponsors</NavLink>
-                            <NavLink href="/faqs">FAQs</NavLink>
+                        <div className="hidden md:flex md:items-center md:gap-x-3">
+                            {PRIMARY_LINKS.map((item) => (
+                                <NavLink key={item.href} href={item.href} className="text-slate-600 transition hover:bg-slate-100/80">
+                                    {item.label}
+                                </NavLink>
+                            ))}
+                            {NAVIGATION_GROUPS.map((group) => (
+                                <DesktopNavGroup key={group.label} group={group} />
+                            ))}
                         </div>
                     </div>
                     <div className="flex items-center gap-x-5 md:gap-x-8">
