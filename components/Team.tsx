@@ -61,6 +61,13 @@ const supportingTeam = [
         blurb: "Constantly brainstorming new features and improvements.",
         linkedin: "https://www.linkedin.com/in/mikefactorial/",
     },
+    {
+        name: "Christoph Schaffer",
+        alias: "darkwheel",
+        title: "The Code Alchemist 🧙‍♂️",
+        blurb: "Transforms complex problems into elegant code solutions.",
+        linkedin: "https://www.linkedin.com/in/christoph-schaffer/",
+    },
 ];
 
 export function Team() {
