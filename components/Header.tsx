@@ -266,7 +266,7 @@ export function Header() {
     };
 
     return (
-        <header className="py-10">
+        <header className="py-8 md:py-4 md:sticky md:top-0 md:z-40 md:border-b md:border-slate-100 md:bg-white/90 md:backdrop-blur">
             <Container>
                 <nav className="relative z-50 flex justify-between">
                     <div className="flex items-center md:gap-x-12">
