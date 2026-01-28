@@ -56,7 +56,7 @@ export default function SponsorsPage() {
                                 </span>
                             </h1>
                             <p className="mx-auto mt-4 max-w-2xl text-base tracking-tight text-slate-700 sm:text-lg">
-                                Power Platform ToolBox is free and open source, made possible by the generous support of our sponsors. Your sponsorship helps us maintain and improve the tools that thousands of developers rely on every day.
+                                Power Platform ToolBox is free and open source, made possible by the generous support of our sponsors. Running this toolbox involves monthly infrastructure costs, and your sponsorship helps the team cover these expenses while we maintain and improve the tools that thousands of developers rely on every day.
                             </p>
                             <div className="mt-8 flex justify-center gap-4">
                                 <Link
@@ -152,7 +152,16 @@ export default function SponsorsPage() {
 
                     {/* Why Sponsor Section */}
                     <FadeIn direction="up" delay={0.4}>
-                        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="card p-6 text-center">
+                                <div className="mx-auto w-12 h-12 mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <svg className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
+                                <h3 className="font-semibold text-slate-900 mb-2">Cover Infrastructure Costs</h3>
+                                <p className="text-sm text-slate-600">Help cover the monthly costs of hosting, servers, and infrastructure to keep the toolbox running.</p>
+                            </div>
                             <div className="card p-6 text-center">
                                 <div className="mx-auto w-12 h-12 mb-4 rounded-full bg-blue-100 flex items-center justify-center">
                                     <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
