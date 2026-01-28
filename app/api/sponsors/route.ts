@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
 import { fetchGitHubSponsors } from "@/lib/github-api";
+import { NextResponse } from "next/server";
 
 // Revalidate every 5 minutes (300 seconds)
 export const revalidate = 300;
 
 export async function GET() {
     try {
-        const token = process.env.GH_PAT_TOKEN;
+        const token = process.env.GH_CLASSIC_TOKEN;
 
         if (!token) {
-            console.warn("GH_PAT_TOKEN not configured, returning empty sponsors list");
+            console.warn("GH_CLASSIC_TOKEN not configured, returning empty sponsors list");
             return NextResponse.json([]);
         }
 
