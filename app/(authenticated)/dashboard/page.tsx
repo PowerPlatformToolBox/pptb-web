@@ -243,7 +243,7 @@ export default function DashboardPage() {
                                                     const ratedTools = filteredTools.filter((tool) => (tool.tool_analytics?.rating || 0) > 0);
                                                     return ratedTools.length > 0
                                                         ? (ratedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.rating || 0), 0) / ratedTools.length).toFixed(1)
-                                                        : "N/A";
+                                                        : "--";
                                                 })()}
                                             </p>
                                         </div>
@@ -363,7 +363,7 @@ export default function DashboardPage() {
                                                                             </span>
                                                                         ))
                                                                     ) : (
-                                                                        <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">N/A</span>
+                                                                        <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">--</span>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -384,12 +384,10 @@ export default function DashboardPage() {
                                                                     <svg className="h-4 w-4 text-amber-500 fill-current" viewBox="0 0 20 20">
                                                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                                                     </svg>
-                                                                    <span className="text-sm text-slate-900">
-                                                                        {(analytics?.rating || 0) > 0 ? (analytics?.rating || 0).toFixed(1) : "N/A"}
-                                                                    </span>
+                                                                    <span className="text-sm text-slate-900">{(analytics?.rating || 0) > 0 ? (analytics?.rating || 0).toFixed(1) : "--"}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "N/A"}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "--"}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                                 <div className="flex gap-2">
                                                                     {viewMode === "my" ? (
