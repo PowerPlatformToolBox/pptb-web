@@ -1,9 +1,15 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
+import { buildPageMetadata } from "@/lib/metadata";
+
+export const metadata: Metadata = buildPageMetadata({
+    title: "About Power Platform ToolBox",
+    description: "Learn how Power Platform ToolBox honors the legacy of XrmToolBox and continues the mission of building community-driven tooling.",
+    url: "/about",
+});
 
 export default function AboutPage() {
     return (

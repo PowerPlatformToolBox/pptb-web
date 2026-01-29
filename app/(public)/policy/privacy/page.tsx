@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+import { buildPageMetadata } from "@/lib/metadata";
+
+export const metadata: Metadata = buildPageMetadata({
+    title: "Privacy Policy | Power Platform ToolBox",
+    description: "Understand how Power Platform ToolBox respects your data, handles authentication details, and collaborates with trusted partners to run the platform.",
+    url: "/policy/privacy",
+});
 
 export default function PrivacyPolicy() {
     return (

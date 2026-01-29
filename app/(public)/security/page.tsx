@@ -1,12 +1,18 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
+import { buildPageMetadata } from "@/lib/metadata";
 
 const CONTACT_EMAIL = "powermaverick.tools@outlook.com";
 const SECURITY_DOC_URL = "https://github.com/PowerPlatformToolBox/pptb-web/blob/main/artifacts/security";
+
+export const metadata: Metadata = buildPageMetadata({
+    title: "Security & Trust | Power Platform ToolBox",
+    description: "Review the security controls, architecture, and artifacts Power Platform ToolBox provides to enterprise reviewers and compliance teams.",
+    url: "/security",
+});
 
 export default function SecurityPage() {
     return (

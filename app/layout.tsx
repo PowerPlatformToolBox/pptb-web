@@ -3,6 +3,7 @@ import { type Metadata } from "next";
 import { Inter, Lexend } from "next/font/google";
 
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -11,6 +12,16 @@ export const metadata: Metadata = {
         default: "PPTB - The ultimate desktop application for Power Platform",
     },
     description: "Streamline your development workflow with powerful set of tools for Power Platform developers.",
+    openGraph: {
+        ...defaultOpenGraph,
+        title: "PPTB - The ultimate desktop application for Power Platform",
+        description: "Streamline your development workflow with powerful set of tools for Power Platform developers.",
+    },
+    twitter: {
+        ...defaultTwitter,
+        title: "PPTB - The ultimate desktop application for Power Platform",
+        description: "Streamline your development workflow with powerful set of tools for Power Platform developers.",
+    },
 };
 
 const inter = Inter({

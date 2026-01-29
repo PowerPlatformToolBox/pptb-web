@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+import { buildPageMetadata } from "@/lib/metadata";
+
+export const metadata: Metadata = buildPageMetadata({
+    title: "Terms of Service | Power Platform ToolBox",
+    description: "Review the usage guidelines, responsibilities, and legal disclaimers that govern participation in the Power Platform ToolBox community.",
+    url: "/policy/terms",
+});
 
 export default function TermsOfService() {
     return (
