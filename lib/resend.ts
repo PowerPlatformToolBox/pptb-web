@@ -118,7 +118,7 @@ async function sendToolUpdateAdminEmail(data: ToolUpdateAdminPayload): Promise<E
         variables: {
             ToolName: data.toolName,
             Version: data.version,
-            ValidationErrors: data.validationErrors,
+            ValidationErrors: formatValidationErrors(data.validationErrors),
         },
     });
 }
@@ -142,7 +142,7 @@ async function sendToolUpdateDeveloperEmail(supabase: SupabaseClient, data: Tool
         variables: {
             ToolName: data.toolName,
             Version: data.version,
-            ValidationErrors: data.validationErrors,
+            ValidationErrors: formatValidationErrors(data.validationErrors),
         },
         to: [developerEmail],
     });
@@ -171,6 +171,14 @@ async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: 
         },
         to: [recipientEmail],
     });
+}
+
+function formatValidationErrors(errors: string[]): string {
+    if (!errors || errors.length === 0) {
+        return "";
+    }
+
+    return errors.join("\n");
 }
 
 async function deliverEmail({ subject, templateId, variables = {}, to }: { subject: string; templateId: string; variables?: TemplateVariables; to?: string[] }): Promise<EmailResult> {
