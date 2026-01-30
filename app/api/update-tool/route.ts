@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
                 repository: packageJson.configurations?.repository || null,
                 website: packageJson.configurations?.website || null,
             })
-            .eq("package_name", packageJson.name);
+            .eq("packagename", packageJson.name);
 
         // Update tool update record as validated
         await supabase.from("tool_updates").update({ status: "validated", validation_warnings: validationResult }).eq("id", toolUpdateId);

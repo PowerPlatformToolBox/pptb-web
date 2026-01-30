@@ -220,7 +220,7 @@ async function deliverEmail({ subject, templateId, variables = {}, to }: { subje
 
 async function getToolOwnerEmail(supabase: SupabaseClient, packageName: string): Promise<string | null> {
     try {
-        const { data, error } = await supabase.from("tools").select("user_id").eq("package_name", packageName).maybeSingle();
+        const { data, error } = await supabase.from("tools").select("user_id").eq("packagename", packageName).maybeSingle();
         if (error) {
             console.warn("[supabase] Failed to fetch tool owner", error.message);
             return null;
