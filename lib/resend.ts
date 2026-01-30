@@ -99,9 +99,9 @@ async function sendToolSubmissionEmail(data: ToolSubmissionAdminPayload): Promis
         subject: `New Tool Intake: ${data.toolName}`,
         templateId: submissionTemplateId,
         variables: {
-            toolName: data.toolName,
-            description: data.description,
-            submissionDate: data.submissionDate,
+            ToolName: data.toolName,
+            ToolDescription: data.description,
+            SubmissionDate: data.submissionDate,
         },
     });
 }
@@ -116,9 +116,9 @@ async function sendToolUpdateAdminEmail(data: ToolUpdateAdminPayload): Promise<E
         subject: `Tool Update Validation Failed: ${data.toolName}@${data.version}`,
         templateId: updateTemplateId,
         variables: {
-            toolName: data.toolName,
-            version: data.version,
-            validationErrors: data.validationErrors,
+            ToolName: data.toolName,
+            Version: data.version,
+            ValidationErrors: data.validationErrors,
         },
     });
 }
@@ -140,9 +140,9 @@ async function sendToolUpdateDeveloperEmail(supabase: SupabaseClient, data: Tool
         subject: `Action needed: ${data.toolName} update failed validation`,
         templateId: developerTemplateId,
         variables: {
-            toolName: data.toolName,
-            version: data.version,
-            validationErrors: data.validationErrors,
+            ToolName: data.toolName,
+            Version: data.version,
+            ValidationErrors: data.validationErrors,
         },
         to: [developerEmail],
     });
@@ -165,9 +165,9 @@ async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: 
         subject: `Changes requested: ${data.toolName}`,
         templateId: reviewChangesTemplateId,
         variables: {
-            toolName: data.toolName,
-            submittedOn: data.submittedOn,
-            reviewComments: data.reviewComments,
+            ToolName: data.toolName,
+            SubmittedDate: data.submittedOn,
+            ReviewComments: data.reviewComments,
         },
         to: [recipientEmail],
     });
