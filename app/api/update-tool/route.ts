@@ -105,28 +105,58 @@ export async function POST(request: NextRequest) {
         if (!validationResult.valid) {
             const toolName = packageJson.displayName || packageJson.name;
             const validationErrors = validationResult.errors || [];
+
+            let notificationAlreadySent = false;
+            const { data: existingNotifications, error: existingNotificationError } = await supabase
+                .from("tool_updates")
+                .select("id, notification_sent")
+                .eq("package_name", packageJson.name)
+                .eq("version", packageJson.version)
+                .eq("notification_sent", true);
+
+            if (existingNotificationError) {
+                console.warn("[update-tool] Unable to verify prior notifications", existingNotificationError.message);
+            } else {
+                notificationAlreadySent = (existingNotifications || []).length > 0;
+            }
+
+            let notificationSentThisRequest = false;
+
+            if (!notificationAlreadySent) {
+                await sendEmail({
+                    type: "tool-update-admin",
+                    data: {
+                        toolName,
+                        version: packageJson.version,
+                        validationErrors,
+                    },
+                });
+
+                await sendEmail({
+                    type: "tool-update-developer",
+                    supabase,
+                    data: {
+                        packageName: packageJson.name,
+                        toolName,
+                        version: packageJson.version,
+                        validationErrors,
+                    },
+                });
+
+                notificationSentThisRequest = true;
+            } else {
+                console.info(`[update-tool] Notifications already sent for ${packageJson.name}@${packageJson.version}; skipping duplicate emails.`);
+            }
+
             // Update status in tool_updates table in Supabase as validation_failed
-            await supabase.from("tool_updates").update({ status: "validation_failed", validation_warnings: validationResult }).eq("id", toolUpdateId);
-
-            await sendEmail({
-                type: "tool-update-admin",
-                data: {
-                    toolName,
-                    version: packageJson.version,
-                    validationErrors,
-                },
-            });
-
-            await sendEmail({
-                type: "tool-update-developer",
-                supabase,
-                data: {
-                    packageName: packageJson.name,
-                    toolName,
-                    version: packageJson.version,
-                    validationErrors,
-                },
-            });
+            await supabase
+                .from("tool_updates")
+                .update({
+                    status: "validation_failed",
+                    validation_warnings: validationResult,
+                    notification_sent: notificationAlreadySent || notificationSentThisRequest,
+                })
+                .eq("id", toolUpdateId);
 
             return NextResponse.json(
                 {
@@ -160,6 +190,9 @@ export async function POST(request: NextRequest) {
 
         // Update tool update record as validated
         await supabase.from("tool_updates").update({ status: "validated", validation_warnings: validationResult }).eq("id", toolUpdateId);
+
+        // Clean up all tool_update entries for this package upon successful validation
+        await supabase.from("tool_updates").delete().eq("package_name", packageJson.name);
 
         // Invoke GH action to process the tool update
         const ghToken = process.env.GH_PAT_TOKEN;

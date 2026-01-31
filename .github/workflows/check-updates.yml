@@ -88,12 +88,28 @@ jobs:
                   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
                   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
               run: |
-                  # File mapping package -> tool_updates.id for later API calls
-                  : > tool_update_ids.txt
+                  # Remove any stale mapping file so only new entries trigger the API
+                  rm -f tool_update_ids.txt
                   while IFS=',' read -r PACKAGE CURRENT_VERSION LATEST_VERSION; do
                     if [ -z "$PACKAGE" ]; then
                       continue
                     fi
+                    if [ -z "$LATEST_VERSION" ]; then
+                      continue
+                    fi
+
+                    PACKAGE_FILTER=$(printf '%s' "$PACKAGE" | jq -sRr @uri)
+                    VERSION_FILTER=$(printf '%s' "$LATEST_VERSION" | jq -sRr @uri)
+
+                    EXISTING_RESPONSE=$(curl -sS "$SUPABASE_URL/rest/v1/tool_updates?select=id&package_name=eq.$PACKAGE_FILTER&version=eq.$VERSION_FILTER&limit=1" \
+                      -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                      -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
+
+                    if echo "$EXISTING_RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null 2>&1; then
+                      echo "Skipping tool_updates creation for $PACKAGE@$LATEST_VERSION - record already exists."
+                      continue
+                    fi
+
                     RESPONSE=$(curl -sS -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/tool_updates" \
                       -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                       -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
