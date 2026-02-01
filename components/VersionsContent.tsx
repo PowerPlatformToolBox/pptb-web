@@ -81,9 +81,9 @@ function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "st
 
     return (
         <div className="space-y-6">
-            <div className="p-4 bg-slate-50 border-l-4 border-slate-300 rounded-lg">
+            <section className="p-4 bg-slate-50 border-l-4 border-slate-300 rounded-lg" role="note" aria-label={`${type} release information`}>
                 <p className="text-sm text-slate-700">{releaseTypeDefinition}</p>
-            </div>
+            </section>
             {releases.map((release, index) => (
                 <ReleaseCard key={release.tag_name} release={release} type={type} isLatest={index === 0} />
             ))}
