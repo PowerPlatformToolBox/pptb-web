@@ -3,7 +3,7 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useEffect, useState } from "react";
 
-import { fetchAllReleases, filterDownloadableAssets, formatFileSize, isInsiderRelease, type GitHubRelease } from "@/lib/github-api";
+import { fetchAllReleases, filterDownloadableAssets, formatFileSize, isInsiderRelease, type GitHubAsset, type GitHubRelease } from "@/lib/github-api";
 
 // Utility function to format date strings
 function formatDate(dateString: string): string {
