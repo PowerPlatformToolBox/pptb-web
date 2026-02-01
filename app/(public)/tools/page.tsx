@@ -131,6 +131,7 @@ export default function ToolsPage() {
         })();
     }, []);
 
+    const toolCount = tools.length;
     const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories)))];
     const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.categories.includes(selectedCategory));
 
@@ -142,6 +143,9 @@ export default function ToolsPage() {
                         <header className="max-w-2xl mb-16">
                             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Power Platform Tools</h1>
                             <p className="mt-6 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
+                            <p className="mt-3 text-base text-slate-500">
+                                Featuring <span className="font-semibold text-slate-900">{toolCount}</span> community-built tools &mdash; and more are added every week.
+                            </p>
                         </header>
 
                         {/* Category Filter */}
