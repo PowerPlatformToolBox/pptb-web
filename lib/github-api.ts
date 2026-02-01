@@ -65,19 +65,26 @@ export async function fetchAllReleases(): Promise<GitHubRelease[]> {
 export function isInsiderRelease(release: GitHubRelease): boolean {
     const tag = release.tag_name.toLowerCase();
     const name = release.name.toLowerCase();
-    return tag.includes("insider") || tag.includes("preview") || tag.includes("beta") || 
-           name.includes("insider") || name.includes("preview") || name.includes("beta");
+    return (
+        tag.includes("insider") ||
+        tag.includes("preview") ||
+        tag.includes("beta") ||
+        name.includes("insider") ||
+        name.includes("preview") ||
+        name.includes("beta")
+    );
 }
 
 export function filterDownloadableAssets(assets: GitHubAsset[]): GitHubAsset[] {
-    return assets.filter(asset => {
+    return assets.filter((asset) => {
         const name = asset.name.toLowerCase();
-        // Exclude yml files and source code archives
-        return !name.endsWith('.yml') && 
-               !name.endsWith('.yaml') && 
-               !name.includes('source') &&
-               name !== 'source code (zip)' &&
-               name !== 'source code (tar.gz)';
+        // Exclude yml files and GitHub-generated source code archives
+        return (
+            !name.endsWith(".yml") &&
+            !name.endsWith(".yaml") &&
+            name !== "source code (zip)" &&
+            name !== "source code (tar.gz)"
+        );
     });
 }
 
