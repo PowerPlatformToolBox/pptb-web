@@ -125,7 +125,8 @@ jobs:
             echo "Tool: $tool_name"
             
             # Get all releases for this tool, sorted by date (newest first)
-            grep "^$tool_name|" releases_with_tools.txt | sort -t'|' -k4 -r > tool_releases.txt
+            # Use grep -F for fixed string matching to avoid regex metacharacter issues
+            grep -F "$tool_name|" releases_with_tools.txt | sort -t'|' -k4 -r > tool_releases.txt
             
             release_count=$(wc -l < tool_releases.txt)
             echo "  Total releases: $release_count"

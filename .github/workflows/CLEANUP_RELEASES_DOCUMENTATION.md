@@ -161,7 +161,7 @@ To run more or less frequently:
 2. Examples:
    - Daily: `0 0 * * *`
    - Monthly: `0 0 1 * *`
-   - Bi-weekly (1st and 15th of month): Use two entries: `0 0 1,15 * *`
+   - Bi-weekly (1st and 15th of month): `0 0 1,15 * *`
 
 ## Troubleshooting
 
