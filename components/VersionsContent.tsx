@@ -74,17 +74,25 @@ function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "st
         );
     }
 
+    const releaseTypeDefinition =
+        type === "stable"
+            ? "Stable releases are thoroughly tested and recommended for production use. These versions provide reliable performance and are fully supported."
+            : "Insider releases include the latest features and improvements before they reach stable. These builds may contain experimental features and are ideal for testing and early adoption.";
+
     return (
         <div className="space-y-6">
-            {releases.map((release) => (
-                <ReleaseCard key={release.tag_name} release={release} type={type} />
+            <div className="p-4 bg-slate-50 border-l-4 border-slate-300 rounded-lg">
+                <p className="text-sm text-slate-700">{releaseTypeDefinition}</p>
+            </div>
+            {releases.map((release, index) => (
+                <ReleaseCard key={release.tag_name} release={release} type={type} isLatest={index === 0} />
             ))}
         </div>
     );
 }
 
-function ReleaseCard({ release, type }: { release: GitHubRelease; type: "stable" | "insider" }) {
-    const [expanded, setExpanded] = useState(false);
+function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type: "stable" | "insider"; isLatest: boolean }) {
+    const [expanded, setExpanded] = useState(isLatest);
     const downloadableAssets = filterDownloadableAssets(release.assets);
 
     const borderColor = type === "stable" ? "border-blue-200" : "border-purple-200";
