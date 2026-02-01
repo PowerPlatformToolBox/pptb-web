@@ -88,13 +88,22 @@ function getAssetDescription(assetName: string): string {
     const name = assetName.toLowerCase();
     
     if (name.endsWith('.exe') || (name.includes('windows') && !name.endsWith('.zip') && !name.endsWith('.msi'))) {
+        if (name.includes('arm64') || name.includes('aarch64')) {
+            return 'Windows installer for ARM64 architecture';
+        }
         return 'Windows installer for x64 architecture';
     } else if (name.endsWith('.msi')) {
+        if (name.includes('arm64') || name.includes('aarch64')) {
+            return 'Windows MSI installer package for ARM64';
+        }
         return 'Windows MSI installer package';
     } else if (name.endsWith('.zip')) {
         if (name.includes('mac') || name.includes('darwin')) {
             return 'macOS portable archive (extract and run)';
         } else if (name.includes('win') || name.includes('windows')) {
+            if (name.includes('arm64') || name.includes('aarch64')) {
+                return 'Windows portable archive for ARM64 (extract and run)';
+            }
             return 'Windows portable archive (extract and run)';
         }
         return 'Portable archive (extract and run)';
