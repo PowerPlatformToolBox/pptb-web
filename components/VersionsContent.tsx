@@ -122,7 +122,20 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
 
     return (
         <div className={`border-2 ${borderColor} rounded-2xl p-6 bg-white shadow-card hover:shadow-fluent transition-shadow`}>
-            <div className="flex items-start justify-between mb-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+            <div 
+                className="flex items-start justify-between mb-4 cursor-pointer" 
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpanded(!expanded)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpanded(!expanded);
+                    }
+                }}
+                aria-expanded={expanded}
+                aria-label={`${expanded ? 'Collapse' : 'Expand'} ${release.name || release.tag_name}`}
+            >
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-bold text-slate-900">{release.name || release.tag_name}</h3>
@@ -136,7 +149,7 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
                         <span>{downloadableAssets.length} download{downloadableAssets.length !== 1 ? "s" : ""}</span>
                     </div>
                 </div>
-                <button className={`${buttonColor} font-medium text-sm transition-all flex items-center gap-1 ml-4`}>
+                <button className={`${buttonColor} font-medium text-sm transition-all flex items-center gap-1 ml-4`} aria-hidden="true">
                     {expanded ? "Collapse" : "Expand"}
                     <svg className={`w-5 h-5 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
