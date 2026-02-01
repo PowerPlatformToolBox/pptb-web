@@ -68,9 +68,9 @@ export default function DownloadButton() {
     if (!asset || !platform || platform.os === "unknown") {
         return (
             <div className="text-center">
-                <a href="https://github.com/PowerPlatformToolBox/desktop-app/releases" target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-3 text-lg">
+                <a href="/versions" className="btn-primary inline-flex items-center gap-3 text-lg">
                     {renderGitHubIcon()}
-                    View Releases on GitHub
+                    View All Versions
                 </a>
             </div>
         );
