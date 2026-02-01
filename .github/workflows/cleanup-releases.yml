@@ -1,0 +1,174 @@
+name: Cleanup Old Releases
+
+on:
+  schedule:
+    # Run weekly on Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (true to only show what would be deleted, false to actually delete)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  cleanup-releases:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Fetch and cleanup releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+        run: |
+          set -e
+          
+          echo "==================================="
+          echo "Release Cleanup Workflow"
+          echo "==================================="
+          echo "Dry Run Mode: $DRY_RUN"
+          echo ""
+          
+          # Fetch all releases
+          echo "📥 Fetching all releases..."
+          gh release list --limit 1000 --json tagName,name,publishedAt,id > releases.json
+          
+          RELEASE_COUNT=$(jq 'length' releases.json)
+          echo "Found $RELEASE_COUNT total releases"
+          echo ""
+          
+          if [ "$RELEASE_COUNT" -eq 0 ]; then
+            echo "✅ No releases found. Nothing to clean up."
+            exit 0
+          fi
+          
+          # Parse releases and group by tool name
+          # Release name format: "Tool Name v0.0.1" or "Tool Name v1.2.3"
+          # We need to extract the tool name (everything before " v")
+          
+          echo "🔍 Analyzing releases and grouping by tool..."
+          
+          # Create a list of tools with their releases
+          jq -r '.[] | "\(.name)|\(.tagName)|\(.publishedAt)|\(.id)"' releases.json | while IFS='|' read -r name tag published id; do
+            # Extract tool name by removing version pattern (v followed by numbers and dots)
+            # Match patterns like " v0.0.1", " v1.2.3", etc.
+            tool_name=$(echo "$name" | sed -E 's/ v[0-9]+\.[0-9]+\.[0-9]+.*$//')
+            
+            # If tool_name is empty or same as name, it might not match our pattern
+            if [ -z "$tool_name" ] || [ "$tool_name" = "$name" ]; then
+              # Try alternative pattern: remove everything after last space if it starts with v
+              if echo "$name" | grep -qE ' v[0-9]'; then
+                tool_name=$(echo "$name" | sed -E 's/ v[0-9].*$//')
+              else
+                tool_name="$name"
+              fi
+            fi
+            
+            echo "$tool_name|$name|$tag|$published|$id"
+          done | sort > releases_with_tools.txt
+          
+          # Get unique tool names
+          cut -d'|' -f1 releases_with_tools.txt | sort -u > unique_tools.txt
+          
+          TOOL_COUNT=$(wc -l < unique_tools.txt)
+          echo "Identified $TOOL_COUNT unique tools"
+          echo ""
+          
+          # For each tool, find releases to delete (all but top 3)
+          echo "📊 Analysis by Tool:"
+          echo "===================="
+          
+          # Clear the delete list file
+          > releases_to_delete.txt
+          
+          while read -r tool_name; do
+            echo ""
+            echo "Tool: $tool_name"
+            
+            # Get all releases for this tool, sorted by date (newest first)
+            grep "^$tool_name|" releases_with_tools.txt | sort -t'|' -k4 -r > tool_releases.txt
+            
+            release_count=$(wc -l < tool_releases.txt)
+            echo "  Total releases: $release_count"
+            
+            if [ "$release_count" -le 3 ]; then
+              echo "  ✅ Keeping all $release_count releases (≤ 3)"
+            else
+              keep_count=3
+              delete_count=$((release_count - keep_count))
+              echo "  ⚠️  Will delete $delete_count old releases (keeping newest 3)"
+              
+              # Show what we're keeping
+              echo "  📌 Keeping:"
+              head -n 3 tool_releases.txt | while IFS='|' read -r tn rname rtag rpub rid; do
+                echo "     - $rname (published: $rpub)"
+              done
+              
+              # Show what we're deleting
+              echo "  🗑️  Marking for deletion:"
+              tail -n +4 tool_releases.txt | while IFS='|' read -r tn rname rtag rpub rid; do
+                echo "     - $rname (published: $rpub)"
+                # Append to file instead of variable to avoid subshell issues
+                echo "$rid|$rname|$rtag" >> releases_to_delete.txt
+              done
+            fi
+          done < unique_tools.txt
+          
+          # Count releases to delete
+          if [ -s releases_to_delete.txt ]; then
+            DELETE_COUNT=$(grep -c '|' releases_to_delete.txt || echo "0")
+          else
+            DELETE_COUNT=0
+          fi
+          
+          echo ""
+          echo "==================================="
+          echo "Summary"
+          echo "==================================="
+          echo "Total releases: $RELEASE_COUNT"
+          echo "Unique tools: $TOOL_COUNT"
+          echo "Releases to delete: $DELETE_COUNT"
+          echo ""
+          
+          if [ "$DELETE_COUNT" -eq 0 ]; then
+            echo "✅ Nothing to delete. All tools have ≤ 3 releases."
+            exit 0
+          fi
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🔍 DRY RUN MODE - No releases will be deleted"
+            echo ""
+            echo "To actually delete these releases, run this workflow again with dry_run=false"
+          else
+            echo "⚠️  DELETION MODE - Deleting releases..."
+            echo ""
+            
+            # Delete releases
+            while IFS='|' read -r rid rname rtag; do
+              if [ -n "$rid" ]; then
+                echo "Deleting: $rname ($rtag)"
+                if gh release delete "$rtag" --yes --cleanup-tag 2>&1; then
+                  echo "  ✅ Deleted successfully"
+                else
+                  echo "  ❌ Failed to delete"
+                fi
+              fi
+            done < releases_to_delete.txt
+            
+            echo ""
+            echo "✅ Cleanup complete!"
+          fi
