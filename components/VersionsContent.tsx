@@ -40,11 +40,11 @@ export function VersionsContent() {
     const stableReleases = releases.filter((r) => !isInsiderRelease(r));
     const insiderReleases = releases.filter((r) => isInsiderRelease(r));
 
-    const tabBaseClasses = "px-6 py-3 text-lg font-semibold text-slate-700 border-b-2 border-transparent transition-colors";
+    const tabBaseClasses = "px-4 sm:px-6 py-3 text-base sm:text-lg font-semibold text-slate-700 border-b-2 border-transparent transition-colors whitespace-nowrap";
 
     return (
         <TabGroup>
-            <TabList className="flex gap-4 border-b border-slate-200 mb-8 justify-center">
+            <TabList className="flex gap-2 sm:gap-4 border-b border-slate-200 mb-8 justify-center overflow-x-auto">
                 <Tab className={`${tabBaseClasses} hover:text-blue data-[selected]:border-blue data-[selected]:text-blue`}>
                     Stable Release
                 </Tab>
@@ -121,9 +121,9 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
     const buttonColor = type === "stable" ? "text-blue hover:text-blue-700" : "text-purple hover:text-purple-700";
 
     return (
-        <div className={`border-2 ${borderColor} rounded-2xl p-6 bg-white shadow-card hover:shadow-fluent transition-shadow`}>
+        <div className={`border-2 ${borderColor} rounded-2xl p-4 sm:p-6 bg-white shadow-card hover:shadow-fluent transition-shadow`}>
             <div 
-                className="flex items-start justify-between mb-4 cursor-pointer" 
+                className="flex items-start justify-between gap-2 sm:gap-4 mb-4 cursor-pointer" 
                 role="button"
                 tabIndex={0}
                 onClick={() => setExpanded(!expanded)}
@@ -136,22 +136,22 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
                 aria-expanded={expanded}
                 aria-label={`${expanded ? 'Collapse' : 'Expand'} ${release.name || release.tag_name}`}
             >
-                <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-bold text-slate-900">{release.name || release.tag_name}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeColor}`}>{type === "stable" ? "Stable" : "Insider"}</span>
+                <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-lg sm:text-2xl font-bold text-slate-900 break-words">{release.name || release.tag_name}</h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeColor} self-start sm:self-auto whitespace-nowrap`}>{type === "stable" ? "Stable" : "Insider"}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-slate-600">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
                         <span className="font-medium">{release.tag_name}</span>
-                        <span>•</span>
-                        <span>{formatDate(release.published_at)}</span>
-                        <span>•</span>
-                        <span>{downloadableAssets.length} download{downloadableAssets.length !== 1 ? "s" : ""}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="whitespace-nowrap">{formatDate(release.published_at)}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="whitespace-nowrap">{downloadableAssets.length} download{downloadableAssets.length !== 1 ? "s" : ""}</span>
                     </div>
                 </div>
-                <button className={`${buttonColor} font-medium text-sm transition-all flex items-center gap-1 ml-4`} aria-hidden="true">
-                    {expanded ? "Collapse" : "Expand"}
-                    <svg className={`w-5 h-5 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button className={`${buttonColor} font-medium text-xs sm:text-sm transition-all flex items-center gap-1 flex-shrink-0`} aria-hidden="true">
+                    <span className="hidden sm:inline">{expanded ? "Collapse" : "Expand"}</span>
+                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
@@ -186,20 +186,20 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
                                 <a
                                     key={asset.name}
                                     href={asset.browser_download_url}
-                                    className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group"
+                                    className="flex items-center justify-between p-3 sm:p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group gap-2"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <div className="flex items-center gap-3 flex-1">
+                                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                         <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-slate-900 group-hover:text-slate-900 truncate">{asset.name}</div>
-                                            <div className="text-xs text-slate-500 mt-1">{getAssetDescription(asset.name)}</div>
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <div className="font-medium text-sm sm:text-base text-slate-900 group-hover:text-slate-900 truncate">{asset.name}</div>
+                                            <div className="text-xs text-slate-500 mt-1 line-clamp-2">{getAssetDescription(asset.name)}</div>
                                             <div className="text-xs text-slate-400 mt-0.5">{formatFileSize(asset.size)}</div>
                                         </div>
                                     </div>
-                                    <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
                                 </a>
