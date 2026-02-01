@@ -87,8 +87,17 @@ function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "st
 function getAssetDescription(assetName: string): string {
     const name = assetName.toLowerCase();
     
-    if (name.endsWith('.exe') || name.includes('windows')) {
+    if (name.endsWith('.exe') || (name.includes('windows') && !name.endsWith('.zip') && !name.endsWith('.msi'))) {
         return 'Windows installer for x64 architecture';
+    } else if (name.endsWith('.msi')) {
+        return 'Windows MSI installer package';
+    } else if (name.endsWith('.zip')) {
+        if (name.includes('mac') || name.includes('darwin')) {
+            return 'macOS portable archive (extract and run)';
+        } else if (name.includes('win') || name.includes('windows')) {
+            return 'Windows portable archive (extract and run)';
+        }
+        return 'Portable archive (extract and run)';
     } else if (name.endsWith('.dmg') || name.includes('macos') || name.includes('darwin')) {
         if (name.includes('arm64') || name.includes('aarch64')) {
             return 'macOS installer for Apple Silicon (M1/M2/M3)';
@@ -102,13 +111,60 @@ function getAssetDescription(assetName: string): string {
         return 'Debian/Ubuntu package installer';
     } else if (name.endsWith('.rpm')) {
         return 'RedHat/Fedora package installer';
-    } else if (name.endsWith('.zip')) {
-        return 'Portable archive (extract and run)';
     } else if (name.endsWith('.tar.gz')) {
         return 'Compressed archive for Linux/Unix';
     }
     
     return 'Download package';
+}
+
+// Helper function to categorize assets by platform
+function categorizeAssets(assets: GitHubAsset[]): { windows: GitHubAsset[]; macos: GitHubAsset[]; linux: GitHubAsset[] } {
+    const windows: GitHubAsset[] = [];
+    const macos: GitHubAsset[] = [];
+    const linux: GitHubAsset[] = [];
+    
+    assets.forEach((asset) => {
+        const name = asset.name.toLowerCase();
+        
+        if (name.includes('win') || name.includes('windows') || name.endsWith('.exe') || name.endsWith('.msi')) {
+            windows.push(asset);
+        } else if (name.includes('mac') || name.includes('darwin') || name.endsWith('.dmg')) {
+            macos.push(asset);
+        } else if (name.includes('linux') || name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm') || name.endsWith('.tar.gz')) {
+            linux.push(asset);
+        } else {
+            // Default to Linux for unknown types
+            linux.push(asset);
+        }
+    });
+    
+    return { windows, macos, linux };
+}
+
+// Component for individual asset download link
+function AssetDownloadLink({ asset }: { asset: GitHubAsset }) {
+    return (
+        <a
+            href={asset.browser_download_url}
+            className="flex items-center justify-between p-3 sm:p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group gap-2"
+            onClick={(e) => e.stopPropagation()}
+        >
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="font-medium text-sm sm:text-base text-slate-900 group-hover:text-slate-900 truncate">{asset.name}</div>
+                    <div className="text-xs text-slate-500 mt-1 line-clamp-2">{getAssetDescription(asset.name)}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{formatFileSize(asset.size)}</div>
+                </div>
+            </div>
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+    );
 }
 
 function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type: "stable" | "insider"; isLatest: boolean }) {
@@ -181,30 +237,57 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
 
                     <div className="border-t border-slate-200 pt-4 mt-4">
                         <h4 className="text-sm font-semibold text-slate-700 mb-3">Downloads</h4>
-                        <div className="grid gap-3">
-                            {downloadableAssets.map((asset) => (
-                                <a
-                                    key={asset.name}
-                                    href={asset.browser_download_url}
-                                    className="flex items-center justify-between p-3 sm:p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group gap-2"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                                        <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <div className="font-medium text-sm sm:text-base text-slate-900 group-hover:text-slate-900 truncate">{asset.name}</div>
-                                            <div className="text-xs text-slate-500 mt-1 line-clamp-2">{getAssetDescription(asset.name)}</div>
-                                            <div className="text-xs text-slate-400 mt-0.5">{formatFileSize(asset.size)}</div>
-                                        </div>
+                        {(() => {
+                            const { windows, macos, linux } = categorizeAssets(downloadableAssets);
+                            const hasMultiplePlatforms = [windows.length > 0, macos.length > 0, linux.length > 0].filter(Boolean).length > 1;
+                            
+                            if (hasMultiplePlatforms) {
+                                // 3-column layout for desktop when multiple platforms exist
+                                return (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {windows.length > 0 && (
+                                            <div>
+                                                <h5 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Windows</h5>
+                                                <div className="space-y-2">
+                                                    {windows.map((asset) => (
+                                                        <AssetDownloadLink key={asset.name} asset={asset} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {macos.length > 0 && (
+                                            <div>
+                                                <h5 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">macOS</h5>
+                                                <div className="space-y-2">
+                                                    {macos.map((asset) => (
+                                                        <AssetDownloadLink key={asset.name} asset={asset} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {linux.length > 0 && (
+                                            <div>
+                                                <h5 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Linux</h5>
+                                                <div className="space-y-2">
+                                                    {linux.map((asset) => (
+                                                        <AssetDownloadLink key={asset.name} asset={asset} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </a>
-                            ))}
-                        </div>
+                                );
+                            } else {
+                                // Single column layout when only one platform
+                                return (
+                                    <div className="grid gap-3">
+                                        {downloadableAssets.map((asset) => (
+                                            <AssetDownloadLink key={asset.name} asset={asset} />
+                                        ))}
+                                    </div>
+                                );
+                            }
+                        })()}
                     </div>
                 </>
             )}
