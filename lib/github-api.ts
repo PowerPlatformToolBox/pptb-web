@@ -14,6 +14,7 @@ export interface GitHubRelease {
 }
 
 const GITHUB_API_URL = "https://api.github.com/repos/PowerPlatformToolBox/desktop-app/releases/latest";
+const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/PowerPlatformToolBox/desktop-app/releases";
 
 export async function fetchLatestRelease(): Promise<GitHubRelease | null> {
     try {
@@ -36,6 +37,48 @@ export async function fetchLatestRelease(): Promise<GitHubRelease | null> {
         console.error("Error fetching latest release:", error);
         return null;
     }
+}
+
+export async function fetchAllReleases(): Promise<GitHubRelease[]> {
+    try {
+        const response = await fetch(GITHUB_RELEASES_API_URL, {
+            headers: {
+                Accept: "application/vnd.github.v3+json",
+            },
+            // Cache for 5 minutes in production
+            next: { revalidate: 300 },
+        });
+
+        if (!response.ok) {
+            console.error("Failed to fetch releases:", response.status);
+            return [];
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error fetching releases:", error);
+        return [];
+    }
+}
+
+export function isInsiderRelease(release: GitHubRelease): boolean {
+    const tag = release.tag_name.toLowerCase();
+    const name = release.name.toLowerCase();
+    return tag.includes("insider") || tag.includes("preview") || tag.includes("beta") || 
+           name.includes("insider") || name.includes("preview") || name.includes("beta");
+}
+
+export function filterDownloadableAssets(assets: GitHubAsset[]): GitHubAsset[] {
+    return assets.filter(asset => {
+        const name = asset.name.toLowerCase();
+        // Exclude yml files and source code archives
+        return !name.endsWith('.yml') && 
+               !name.endsWith('.yaml') && 
+               !name.includes('source') &&
+               name !== 'source code (zip)' &&
+               name !== 'source code (tar.gz)';
+    });
 }
 
 export function findAssetForOS(assets: GitHubAsset[], os: string, arch?: string): GitHubAsset | null {

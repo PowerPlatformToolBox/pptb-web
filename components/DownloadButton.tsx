@@ -125,9 +125,7 @@ export default function DownloadButton() {
             )}
             <div className="text-sm">
                 <a
-                    href="https://github.com/PowerPlatformToolBox/desktop-app/releases"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="/versions"
                     className="text-blue hover:text-purple font-medium transition-colors underline decoration-2 underline-offset-4"
                 >
                     View all platforms and versions →
