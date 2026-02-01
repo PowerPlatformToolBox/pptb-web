@@ -74,16 +74,8 @@ function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "st
         );
     }
 
-    const releaseTypeDefinition =
-        type === "stable"
-            ? "Stable releases are thoroughly tested and recommended for production use. These versions provide reliable performance and are fully supported."
-            : "Insider releases include the latest features and improvements before they reach stable. These builds may contain experimental features and are ideal for testing and early adoption.";
-
     return (
         <div className="space-y-6">
-            <section className="p-4 bg-slate-50 border-l-4 border-slate-300 rounded-lg" role="note" aria-label={`${type} release information`}>
-                <p className="text-sm text-slate-700">{releaseTypeDefinition}</p>
-            </section>
             {releases.map((release, index) => (
                 <ReleaseCard key={release.tag_name} release={release} type={type} isLatest={index === 0} />
             ))}
@@ -91,8 +83,37 @@ function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "st
     );
 }
 
+// Helper function to get asset description based on file extension
+function getAssetDescription(assetName: string): string {
+    const name = assetName.toLowerCase();
+    
+    if (name.endsWith('.exe') || name.includes('windows')) {
+        return 'Windows installer for x64 architecture';
+    } else if (name.endsWith('.dmg') || name.includes('macos') || name.includes('darwin')) {
+        if (name.includes('arm64') || name.includes('aarch64')) {
+            return 'macOS installer for Apple Silicon (M1/M2/M3)';
+        } else if (name.includes('x64') || name.includes('x86_64')) {
+            return 'macOS installer for Intel processors';
+        }
+        return 'macOS installer';
+    } else if (name.endsWith('.appimage')) {
+        return 'Linux portable app for all distributions';
+    } else if (name.endsWith('.deb')) {
+        return 'Debian/Ubuntu package installer';
+    } else if (name.endsWith('.rpm')) {
+        return 'RedHat/Fedora package installer';
+    } else if (name.endsWith('.zip')) {
+        return 'Portable archive (extract and run)';
+    } else if (name.endsWith('.tar.gz')) {
+        return 'Compressed archive for Linux/Unix';
+    }
+    
+    return 'Download package';
+}
+
 function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type: "stable" | "insider"; isLatest: boolean }) {
     const [expanded, setExpanded] = useState(isLatest);
+    const [notesExpanded, setNotesExpanded] = useState(false);
     const downloadableAssets = filterDownloadableAssets(release.assets);
 
     const borderColor = type === "stable" ? "border-blue-200" : "border-purple-200";
@@ -101,8 +122,8 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
 
     return (
         <div className={`border-2 ${borderColor} rounded-2xl p-6 bg-white shadow-card hover:shadow-fluent transition-shadow`}>
-            <div className="flex items-start justify-between mb-4">
-                <div>
+            <div className="flex items-start justify-between mb-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+                <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-bold text-slate-900">{release.name || release.tag_name}</h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeColor}`}>{type === "stable" ? "Stable" : "Insider"}</span>
@@ -115,47 +136,65 @@ function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type
                         <span>{downloadableAssets.length} download{downloadableAssets.length !== 1 ? "s" : ""}</span>
                     </div>
                 </div>
+                <button className={`${buttonColor} font-medium text-sm transition-all flex items-center gap-1 ml-4`}>
+                    {expanded ? "Collapse" : "Expand"}
+                    <svg className={`w-5 h-5 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
 
-            {release.body && (
-                <div className="mb-4">
-                    <button onClick={() => setExpanded(!expanded)} className={`${buttonColor} font-medium text-sm transition-colors flex items-center gap-1`}>
-                        {expanded ? "Hide" : "Show"} release notes
-                        <svg className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    {expanded && (
-                        <div className="mt-3 p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap max-h-64 overflow-y-auto">{release.body}</div>
-                    )}
-                </div>
-            )}
-
-            <div className="border-t border-slate-200 pt-4 mt-4">
-                <h4 className="text-sm font-semibold text-slate-700 mb-3">Downloads</h4>
-                <div className="grid gap-3">
-                    {downloadableAssets.map((asset) => (
-                        <a
-                            key={asset.name}
-                            href={asset.browser_download_url}
-                            className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            {expanded && (
+                <>
+                    {release.body && (
+                        <div className="mb-4">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNotesExpanded(!notesExpanded);
+                                }} 
+                                className={`${buttonColor} font-medium text-sm transition-colors flex items-center gap-1`}
+                            >
+                                {notesExpanded ? "Hide" : "Show"} release notes
+                                <svg className={`w-4 h-4 transition-transform ${notesExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
-                                <div>
-                                    <div className="font-medium text-slate-900 group-hover:text-slate-900">{asset.name}</div>
-                                    <div className="text-xs text-slate-500">{formatFileSize(asset.size)}</div>
-                                </div>
-                            </div>
-                            <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </a>
-                    ))}
-                </div>
-            </div>
+                            </button>
+                            {notesExpanded && (
+                                <div className="mt-3 p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap max-h-64 overflow-y-auto">{release.body}</div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="border-t border-slate-200 pt-4 mt-4">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Downloads</h4>
+                        <div className="grid gap-3">
+                            {downloadableAssets.map((asset) => (
+                                <a
+                                    key={asset.name}
+                                    href={asset.browser_download_url}
+                                    className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-slate-900 group-hover:text-slate-900 truncate">{asset.name}</div>
+                                            <div className="text-xs text-slate-500 mt-1">{getAssetDescription(asset.name)}</div>
+                                            <div className="text-xs text-slate-400 mt-0.5">{formatFileSize(asset.size)}</div>
+                                        </div>
+                                    </div>
+                                    <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
