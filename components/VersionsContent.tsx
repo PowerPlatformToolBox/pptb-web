@@ -5,6 +5,16 @@ import { useEffect, useState } from "react";
 
 import { fetchAllReleases, filterDownloadableAssets, formatFileSize, isInsiderRelease, type GitHubRelease } from "@/lib/github-api";
 
+// Utility function to format date strings
+function formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+}
+
 export function VersionsContent() {
     const [releases, setReleases] = useState<GitHubRelease[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,13 +40,15 @@ export function VersionsContent() {
     const stableReleases = releases.filter((r) => !isInsiderRelease(r));
     const insiderReleases = releases.filter((r) => isInsiderRelease(r));
 
+    const tabBaseClasses = "px-6 py-3 text-lg font-semibold text-slate-700 border-b-2 border-transparent transition-colors";
+
     return (
         <TabGroup>
             <TabList className="flex gap-4 border-b border-slate-200 mb-8 justify-center">
-                <Tab className="px-6 py-3 text-lg font-semibold text-slate-700 hover:text-blue border-b-2 border-transparent data-[selected]:border-blue data-[selected]:text-blue transition-colors">
+                <Tab className={`${tabBaseClasses} hover:text-blue data-[selected]:border-blue data-[selected]:text-blue`}>
                     Stable Release
                 </Tab>
-                <Tab className="px-6 py-3 text-lg font-semibold text-slate-700 hover:text-purple border-b-2 border-transparent data-[selected]:border-purple data-[selected]:text-purple transition-colors">
+                <Tab className={`${tabBaseClasses} hover:text-purple data-[selected]:border-purple data-[selected]:text-purple`}>
                     Insider Release
                 </Tab>
             </TabList>
@@ -74,15 +86,6 @@ function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "st
 function ReleaseCard({ release, type }: { release: GitHubRelease; type: "stable" | "insider" }) {
     const [expanded, setExpanded] = useState(false);
     const downloadableAssets = filterDownloadableAssets(release.assets);
-
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-    };
 
     const borderColor = type === "stable" ? "border-blue-200" : "border-purple-200";
     const badgeColor = type === "stable" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
