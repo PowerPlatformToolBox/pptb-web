@@ -1,3 +1,28 @@
+# This workflow automatically cleans up old releases to maintain a manageable number of releases per tool.
+#
+# Purpose:
+# - Fetches all releases from the repository
+# - Groups releases by tool name (e.g., "HTML Sample Tool", "PCF Builder", "Data Migrator")
+# - Keeps only the top 3 most recent releases for each tool
+# - Deletes older releases automatically
+#
+# Release Name Format:
+# - Positive matches: "HTML Sample Tool v0.0.1", "HTML Sample Tool v0.0.2"
+# - These are grouped as "HTML Sample Tool" and the newest 3 are kept
+# - Negative matches (different tools): "PCF Builder v0.0.1", "Data Migrator v0.0.1"
+# - Each tool is handled separately
+#
+# Features:
+# - Scheduled: Runs weekly on Sundays at 00:00 UTC
+# - Manual trigger: Can be run manually via workflow_dispatch
+# - Dry-run mode: Default mode that shows what would be deleted without actually deleting
+# - Delete mode: Set dry_run to 'false' to actually delete old releases
+#
+# Usage:
+# 1. By default (scheduled or manual), runs in DRY RUN mode - safe to test
+# 2. To actually delete releases, manually trigger with dry_run='false'
+# 3. Review the workflow logs to see what will be deleted before running in delete mode
+#
 name: Cleanup Old Releases
 
 on:
@@ -130,7 +155,7 @@ jobs:
           
           # Count releases to delete
           if [ -s releases_to_delete.txt ]; then
-            DELETE_COUNT=$(grep -c '|' releases_to_delete.txt || echo "0")
+            DELETE_COUNT=$(wc -l < releases_to_delete.txt)
           else
             DELETE_COUNT=0
           fi
