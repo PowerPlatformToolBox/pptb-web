@@ -148,15 +148,25 @@ export async function POST(request: NextRequest) {
                 console.info(`[update-tool] Notifications already sent for ${packageJson.name}@${packageJson.version}; skipping duplicate emails.`);
             }
 
-            // Update status in tool_updates table in Supabase as validation_failed
-            await supabase
-                .from("tool_updates")
-                .update({
-                    status: "validation_failed",
-                    validation_warnings: validationResult,
-                    notification_sent: notificationAlreadySent || notificationSentThisRequest,
-                })
-                .eq("id", toolUpdateId);
+            const updatePayload = {
+                status: "validation_failed",
+                validation_warnings: validationResult,
+                notification_sent: notificationAlreadySent || notificationSentThisRequest,
+            };
+
+            const { data: updatedRows, error: updateError } = await supabase.from("tool_updates").update(updatePayload).eq("id", toolUpdateId).select("id");
+
+            if (updateError) {
+                console.error("[update-tool] Failed to update tool_updates by id", updateError.message);
+            }
+
+            if (!updateError && (!updatedRows || updatedRows.length === 0)) {
+                const { error: fallbackUpdateError } = await supabase.from("tool_updates").update(updatePayload).eq("package_name", packageJson.name).eq("version", packageJson.version);
+
+                if (fallbackUpdateError) {
+                    console.error("[update-tool] Fallback update for tool_updates failed", fallbackUpdateError.message);
+                }
+            }
 
             return NextResponse.json(
                 {
