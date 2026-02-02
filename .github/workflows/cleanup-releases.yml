@@ -89,21 +89,32 @@ jobs:
 
                   # Create a list of tools with their releases
                   jq -r '.[] | "\(.name)|\(.tagName)|\(.publishedAt // .createdAt // "1970-01-01T00:00:00Z")"' releases.json | while IFS='|' read -r name tag published; do
+                    # Use tag as fallback when the release name is empty/null so grouping still works
+                    display_name="$name"
+                    if [ -z "$display_name" ] || [ "$display_name" = "null" ]; then
+                      display_name="$tag"
+                    fi
+                    if [ -z "$display_name" ]; then
+                      display_name="Unknown Release"
+                    fi
                     # Extract tool name by removing version pattern (v followed by numbers and dots)
                     # Match patterns like " v0.0.1", " v1.2.3", etc.
-                    tool_name=$(echo "$name" | sed -E 's/ v[0-9]+\.[0-9]+\.[0-9]+.*$//')
+                    tool_name=$(echo "$display_name" | sed -E 's/ v[0-9]+\.[0-9]+\.[0-9]+.*$//')
                     
                     # If tool_name is empty or same as name, it might not match our pattern
-                    if [ -z "$tool_name" ] || [ "$tool_name" = "$name" ]; then
+                    if [ -z "$tool_name" ] || [ "$tool_name" = "$display_name" ]; then
                       # Try alternative pattern: remove everything after last space if it starts with v
-                      if echo "$name" | grep -qE ' v[0-9]'; then
-                        tool_name=$(echo "$name" | sed -E 's/ v[0-9].*$//')
+                      if echo "$display_name" | grep -qE ' v[0-9]'; then
+                        tool_name=$(echo "$display_name" | sed -E 's/ v[0-9].*$//')
                       else
-                        tool_name="$name"
+                        tool_name="$display_name"
                       fi
                     fi
+                    if [ -z "$tool_name" ]; then
+                      tool_name="Unknown Tool"
+                    fi
                     
-                    echo "$tool_name|$name|$tag|$published"
+                    echo "$tool_name|$display_name|$tag|$published"
                   done | sort > releases_with_tools.txt
 
                   # Get unique tool names
