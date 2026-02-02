@@ -1,0 +1,305 @@
+"use client";
+
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
+import { useEffect, useState } from "react";
+
+import { fetchAllReleases, filterDownloadableAssets, formatFileSize, isInsiderRelease, type GitHubAsset, type GitHubRelease } from "@/lib/github-api";
+
+// Utility function to format date strings
+function formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+}
+
+export function VersionsContent() {
+    const [releases, setReleases] = useState<GitHubRelease[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadReleases = async () => {
+            const allReleases = await fetchAllReleases();
+            setReleases(allReleases);
+            setLoading(false);
+        };
+
+        loadReleases();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-20">
+                <div className="text-lg text-slate-600 animate-pulse">Loading releases...</div>
+            </div>
+        );
+    }
+
+    const stableReleases = releases.filter((r) => !isInsiderRelease(r));
+    const insiderReleases = releases.filter((r) => isInsiderRelease(r));
+
+    const tabBaseClasses = "px-4 sm:px-6 py-3 text-base sm:text-lg font-semibold text-slate-700 border-b-2 border-transparent transition-colors whitespace-nowrap";
+
+    return (
+        <TabGroup>
+            <TabList className="flex gap-2 sm:gap-4 border-b border-slate-200 mb-8 justify-center overflow-x-auto">
+                <Tab className={`${tabBaseClasses} hover:text-blue data-[selected]:border-blue data-[selected]:text-blue`}>
+                    Stable Release
+                </Tab>
+                <Tab className={`${tabBaseClasses} hover:text-purple data-[selected]:border-purple data-[selected]:text-purple`}>
+                    Insider Release
+                </Tab>
+            </TabList>
+
+            <TabPanels>
+                <TabPanel>
+                    <ReleasesList releases={stableReleases} type="stable" />
+                </TabPanel>
+                <TabPanel>
+                    <ReleasesList releases={insiderReleases} type="insider" />
+                </TabPanel>
+            </TabPanels>
+        </TabGroup>
+    );
+}
+
+function ReleasesList({ releases, type }: { releases: GitHubRelease[]; type: "stable" | "insider" }) {
+    if (releases.length === 0) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-lg text-slate-600">No {type} releases available at this time.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {releases.map((release, index) => (
+                <ReleaseCard key={release.tag_name} release={release} type={type} isLatest={index === 0} />
+            ))}
+        </div>
+    );
+}
+
+// Helper function to get asset description based on file extension
+function getAssetDescription(assetName: string): string {
+    const name = assetName.toLowerCase();
+    
+    if (name.endsWith('.exe') || (name.includes('windows') && !name.endsWith('.zip') && !name.endsWith('.msi'))) {
+        if (name.includes('arm64') || name.includes('aarch64')) {
+            return 'Windows installer for ARM64 architecture';
+        }
+        return 'Windows installer for x64 architecture';
+    } else if (name.endsWith('.msi')) {
+        if (name.includes('arm64') || name.includes('aarch64')) {
+            return 'Windows MSI installer package for ARM64';
+        }
+        return 'Windows MSI installer package';
+    } else if (name.endsWith('.zip')) {
+        if (name.includes('mac') || name.includes('darwin')) {
+            return 'macOS portable archive (extract and run)';
+        } else if (name.includes('win') || name.includes('windows')) {
+            if (name.includes('arm64') || name.includes('aarch64')) {
+                return 'Windows portable archive for ARM64 (extract and run)';
+            }
+            return 'Windows portable archive (extract and run)';
+        }
+        return 'Portable archive (extract and run)';
+    } else if (name.endsWith('.dmg') || name.includes('macos') || name.includes('darwin')) {
+        if (name.includes('arm64') || name.includes('aarch64')) {
+            return 'macOS installer for Apple Silicon (M1/M2/M3)';
+        } else if (name.includes('x64') || name.includes('x86_64')) {
+            return 'macOS installer for Intel processors';
+        }
+        return 'macOS installer';
+    } else if (name.endsWith('.appimage')) {
+        return 'Linux portable app for all distributions';
+    } else if (name.endsWith('.deb')) {
+        return 'Debian/Ubuntu package installer';
+    } else if (name.endsWith('.rpm')) {
+        return 'RedHat/Fedora package installer';
+    } else if (name.endsWith('.tar.gz')) {
+        return 'Compressed archive for Linux/Unix';
+    }
+    
+    return 'Download package';
+}
+
+// Helper function to categorize assets by platform
+function categorizeAssets(assets: GitHubAsset[]): { windows: GitHubAsset[]; macos: GitHubAsset[]; linux: GitHubAsset[] } {
+    const windows: GitHubAsset[] = [];
+    const macos: GitHubAsset[] = [];
+    const linux: GitHubAsset[] = [];
+    
+    assets.forEach((asset) => {
+        const name = asset.name.toLowerCase();
+        
+        if (name.includes('win') || name.includes('windows') || name.endsWith('.exe') || name.endsWith('.msi')) {
+            windows.push(asset);
+        } else if (name.includes('mac') || name.includes('darwin') || name.endsWith('.dmg')) {
+            macos.push(asset);
+        } else if (name.includes('linux') || name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm') || name.endsWith('.tar.gz')) {
+            linux.push(asset);
+        } else {
+            // Default to Linux for unknown types
+            linux.push(asset);
+        }
+    });
+    
+    return { windows, macos, linux };
+}
+
+// Component for individual asset download link
+function AssetDownloadLink({ asset }: { asset: GitHubAsset }) {
+    return (
+        <a
+            href={asset.browser_download_url}
+            className="flex items-center justify-between p-3 sm:p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all group gap-2"
+            onClick={(e) => e.stopPropagation()}
+        >
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="font-medium text-sm sm:text-base text-slate-900 group-hover:text-slate-900 truncate">{asset.name}</div>
+                    <div className="text-xs text-slate-500 mt-1 line-clamp-2">{getAssetDescription(asset.name)}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{formatFileSize(asset.size)}</div>
+                </div>
+            </div>
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+    );
+}
+
+function ReleaseCard({ release, type, isLatest }: { release: GitHubRelease; type: "stable" | "insider"; isLatest: boolean }) {
+    const [expanded, setExpanded] = useState(isLatest);
+    const [notesExpanded, setNotesExpanded] = useState(false);
+    const downloadableAssets = filterDownloadableAssets(release.assets);
+
+    const borderColor = type === "stable" ? "border-blue-200" : "border-purple-200";
+    const badgeColor = type === "stable" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
+    const buttonColor = type === "stable" ? "text-blue hover:text-blue-700" : "text-purple hover:text-purple-700";
+
+    return (
+        <div className={`border-2 ${borderColor} rounded-2xl p-4 sm:p-6 bg-white shadow-card hover:shadow-fluent transition-shadow`}>
+            <div 
+                className="flex items-start justify-between gap-2 sm:gap-4 mb-4 cursor-pointer" 
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpanded(!expanded)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpanded(!expanded);
+                    }
+                }}
+                aria-expanded={expanded}
+                aria-label={`${expanded ? 'Collapse' : 'Expand'} ${release.name || release.tag_name}`}
+            >
+                <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-lg sm:text-2xl font-bold text-slate-900 break-words">{release.name || release.tag_name}</h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeColor} self-start sm:self-auto whitespace-nowrap`}>{type === "stable" ? "Stable" : "Insider"}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
+                        <span className="font-medium">{release.tag_name}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="whitespace-nowrap">{formatDate(release.published_at)}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="whitespace-nowrap">{downloadableAssets.length} download{downloadableAssets.length !== 1 ? "s" : ""}</span>
+                    </div>
+                </div>
+                <button className={`${buttonColor} font-medium text-xs sm:text-sm transition-all flex items-center gap-1 flex-shrink-0`} aria-hidden="true">
+                    <span className="hidden sm:inline">{expanded ? "Collapse" : "Expand"}</span>
+                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
+
+            {expanded && (
+                <>
+                    {release.body && (
+                        <div className="mb-4">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNotesExpanded(!notesExpanded);
+                                }} 
+                                className={`${buttonColor} font-medium text-sm transition-colors flex items-center gap-1`}
+                            >
+                                {notesExpanded ? "Hide" : "Show"} release notes
+                                <svg className={`w-4 h-4 transition-transform ${notesExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            {notesExpanded && (
+                                <div className="mt-3 p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap max-h-64 overflow-y-auto">{release.body}</div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="border-t border-slate-200 pt-4 mt-4">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Downloads</h4>
+                        {(() => {
+                            const { windows, macos, linux } = categorizeAssets(downloadableAssets);
+                            const hasMultiplePlatforms = [windows.length > 0, macos.length > 0, linux.length > 0].filter(Boolean).length > 1;
+                            
+                            if (hasMultiplePlatforms) {
+                                // 3-column layout for desktop when multiple platforms exist
+                                return (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {windows.length > 0 && (
+                                            <div>
+                                                <h5 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Windows</h5>
+                                                <div className="space-y-2">
+                                                    {windows.map((asset) => (
+                                                        <AssetDownloadLink key={asset.name} asset={asset} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {macos.length > 0 && (
+                                            <div>
+                                                <h5 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">macOS</h5>
+                                                <div className="space-y-2">
+                                                    {macos.map((asset) => (
+                                                        <AssetDownloadLink key={asset.name} asset={asset} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {linux.length > 0 && (
+                                            <div>
+                                                <h5 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Linux</h5>
+                                                <div className="space-y-2">
+                                                    {linux.map((asset) => (
+                                                        <AssetDownloadLink key={asset.name} asset={asset} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            } else {
+                                // Single column layout when only one platform
+                                return (
+                                    <div className="grid gap-3">
+                                        {downloadableAssets.map((asset) => (
+                                            <AssetDownloadLink key={asset.name} asset={asset} />
+                                        ))}
+                                    </div>
+                                );
+                            }
+                        })()}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
