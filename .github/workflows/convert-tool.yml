@@ -1,8 +1,6 @@
 name: Convert and Publish Tool
 
 on:
-    issues:
-        types: [labeled]
     workflow_dispatch:
         inputs:
             npm_package_name:
@@ -60,7 +58,7 @@ on:
 
 jobs:
     convert:
-        if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'approved'
+        if: github.event_name == 'workflow_dispatch'
         runs-on: ubuntu-latest
         permissions: write-all
         env:
