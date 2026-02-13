@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
                 reviewed_at: new Date().toISOString(),
             })
             .eq("id", intakeId)
-            .select()
+            .select("*, submitted_by")
             .single();
 
         if (updateError) {
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
                 type: "tool-review-change-request",
                 supabase,
                 data: {
-                    packageName: updatedIntake.package_name,
+                    submitterId: updatedIntake.submitted_by,
                     toolName: updatedIntake.display_name || updatedIntake.package_name || "Tool submission",
                     submittedOn: updatedIntake.created_at || new Date().toISOString(),
                     reviewComments: reviewerNotes || "Please address the requested changes.",

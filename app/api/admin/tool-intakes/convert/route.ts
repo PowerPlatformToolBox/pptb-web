@@ -1,4 +1,5 @@
 import { runConvertToolWorkflow } from "@/lib/github-api";
+import { sendEmail } from "@/lib/resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -204,19 +205,19 @@ export async function POST(request: NextRequest) {
             // Tool was created but intake status update failed - log but don't fail
         }
 
-        // TODO: Implement email notifications via Supabase Edge Functions or email service
-        // For now, log the notification details for debugging
+        // Send email notification to submitter
         if (intake.submitted_by) {
-            const { data: submitter } = await supabase.auth.admin.getUserById(intake.submitted_by);
-
-            if (submitter?.user?.email) {
-                console.log("Tool Conversion Notification (implement email service):", {
-                    to: submitter.user.email,
-                    subject: `Your tool "${intake.display_name}" is now live!`,
-                    body: `Great news! Your tool submission "${intake.display_name}" has been converted to a full tool and is now available in the Power Platform Tool Box.`,
-                });
-                // Example: await sendEmail({ to: submitter.user.email, subject, body });
-            }
+            const toolLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://www.powerplatformtoolbox.com"}/tools/${newTool.id}`;
+            await sendEmail({
+                type: "tool-conversion-success",
+                supabase,
+                data: {
+                    submitterId: intake.submitted_by,
+                    toolName: intake.display_name || intake.package_name,
+                    packageName: intake.package_name,
+                    toolLink,
+                },
+            });
         }
 
         return NextResponse.json({

@@ -23,10 +23,17 @@ interface ToolUpdateDeveloperPayload {
 }
 
 interface ToolReviewChangeRequestPayload {
-    packageName: string;
+    submitterId: string;
     toolName: string;
     submittedOn: string;
     reviewComments: string;
+}
+
+interface ToolConversionSuccessPayload {
+    submitterId: string;
+    toolName: string;
+    packageName: string;
+    toolLink: string;
 }
 
 type SendEmailOptions =
@@ -47,6 +54,11 @@ type SendEmailOptions =
           type: "tool-review-change-request";
           data: ToolReviewChangeRequestPayload;
           supabase: SupabaseClient;
+      }
+    | {
+          type: "tool-conversion-success";
+          data: ToolConversionSuccessPayload;
+          supabase: SupabaseClient;
       };
 
 interface EmailResult {
@@ -62,6 +74,7 @@ const submissionTemplateId = process.env.RESEND_TOOL_SUBMISSION_TEMPLATE_ID;
 const updateTemplateId = process.env.RESEND_TOOL_UPDATE_TEMPLATE_ID;
 const developerTemplateId = process.env.RESEND_TOOL_UPDATE_DEV_TEMPLATE_ID;
 const reviewChangesTemplateId = process.env.RESEND_TOOL_REVIEW_CHANGES_TEMPLATE_ID;
+const conversionSuccessTemplateId = process.env.RESEND_TOOL_CONVERSION_SUCCESS_TEMPLATE_ID;
 
 function parseRecipients(recipients?: string): string[] {
     if (!recipients) {
@@ -84,6 +97,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
             return sendToolUpdateDeveloperEmail(options.supabase, options.data);
         case "tool-review-change-request":
             return sendToolReviewChangeRequestEmail(options.supabase, options.data);
+        case "tool-conversion-success":
+            return sendToolConversionSuccessEmail(options.supabase, options.data);
         default:
             return { success: false, error: "Unsupported email type" };
     }
@@ -154,11 +169,11 @@ async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: 
         return { success: false, error: "Review change template missing" };
     }
 
-    const recipientEmail = await getToolOwnerEmail(supabase, data.packageName);
+    const recipientEmail = await getSubmitterEmail(supabase, data.submitterId);
 
     if (!recipientEmail) {
-        console.warn(`[resend] Unable to determine developer email for package ${data.packageName}`);
-        return { success: false, error: "Developer email not found" };
+        console.warn(`[resend] Unable to determine submitter email for user ID ${data.submitterId}`);
+        return { success: false, error: "Submitter email not found" };
     }
 
     return deliverEmail({
@@ -168,6 +183,31 @@ async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: 
             ToolName: data.toolName,
             SubmittedDate: data.submittedOn,
             ReviewComments: data.reviewComments,
+        },
+        to: [recipientEmail],
+    });
+}
+
+async function sendToolConversionSuccessEmail(supabase: SupabaseClient, data: ToolConversionSuccessPayload): Promise<EmailResult> {
+    if (!conversionSuccessTemplateId) {
+        console.warn("[resend] RESEND_TOOL_CONVERSION_SUCCESS_TEMPLATE_ID is not configured; skipping tool conversion success notification.");
+        return { success: false, error: "Conversion success template missing" };
+    }
+
+    const recipientEmail = await getSubmitterEmail(supabase, data.submitterId);
+
+    if (!recipientEmail) {
+        console.warn(`[resend] Unable to determine submitter email for user ID ${data.submitterId}`);
+        return { success: false, error: "Submitter email not found" };
+    }
+
+    return deliverEmail({
+        subject: `🎉 Your tool "${data.toolName}" is now live on PPTB Marketplace!`,
+        templateId: conversionSuccessTemplateId,
+        variables: {
+            ToolName: data.toolName,
+            PackageName: data.packageName,
+            ToolLink: data.toolLink,
         },
         to: [recipientEmail],
     });
@@ -249,6 +289,27 @@ async function getToolOwnerEmail(supabase: SupabaseClient, packageName: string):
         return typeof email === "string" && email.includes("@") ? email : null;
     } catch (error) {
         console.error("[supabase] Unexpected error fetching tool owner", error);
+        return null;
+    }
+}
+
+async function getSubmitterEmail(supabase: SupabaseClient, submitterId: string): Promise<string | null> {
+    try {
+        if (!submitterId || typeof submitterId !== "string" || submitterId.length === 0) {
+            console.warn("[resend] Invalid submitter ID provided");
+            return null;
+        }
+
+        const { data: profile, error: profileError } = await supabase.from("user_profiles").select("email").eq("id", submitterId).maybeSingle();
+        if (profileError) {
+            console.warn("[supabase] Failed to fetch submitter email", profileError.message);
+            return null;
+        }
+
+        const email = profile?.email;
+        return typeof email === "string" && email.includes("@") ? email : null;
+    } catch (error) {
+        console.error("[supabase] Unexpected error fetching submitter email", error);
         return null;
     }
 }
