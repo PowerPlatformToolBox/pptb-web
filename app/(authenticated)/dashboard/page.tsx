@@ -124,10 +124,8 @@ export default function DashboardPage() {
     };
 
     // Filter tools based on view mode
-    const filteredTools = 
-      viewMode === "my" 
-        ? tools.filter((tool) => tool.user_id === user?.id) 
-        : tools.filter((tool) => tool.status !== TOOL_STATUSES.DELETED && tool.status !== TOOL_STATUSES.DEPRECATED);
+    const filteredTools =
+        viewMode === "my" ? tools.filter((tool) => tool.user_id === user?.id) : tools.filter((tool) => tool.status !== TOOL_STATUSES.DELETED && tool.status !== TOOL_STATUSES.DEPRECATED);
 
     const sortedTools = [...filteredTools].sort((a, b) => {
         const aAnalytics = a.tool_analytics;
