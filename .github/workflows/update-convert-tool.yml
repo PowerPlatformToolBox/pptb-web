@@ -227,17 +227,11 @@ jobs:
                   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
               if: env.SUPABASE_URL != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
               run: |
-                  # Prepare icon path for bundled icons or URL for external icons
-                  ICON_PATH=""
+                  # Prepare icon URL (GitHub release path for both bundled and external icons)
                   ICON_URL=""
                   if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-                    if [ -n "${{ steps.icon.outputs.icon_path }}" ]; then
-                      # Bundled icon - store the path
-                      ICON_PATH="${{ steps.icon.outputs.icon_path }}"
-                    else
-                      # External icon - store the GitHub release URL (deprecated)
-                      ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.icon.outputs.filename }}"
-                    fi
+                    # Store GitHub release URL for the icon (whether bundled or external)
+                    ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.icon.outputs.filename }}"
                   fi
 
                   # Get download URL from release
@@ -252,8 +246,7 @@ jobs:
                     --arg readmeurl "${{ steps.metadata.outputs.readme_url }}" \
                     --arg license "${{ steps.metadata.outputs.license }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
-                    --arg icon "$ICON_PATH" \
-                    --arg iconurl "$ICON_URL" \
+                    --arg icon "$ICON_URL" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
                     --arg size "${{ steps.checksum.outputs.size }}" \
@@ -268,7 +261,6 @@ jobs:
                       license: $license,
                       downloadurl: $downloadurl,
                       icon: (if $icon == "" then null else $icon end),
-                      iconurl: (if $iconurl == "" then null else $iconurl end),
                       published_at: $published,
                       checksum: $checksum,
                       size: ($size|tonumber),

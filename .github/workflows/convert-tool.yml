@@ -271,17 +271,11 @@ jobs:
                   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
               if: env.SUPABASE_URL != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
               run: |
-                  # Prepare icon path for bundled icons or URL for external icons
-                  ICON_PATH=""
+                  # Prepare icon URL (GitHub release path for both bundled and external icons)
                   ICON_URL=""
                   if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-                    if [ -n "${{ steps.icon.outputs.icon_path }}" ]; then
-                      # Bundled icon - store the path
-                      ICON_PATH="${{ steps.icon.outputs.icon_path }}"
-                    else
-                      # External icon - store the GitHub release URL (deprecated)
-                      ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.icon.outputs.filename }}"
-                    fi
+                    # Store GitHub release URL for the icon (whether bundled or external)
+                    ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.icon.outputs.filename }}"
                   fi
                   DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}/${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}.tar.gz"
 
@@ -290,8 +284,7 @@ jobs:
                     --arg packageName "${{ steps.tool.outputs.package }}" \
                     --arg name "${{ steps.tool.outputs.name }}" \
                     --arg description "${{ steps.tool.outputs.description }}" \
-                    --arg icon "$ICON_PATH" \
-                    --arg iconurl "$ICON_URL" \
+                    --arg icon "$ICON_URL" \
                     --arg version "${{ steps.tool.outputs.version }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
@@ -309,7 +302,6 @@ jobs:
                       name: $name,
                       description: $description,
                       icon: (if $icon == "" then null else $icon end),
-                      iconurl: (if $iconurl == "" then null else $iconurl end),
                       version: $version,
                       downloadurl: $downloadurl,
                       checksum: $checksum,
