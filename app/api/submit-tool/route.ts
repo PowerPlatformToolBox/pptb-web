@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
             contributors: npmResult.data.contributors,
             cspExceptions: npmResult.data.cspExceptions,
             license: npmResult.data.license,
+            icon: npmResult.data.icon,
             configurations: npmResult.data.configurations,
             features: npmResult.data.features,
         };
@@ -222,6 +223,7 @@ export async function POST(request: NextRequest) {
                 display_name: packageInfo.displayName,
                 description: packageInfo.description,
                 license: packageInfo.license,
+                icon: packageInfo.icon || null,
                 csp_exceptions: packageInfo.cspExceptions || null,
                 configurations: packageInfo.configurations,
                 submitted_by: userId,

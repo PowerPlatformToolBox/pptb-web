@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
                 display_name: intake.display_name,
                 description: intake.description,
                 icon_url: intake.configurations?.iconUrl || "",
+                icon: intake.icon || "",
                 readme_url: intake.configurations?.readmeUrl || "",
                 version: intake.version || "1.0.0",
                 license: intake.license || "MIT",
@@ -128,10 +129,6 @@ export async function POST(request: NextRequest) {
         if (conclusion !== "success") {
             return NextResponse.json({ error: "Conversion workflow did not complete successfully" }, { status: 500 });
         }
-
-        const intakeWithContrib = intake as typeof intake & {
-            tool_intake_contributors?: Array<{ contributor_id: number; contributors?: { id: number; name: string; profile_url: string | null } }>;
-        };
 
         // Fetch the tool created by the workflow (upsert) using unique packagename
         const { data: newTool, error: fetchToolError } = await supabase.from("tools").select("id, packagename, name, version").eq("packagename", intake.package_name).single();

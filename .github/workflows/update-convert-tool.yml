@@ -61,6 +61,7 @@ jobs:
 
                   # Extract iconUrl and readmeUrl from configurations section
                   ICON_URL=$(echo "$NPM_INFO" | jq -r '.configurations.iconUrl // empty')
+                  ICON=$(echo "$NPM_INFO" | jq -r '.icon // empty')
                   README_URL=$(echo "$NPM_INFO" | jq -r '.configurations.readmeUrl // empty')
 
                   LICENSE=$(echo "$NPM_INFO" | jq -r '(.license // .licenses // "") | (if type=="string" then . else (.[0].type // "") end) // ""')
@@ -73,6 +74,7 @@ jobs:
                   echo "description=$TOOL_DESC" >> $GITHUB_OUTPUT
                   echo "readme_url=$README_URL" >> $GITHUB_OUTPUT
                   echo "icon_url=$ICON_URL" >> $GITHUB_OUTPUT
+                  echo "icon=$ICON" >> $GITHUB_OUTPUT
                   echo "license=$LICENSE" >> $GITHUB_OUTPUT
                   echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
                   echo "website=$WEBSITE" >> $GITHUB_OUTPUT
@@ -125,43 +127,70 @@ jobs:
                   echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
                   echo "size=$SIZE" >> $GITHUB_OUTPUT
 
-            - name: Download icon
+            - name: Extract or download icon
               id: icon
-              if: ${{ steps.metadata.outputs.icon_url != '' }}
+              if: ${{ steps.metadata.outputs.icon != '' || steps.metadata.outputs.icon_url != '' }}
               run: |
+                  ICON="${{ steps.metadata.outputs.icon }}"
                   ICON_URL="${{ steps.metadata.outputs.icon_url }}"
 
-                  # Extract file extension from URL
-                  EXTENSION="${ICON_URL##*.}"
-                  # Remove query parameters if any
-                  EXTENSION="${EXTENSION%%\?*}"
-                  # Convert to lowercase for validation
-                  EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
+                  # Prefer bundled icon over external URL
+                  if [ -n "$ICON" ]; then
+                    echo "Using bundled icon: $ICON"
+                    
+                    # Check if icon exists in package/dist
+                    if [ -f "package/dist/$ICON" ]; then
+                      # Extract extension
+                      EXTENSION="${ICON##*.}"
+                      EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
+                      
+                      # Copy icon to release directory
+                      ICON_FILENAME="${{ steps.metadata.outputs.id }}-${{ inputs.version }}-icon.${EXTENSION}"
+                      cp "package/dist/$ICON" "$ICON_FILENAME"
+                      
+                      echo "✅ Bundled icon extracted successfully"
+                      echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
+                      echo "has_icon=true" >> $GITHUB_OUTPUT
+                      echo "icon_path=$ICON" >> $GITHUB_OUTPUT
+                    else
+                      echo "⚠️ Bundled icon not found at package/dist/$ICON"
+                      echo "has_icon=false" >> $GITHUB_OUTPUT
+                    fi
+                  elif [ -n "$ICON_URL" ]; then
+                    echo "Using external icon URL (deprecated): $ICON_URL"
 
-                  # Validate extension against supported formats using case statement
-                  case "$EXTENSION" in
-                    png|jpg|jpeg|svg)
-                      echo "✅ Valid icon format: $EXTENSION"
-                      ;;
-                    *)
-                      echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
-                      echo "Supported formats: $SUPPORTED_ICON_FORMATS"
-                      echo "Defaulting to png"
-                      EXTENSION="png"
-                      ;;
-                  esac
+                    # Extract file extension from URL
+                    EXTENSION="${ICON_URL##*.}"
+                    # Remove query parameters if any
+                    EXTENSION="${EXTENSION%%\?*}"
+                    # Convert to lowercase for validation
+                    EXTENSION=$(echo "$EXTENSION" | tr '[:upper:]' '[:lower:]')
 
-                  # Determine icon filename
-                  ICON_FILENAME="${{ steps.metadata.outputs.id }}-${{ inputs.version }}-icon.${EXTENSION}"
+                    # Validate extension against supported formats using case statement
+                    case "$EXTENSION" in
+                      png|jpg|jpeg|svg)
+                        echo "✅ Valid icon format: $EXTENSION"
+                        ;;
+                      *)
+                        echo "⚠️ Invalid or unsupported icon format: $EXTENSION"
+                        echo "Supported formats: $SUPPORTED_ICON_FORMATS"
+                        echo "Defaulting to png"
+                        EXTENSION="png"
+                        ;;
+                    esac
 
-                  echo "Downloading icon from: $ICON_URL"
-                  if curl -L -f -o "$ICON_FILENAME" "$ICON_URL"; then
-                    echo "✅ Icon downloaded successfully"
-                    echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
-                    echo "has_icon=true" >> $GITHUB_OUTPUT
-                  else
-                    echo "⚠️ Failed to download icon, continuing without it"
-                    echo "has_icon=false" >> $GITHUB_OUTPUT
+                    # Determine icon filename
+                    ICON_FILENAME="${{ steps.metadata.outputs.id }}-${{ inputs.version }}-icon.${EXTENSION}"
+
+                    echo "Downloading icon from: $ICON_URL"
+                    if curl -L -f -o "$ICON_FILENAME" "$ICON_URL"; then
+                      echo "✅ Icon downloaded successfully"
+                      echo "filename=$ICON_FILENAME" >> $GITHUB_OUTPUT
+                      echo "has_icon=true" >> $GITHUB_OUTPUT
+                    else
+                      echo "⚠️ Failed to download icon, continuing without it"
+                      echo "has_icon=false" >> $GITHUB_OUTPUT
+                    fi
                   fi
 
             - name: Prepare release files
@@ -198,11 +227,17 @@ jobs:
                   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
               if: env.SUPABASE_URL != '' && env.SUPABASE_SERVICE_ROLE_KEY != ''
               run: |
-                  # Prepare icon URL
+                  # Prepare icon path for bundled icons or URL for external icons
+                  ICON_PATH=""
+                  ICON_URL=""
                   if [ "${{ steps.icon.outputs.has_icon }}" = "true" ]; then
-                    ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.icon.outputs.filename }}"
-                  else
-                    ICON_URL=""
+                    if [ -n "${{ steps.icon.outputs.icon_path }}" ]; then
+                      # Bundled icon - store the path
+                      ICON_PATH="${{ steps.icon.outputs.icon_path }}"
+                    else
+                      # External icon - store the GitHub release URL (deprecated)
+                      ICON_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.metadata.outputs.id }}-${{ inputs.version }}/${{ steps.icon.outputs.filename }}"
+                    fi
                   fi
 
                   # Get download URL from release
@@ -217,6 +252,7 @@ jobs:
                     --arg readmeurl "${{ steps.metadata.outputs.readme_url }}" \
                     --arg license "${{ steps.metadata.outputs.license }}" \
                     --arg downloadurl "$DOWNLOAD_URL" \
+                    --arg icon "$ICON_PATH" \
                     --arg iconurl "$ICON_URL" \
                     --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                     --arg checksum "${{ steps.checksum.outputs.checksum }}" \
@@ -231,6 +267,7 @@ jobs:
                       readmeurl: $readmeurl,
                       license: $license,
                       downloadurl: $downloadurl,
+                      icon: (if $icon == "" then null else $icon end),
                       iconurl: (if $iconurl == "" then null else $iconurl end),
                       published_at: $published,
                       checksum: $checksum,

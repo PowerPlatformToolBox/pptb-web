@@ -183,13 +183,14 @@ export default function SubmitToolPage() {
                                         AGPL-3.0-only (required)
                                     </li>
                                     <li>
+                                        <strong>icon</strong> - Relative path to bundled SVG icon under <code className="bg-blue-100 px-1 rounded">dist</code> (e.g., &quot;icon.svg&quot; or
+                                        &quot;icons/icon.svg&quot;). HTTP(S) URLs are not supported (required)
+                                    </li>
+                                    <li>
                                         <strong>configurations.repository</strong> - GitHub repository URL (required)
                                     </li>
                                     <li>
                                         <strong>configurations.readmeUrl</strong> - README URL, must be hosted on <code className="bg-blue-100 px-1 rounded">raw.githubusercontent.com</code> (required)
-                                    </li>
-                                    <li>
-                                        <strong>configurations.iconUrl</strong> - Icon URL, must be hosted on <code className="bg-blue-100 px-1 rounded">raw.githubusercontent.com</code> (optional)
                                     </li>
                                     <li>
                                         <strong>configurations.website</strong> - Project website URL (optional)
@@ -381,6 +382,7 @@ export default function SubmitToolPage() {
   "version": "1.0.0",
   "displayName": "Sample Power Platform Tool",
   "description": "A sample tool for Power Platform",
+  "icon": "icon.svg",
   "contributors": [
     {
       "name": "Your Name",
@@ -398,7 +400,6 @@ export default function SubmitToolPage() {
   "configurations": {
     "repository": "https://github.com/yourorg/your-tool",
     "website": "https://your-tool.example.com",
-    "iconUrl": "https://raw.githubusercontent.com/yourorg/your-tool/main/icon.png",
     "readmeUrl": "https://raw.githubusercontent.com/yourorg/your-tool/main/README.md"
   }
 }`}

@@ -35,6 +35,7 @@ export interface ToolPackageJson {
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
     license?: string;
+    icon?: string;
     configurations?: Configurations;
     features?: Features;
 }
@@ -51,6 +52,7 @@ export interface ValidationResult {
         license: string;
         contributors: Contributor[];
         cspExceptions?: CspExceptions;
+        icon?: string;
         configurations: Configurations;
         features?: Features;
     };
@@ -136,6 +138,31 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         errors.push("license is required");
     } else if (!APPROVED_LICENSES.includes(packageJson.license)) {
         errors.push(`License "${packageJson.license}" is not in the approved list. Approved licenses: ${APPROVED_LICENSES.join(", ")}`);
+    }
+
+    // Icon validation (bundled SVG) - REQUIRED
+    if (!packageJson.icon || typeof packageJson.icon !== "string") {
+        errors.push("icon is required and must be a string (relative path to bundled SVG under dist, e.g., 'icon.svg' or 'icons/icon.svg')");
+    } else {
+        // Check if it's an HTTP(S) URL (not allowed)
+        if (packageJson.icon.startsWith("http://") || packageJson.icon.startsWith("https://")) {
+            errors.push("icon cannot be an HTTP(S) URL - icons must be bundled under dist");
+        }
+
+        // Check if it's an absolute path (not allowed)
+        if (packageJson.icon.startsWith("/")) {
+            errors.push("icon must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')");
+        }
+
+        // Check for path traversal attempts
+        if (packageJson.icon.includes("..")) {
+            errors.push("icon path cannot contain '..' (path traversal not allowed)");
+        }
+
+        // Check if it ends with .svg
+        if (!packageJson.icon.toLowerCase().endsWith(".svg")) {
+            errors.push("icon must be an SVG file with .svg extension");
+        }
     }
 
     // Contributors validation
@@ -271,7 +298,7 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         // Check if features object has only multiConnection property
         const featureKeys = Object.keys(packageJson.features);
         const invalidKeys = featureKeys.filter((key) => key !== "multiConnection");
-        
+
         if (invalidKeys.length > 0) {
             errors.push(`features can only contain 'multiConnection' property. Invalid properties: ${invalidKeys.join(", ")}`);
         }
@@ -283,7 +310,7 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
             const isValidValue = (value: string): value is MultiConnectionValue => {
                 return VALID_MULTI_CONNECTION_VALUES.includes(value as MultiConnectionValue);
             };
-            
+
             if (!isValidValue(packageJson.features.multiConnection)) {
                 errors.push(`features.multiConnection must be one of: ${VALID_MULTI_CONNECTION_VALUES.join(", ")}`);
             }
@@ -305,6 +332,7 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
                   license: packageJson.license!,
                   contributors: packageJson.contributors!,
                   cspExceptions: packageJson.cspExceptions,
+                  icon: packageJson.icon,
                   configurations: packageJson.configurations!,
                   features: packageJson.features,
               }
@@ -320,6 +348,7 @@ export interface NpmPackageInfo {
     displayName?: string;
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
+    icon?: string;
     configurations?: Configurations;
     features?: Features;
 }
@@ -332,6 +361,7 @@ interface NpmRegistryVersionData {
     displayName?: string;
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
+    icon?: string;
     configurations?: Configurations;
     features?: Features;
     dist: {
@@ -344,10 +374,9 @@ interface NpmRegistryVersionData {
  * @param packageName - The npm package name
  * @returns Package metadata including tarball URL or error
  */
-async function fetchNpmPackageMetadata(packageName: string): Promise<
-    | { success: true; data: { versionData: NpmRegistryVersionData; latestVersion: string; tarballUrl: string } }
-    | { success: false; error: string }
-> {
+async function fetchNpmPackageMetadata(
+    packageName: string,
+): Promise<{ success: true; data: { versionData: NpmRegistryVersionData; latestVersion: string; tarballUrl: string } } | { success: false; error: string }> {
     try {
         // Fetch package info from npm registry using base endpoint
         // This is more reliable than /latest for packages with pre-release versions
@@ -418,6 +447,7 @@ export async function fetchNpmPackageInfo(packageName: string): Promise<{ succes
             displayName: versionData.displayName,
             contributors: versionData.contributors,
             cspExceptions: versionData.cspExceptions,
+            icon: versionData.icon,
             configurations: versionData.configurations,
             features: versionData.features,
         },
@@ -438,7 +468,7 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
     try {
         // Fetch package metadata to get tarball URL using shared helper
         const metadataResult = await fetchNpmPackageMetadata(packageName);
-        
+
         if (!metadataResult.success) {
             return { success: false, error: metadataResult.error };
         }
@@ -452,7 +482,7 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
         }
 
         const tarballBuffer = await tarballResponse.arrayBuffer();
-        
+
         // Use the tar npm package to extract the tarball
         // Import dynamically to ensure this only runs on server
         const tar = await import("tar");
@@ -462,7 +492,7 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
 
         // Create a temporary directory for extraction
         const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "npm-validation-"));
-        
+
         try {
             // Write tarball to temp file
             const tarballPath = path.join(tmpDir, "package.tgz");
@@ -471,7 +501,7 @@ export async function validatePackageStructure(packageName: string): Promise<{ s
             // Extract tarball
             const extractDir = path.join(tmpDir, "extracted");
             await fs.promises.mkdir(extractDir, { recursive: true });
-            
+
             await tar.x({
                 file: tarballPath,
                 cwd: extractDir,

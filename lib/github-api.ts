@@ -65,26 +65,14 @@ export async function fetchAllReleases(): Promise<GitHubRelease[]> {
 export function isInsiderRelease(release: GitHubRelease): boolean {
     const tag = release.tag_name.toLowerCase();
     const name = release.name.toLowerCase();
-    return (
-        tag.includes("insider") ||
-        tag.includes("preview") ||
-        tag.includes("beta") ||
-        name.includes("insider") ||
-        name.includes("preview") ||
-        name.includes("beta")
-    );
+    return tag.includes("insider") || tag.includes("preview") || tag.includes("beta") || name.includes("insider") || name.includes("preview") || name.includes("beta");
 }
 
 export function filterDownloadableAssets(assets: GitHubAsset[]): GitHubAsset[] {
     return assets.filter((asset) => {
         const name = asset.name.toLowerCase();
         // Exclude yml files and GitHub-generated source code archives
-        return (
-            !name.endsWith(".yml") &&
-            !name.endsWith(".yaml") &&
-            name !== "source code (zip)" &&
-            name !== "source code (tar.gz)"
-        );
+        return !name.endsWith(".yml") && !name.endsWith(".yaml") && name !== "source code (zip)" && name !== "source code (tar.gz)";
     });
 }
 
@@ -101,11 +89,11 @@ export function findAssetForOS(assets: GitHubAsset[], os: string, arch?: string)
     };
 
     const patterns = osPatterns[os] || [];
-    
+
     // If architecture is provided, try to find OS + architecture match first
-    if (arch && arch !== 'unknown') {
-        const archPatterns = arch === 'arm64' ? ['arm64', 'aarch64'] : ['x64', 'x86_64', 'amd64', 'win64'];
-        
+    if (arch && arch !== "unknown") {
+        const archPatterns = arch === "arm64" ? ["arm64", "aarch64"] : ["x64", "x86_64", "amd64", "win64"];
+
         for (const osPattern of patterns) {
             for (const archPattern of archPatterns) {
                 const asset = assets.find((a) => {
@@ -122,12 +110,12 @@ export function findAssetForOS(assets: GitHubAsset[], os: string, arch?: string)
     // If no architecture-specific match, try OS-only match but exclude wrong architecture
     // This prevents x64 systems from getting arm64 builds and vice versa
     let wrongArchPatterns: string[] = [];
-    if (arch === 'x64') {
-        wrongArchPatterns = ['arm64', 'aarch64'];
-    } else if (arch === 'arm64') {
-        wrongArchPatterns = ['x64', 'x86_64', 'amd64'];
+    if (arch === "x64") {
+        wrongArchPatterns = ["arm64", "aarch64"];
+    } else if (arch === "arm64") {
+        wrongArchPatterns = ["x64", "x86_64", "amd64"];
     }
-    
+
     for (const pattern of patterns) {
         const asset = assets.find((a) => {
             const name = a.name.toLowerCase();
@@ -161,6 +149,7 @@ export interface ConvertWorkflowInputs {
     display_name: string;
     description: string;
     icon_url?: string;
+    icon?: string;
     readme_url: string;
     version: string;
     license: string;
@@ -329,7 +318,7 @@ export interface SponsorData {
 
 /**
  * Fetches the list of active GitHub sponsors for an organization using GraphQL API.
- * 
+ *
  * @param organizationLogin - The GitHub organization login (e.g., "PowerPlatformToolBox")
  * @param token - GitHub personal access token with appropriate permissions
  * @returns Array of sponsor data sorted by monthly contribution amount (highest first)
@@ -371,9 +360,9 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
             query,
-            variables: { login: organizationLogin }
+            variables: { login: organizationLogin },
         }),
     });
 
@@ -389,7 +378,7 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
     }
 
     const nodes = result.data?.organization?.sponsorshipsAsMaintainer?.nodes;
-    
+
     if (!nodes || !Array.isArray(nodes)) {
         return [];
     }

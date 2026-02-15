@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
             contributors: npmResult.data.contributors,
             cspExceptions: npmResult.data.cspExceptions,
             license: npmResult.data.license,
+            icon: npmResult.data.icon,
             configurations: npmResult.data.configurations,
             features: npmResult.data.features,
         };
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
             .update({
                 name: packageJson.displayName,
                 description: packageJson.description,
-                iconurl: packageJson.configurations?.iconUrl || null,
+                icon: packageJson.icon || null,
                 readmeurl: packageJson.configurations?.readmeUrl || null,
                 version: packageJson.version,
                 csp_exceptions: packageJson.cspExceptions,
