@@ -178,14 +178,14 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         errors.push("icon is required and must be an object with 'dark' and 'light' properties");
     } else {
         const icon = packageJson.icon as Record<string, unknown>;
-        
+
         // Validate dark icon
         if (!icon.dark || typeof icon.dark !== "string") {
             errors.push("icon.dark is required and must be a string (relative path to bundled SVG under dist)");
         } else {
             validateIconPath("icon.dark", icon.dark as string, errors);
         }
-        
+
         // Validate light icon
         if (!icon.light || typeof icon.light !== "string") {
             errors.push("icon.light is required and must be a string (relative path to bundled SVG under dist)");
