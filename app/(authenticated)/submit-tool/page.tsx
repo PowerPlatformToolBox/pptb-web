@@ -183,8 +183,7 @@ export default function SubmitToolPage() {
                                         AGPL-3.0-only (required)
                                     </li>
                                     <li>
-                                        <strong>icon</strong> - Relative path to bundled SVG icon under <code className="bg-blue-100 px-1 rounded">dist</code> (e.g., &quot;icon.svg&quot; or
-                                        &quot;icons/icon.svg&quot;). HTTP(S) URLs are not supported (required)
+                                        <strong>icon</strong> - Object with &quot;dark&quot; and &quot;light&quot; properties, each containing a relative path to bundled SVG icons under <code className="bg-blue-100 px-1 rounded">dist</code> (e.g., <code className="bg-blue-100 px-1 rounded">{`{ "dark": "icon-dark.svg", "light": "icon-light.svg" }`}</code>). HTTP(S) URLs are not supported (required)
                                     </li>
                                     <li>
                                         <strong>configurations.repository</strong> - GitHub repository URL (required)
@@ -382,7 +381,10 @@ export default function SubmitToolPage() {
   "version": "1.0.0",
   "displayName": "Sample Power Platform Tool",
   "description": "A sample tool for Power Platform",
-  "icon": "icon.svg",
+  "icon": {
+    "dark": "icon-dark.svg",
+    "light": "icon-light.svg"
+  },
   "contributors": [
     {
       "name": "Your Name",

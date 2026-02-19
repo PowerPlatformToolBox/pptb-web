@@ -6,6 +6,11 @@ export interface Contributor {
     url?: string;
 }
 
+export interface IconPaths {
+    dark: string;
+    light: string;
+}
+
 export interface CspExceptions {
     "connect-src"?: string[];
     "script-src"?: string[];
@@ -35,7 +40,7 @@ export interface ToolPackageJson {
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
     license?: string;
-    icon?: string;
+    icon?: IconPaths;
     configurations?: Configurations;
     features?: Features;
 }
@@ -71,6 +76,34 @@ export function isValidUrl(url: string): boolean {
         return true;
     } catch {
         return false;
+    }
+}
+
+/**
+ * Validates an icon path string against common rules
+ */
+function validateIconPath(fieldName: string, path: string, errors: string[]): void {
+    // Check if it's an HTTP(S) URL (not allowed)
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+        errors.push(`${fieldName} cannot be an HTTP(S) URL - icons must be bundled under dist`);
+        return;
+    }
+
+    // Check if it's an absolute path (not allowed)
+    if (path.startsWith("/")) {
+        errors.push(`${fieldName} must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')`);
+        return;
+    }
+
+    // Check for path traversal attempts
+    if (path.includes("..")) {
+        errors.push(`${fieldName} cannot contain '..' (path traversal not allowed)`);
+        return;
+    }
+
+    // Check if it ends with .svg
+    if (!path.toLowerCase().endsWith(".svg")) {
+        errors.push(`${fieldName} must be an SVG file with .svg extension`);
     }
 }
 
@@ -141,27 +174,23 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
     }
 
     // Icon validation (bundled SVG) - REQUIRED
-    if (!packageJson.icon || typeof packageJson.icon !== "string") {
-        errors.push("icon is required and must be a string (relative path to bundled SVG under dist, e.g., 'icon.svg' or 'icons/icon.svg')");
+    if (!packageJson.icon || typeof packageJson.icon !== "object" || Array.isArray(packageJson.icon)) {
+        errors.push("icon is required and must be an object with 'dark' and 'light' properties");
     } else {
-        // Check if it's an HTTP(S) URL (not allowed)
-        if (packageJson.icon.startsWith("http://") || packageJson.icon.startsWith("https://")) {
-            errors.push("icon cannot be an HTTP(S) URL - icons must be bundled under dist");
+        const icon = packageJson.icon as Record<string, unknown>;
+        
+        // Validate dark icon
+        if (!icon.dark || typeof icon.dark !== "string") {
+            errors.push("icon.dark is required and must be a string (relative path to bundled SVG under dist)");
+        } else {
+            validateIconPath("icon.dark", icon.dark as string, errors);
         }
-
-        // Check if it's an absolute path (not allowed)
-        if (packageJson.icon.startsWith("/")) {
-            errors.push("icon must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')");
-        }
-
-        // Check for path traversal attempts
-        if (packageJson.icon.includes("..")) {
-            errors.push("icon path cannot contain '..' (path traversal not allowed)");
-        }
-
-        // Check if it ends with .svg
-        if (!packageJson.icon.toLowerCase().endsWith(".svg")) {
-            errors.push("icon must be an SVG file with .svg extension");
+        
+        // Validate light icon
+        if (!icon.light || typeof icon.light !== "string") {
+            errors.push("icon.light is required and must be a string (relative path to bundled SVG under dist)");
+        } else {
+            validateIconPath("icon.light", icon.light as string, errors);
         }
     }
 
@@ -348,7 +377,7 @@ export interface NpmPackageInfo {
     displayName?: string;
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
-    icon?: string;
+    icon?: IconPaths;
     configurations?: Configurations;
     features?: Features;
 }
@@ -361,7 +390,7 @@ interface NpmRegistryVersionData {
     displayName?: string;
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
-    icon?: string;
+    icon?: IconPaths;
     configurations?: Configurations;
     features?: Features;
     dist: {
