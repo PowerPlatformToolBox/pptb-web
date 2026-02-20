@@ -182,10 +182,11 @@ export default function SubmitToolPage() {
                                         <strong>license</strong> - Must be an approved open-source license: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, GPL-2.0, GPL-3.0, LGPL-3.0, ISC, or
                                         AGPL-3.0-only (required)
                                     </li>
+                                    {/* // TODO: Reenable when svg is ready
                                     <li>
                                         <strong>icon</strong> - Relative path to bundled SVG icon under <code className="bg-blue-100 px-1 rounded">dist</code> (e.g., &quot;icon.svg&quot; or
                                         &quot;icons/icon.svg&quot;). HTTP(S) URLs are not supported (required)
-                                    </li>
+                                    </li> */}
                                     <li>
                                         <strong>configurations.repository</strong> - GitHub repository URL (required)
                                     </li>

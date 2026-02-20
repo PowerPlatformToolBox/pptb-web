@@ -140,30 +140,31 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         errors.push(`License "${packageJson.license}" is not in the approved list. Approved licenses: ${APPROVED_LICENSES.join(", ")}`);
     }
 
-    // Icon validation (bundled SVG) - REQUIRED
-    if (!packageJson.icon || typeof packageJson.icon !== "string") {
-        errors.push("icon is required and must be a string (relative path to bundled SVG under dist, e.g., 'icon.svg' or 'icons/icon.svg')");
-    } else {
-        // Check if it's an HTTP(S) URL (not allowed)
-        if (packageJson.icon.startsWith("http://") || packageJson.icon.startsWith("https://")) {
-            errors.push("icon cannot be an HTTP(S) URL - icons must be bundled under dist");
-        }
+    // TODO: Reanable icon validation when SVG support is ready. For now, we are skipping this validation to allow tools without icons to be submitted, but we will require icons in the future once the infrastructure is in place.
+    // // Icon validation (bundled SVG) - REQUIRED
+    // if (!packageJson.icon || typeof packageJson.icon !== "string") {
+    //     errors.push("icon is required and must be a string (relative path to bundled SVG under dist, e.g., 'icon.svg' or 'icons/icon.svg')");
+    // } else {
+    //     // Check if it's an HTTP(S) URL (not allowed)
+    //     if (packageJson.icon.startsWith("http://") || packageJson.icon.startsWith("https://")) {
+    //         errors.push("icon cannot be an HTTP(S) URL - icons must be bundled under dist");
+    //     }
 
-        // Check if it's an absolute path (not allowed)
-        if (packageJson.icon.startsWith("/")) {
-            errors.push("icon must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')");
-        }
+    //     // Check if it's an absolute path (not allowed)
+    //     if (packageJson.icon.startsWith("/")) {
+    //         errors.push("icon must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')");
+    //     }
 
-        // Check for path traversal attempts
-        if (packageJson.icon.includes("..")) {
-            errors.push("icon path cannot contain '..' (path traversal not allowed)");
-        }
+    //     // Check for path traversal attempts
+    //     if (packageJson.icon.includes("..")) {
+    //         errors.push("icon path cannot contain '..' (path traversal not allowed)");
+    //     }
 
-        // Check if it ends with .svg
-        if (!packageJson.icon.toLowerCase().endsWith(".svg")) {
-            errors.push("icon must be an SVG file with .svg extension");
-        }
-    }
+    //     // Check if it ends with .svg
+    //     if (!packageJson.icon.toLowerCase().endsWith(".svg")) {
+    //         errors.push("icon must be an SVG file with .svg extension");
+    //     }
+    // }
 
     // Contributors validation
     if (!packageJson.contributors || !Array.isArray(packageJson.contributors)) {
