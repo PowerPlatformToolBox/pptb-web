@@ -187,3 +187,24 @@
         background-color: rgba(255, 255, 255, 0.7);
     }
 }
+
+/* ===============================
+   Markdown (Unlayered - highest precedence)
+   =============================== */
+
+    .markdown-body {
+        box-sizing: border-box;
+        min-width: 200px;
+        max-width: 980px;
+        margin: 0 auto;
+    }
+
+    .markdown-body li{
+        list-style-type: disc;
+    }
+
+    @media (max-width: 767px) {
+        .markdown-body {
+            padding: 15px;
+        }
+    }
