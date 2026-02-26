@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         }
 
         const repoOwner = "PowerPlatformToolBox";
-        const repoName = "pptb-web";
+        const repoName = "tool-management";
         const authorString =
             (intake.tool_intake_contributors || [])
                 .map((tic: { contributors?: { name?: string | null } }) => tic.contributors?.name)

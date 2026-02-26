@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         }
 
         const repoOwner = "PowerPlatformToolBox";
-        const repoName = "pptb-web";
+        const repoName = "tool-management";
 
         const conclusion = await runUpdateToolWorkflow({
             owner: repoOwner,
