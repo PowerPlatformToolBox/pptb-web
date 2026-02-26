@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `id, name, description, iconurl, status,
+                `id, name, description, icon, status,
                 readmeurl, downloadurl, version, repository, website,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),

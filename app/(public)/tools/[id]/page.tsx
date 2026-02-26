@@ -14,7 +14,7 @@ interface Tool {
     id: string;
     name: string;
     description: string;
-    iconurl: string;
+    icon: string;
     categories: string[];
     downloads: number;
     rating: number;
@@ -36,7 +36,7 @@ const mockTools: Record<string, Tool> = {
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
         longDescription:
             "Solution Manager is a comprehensive tool for managing your Power Platform solutions. It provides an intuitive interface for exporting, importing, and tracking versions of your solutions. With advanced features like dependency analysis, solution comparison, and bulk operations, you can streamline your solution lifecycle management.",
-        iconurl: "📦",
+        icon: "📦",
         categories: ["Solutions"],
         downloads: 1250,
         rating: 4.8,
@@ -53,7 +53,7 @@ const mockTools: Record<string, Tool> = {
         description: "Compare environments, copy configurations, and manage environment settings efficiently.",
         longDescription:
             "Environment Tools helps you manage multiple Power Platform environments with ease. Compare configurations, copy settings between environments, and ensure consistency across your development, test, and production environments.",
-        iconurl: "🌍",
+        icon: "🌍",
         categories: ["Environments"],
         downloads: 980,
         rating: 4.6,
@@ -68,7 +68,7 @@ const mockTools: Record<string, Tool> = {
         description: "Generate early-bound classes, TypeScript definitions, and more from your Dataverse metadata.",
         longDescription:
             "Code Generator automates the creation of strongly-typed code from your Dataverse metadata. Generate early-bound classes for .NET, TypeScript definitions for web resources, and more to improve your development productivity and code quality.",
-        iconurl: "⚡",
+        icon: "⚡",
         categories: ["Development"],
         downloads: 2100,
         rating: 4.9,
@@ -83,7 +83,7 @@ const mockTools: Record<string, Tool> = {
         description: "Register, update, and manage your plugins and custom workflow activities with a modern interface.",
         longDescription:
             "Plugin Manager provides a modern interface for managing your Dataverse plugins and custom workflow activities. Register new plugins, update existing ones, and manage plugin steps with an intuitive visual interface.",
-        iconurl: "🔌",
+        icon: "🔌",
         categories: ["Development"],
         downloads: 1450,
         rating: 4.7,
@@ -98,7 +98,7 @@ const mockTools: Record<string, Tool> = {
         description: "Import and export data using Excel, CSV, or JSON. Support for bulk operations and data transformation.",
         longDescription:
             "Data Import/Export tool makes it easy to move data in and out of your Dataverse environment. Support for multiple formats including Excel, CSV, and JSON, with advanced features like data transformation, validation, and bulk operations.",
-        iconurl: "📊",
+        icon: "📊",
         categories: ["Data"],
         downloads: 1800,
         rating: 4.5,
@@ -113,7 +113,7 @@ const mockTools: Record<string, Tool> = {
         description: "Monitor and analyze the performance of your Power Platform solutions. Identify bottlenecks and optimize.",
         longDescription:
             "Performance Monitor helps you track and analyze the performance of your Power Platform solutions. Identify bottlenecks, monitor resource usage, and get actionable insights to optimize your applications.",
-        iconurl: "📈",
+        icon: "📈",
         categories: ["Monitoring"],
         downloads: 750,
         rating: 4.4,
@@ -152,7 +152,7 @@ export default function ToolDetailsPage() {
                         id: toolData.id,
                         name: toolData.name,
                         description: toolData.description,
-                        iconurl: toolData.iconurl,
+                        icon: toolData.icon,
                         readmeUrl: (toolData as any).readmeurl,
                         contributors: (toolData as any).tool_contributors?.flatMap((tc: any) => tc.contributors?.name) || [],
                         version: (toolData as any).version,
@@ -236,10 +236,10 @@ export default function ToolDetailsPage() {
                         {/* Tool Header */}
                         <header className="flex items-start gap-6 mb-8">
                             <div className="w-20 h-20 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-xl shrink-0">
-                                {tool.iconurl && tool.iconurl.startsWith("http") ? (
-                                    <Image src={tool.iconurl} alt={`${tool.name} icon`} width={64} height={64} className="object-contain" />
+                                {tool.icon && tool.icon.startsWith("http") ? (
+                                    <Image src={tool.icon} alt={`${tool.name} icon`} width={64} height={64} className="object-contain" />
                                 ) : (
-                                    <span className="text-5xl">{tool.iconurl || "📦"}</span>
+                                    <span className="text-5xl">{tool.icon || "📦"}</span>
                                 )}
                             </div>
                             <div className="flex-1">

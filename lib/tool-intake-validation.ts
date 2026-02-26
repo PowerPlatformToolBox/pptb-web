@@ -6,11 +6,6 @@ export interface Contributor {
     url?: string;
 }
 
-export interface IconPaths {
-    dark: string;
-    light: string;
-}
-
 export interface CspExceptions {
     "connect-src"?: string[];
     "script-src"?: string[];
@@ -24,7 +19,6 @@ export interface Configurations {
     repository?: string;
     website?: string;
     funding?: string;
-    iconUrl?: string;
     readmeUrl?: string;
 }
 
@@ -40,7 +34,7 @@ export interface ToolPackageJson {
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
     license?: string;
-    icon?: IconPaths;
+    icon?: string;
     configurations?: Configurations;
     features?: Features;
 }
@@ -121,21 +115,6 @@ async function isUrlAccessible(url: string): Promise<boolean> {
     }
 }
 
-/**
- * Validates that iconUrl has a .png or .jpg extension
- * @param url - The icon URL to validate
- * @returns true if the URL ends with .png or .jpg
- */
-function hasValidImageExtension(url: string): boolean {
-    try {
-        const urlObj = new URL(url);
-        const pathname = urlObj.pathname.toLowerCase();
-        return pathname.endsWith(".png") || pathname.endsWith(".jpg") || pathname.endsWith(".jpeg");
-    } catch {
-        return false;
-    }
-}
-
 function isGithubDomain(url: string): boolean {
     try {
         const hostname = new URL(url).hostname.toLowerCase();
@@ -173,24 +152,12 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         errors.push(`License "${packageJson.license}" is not in the approved list. Approved licenses: ${APPROVED_LICENSES.join(", ")}`);
     }
 
-    // Icon validation (bundled SVG) - REQUIRED
-    if (!packageJson.icon || typeof packageJson.icon !== "object" || Array.isArray(packageJson.icon)) {
-        errors.push("icon is required and must be an object with 'dark' and 'light' properties");
-    } else {
-        const icon = packageJson.icon as Record<string, unknown>;
-
-        // Validate dark icon
-        if (!icon.dark || typeof icon.dark !== "string") {
-            errors.push("icon.dark is required and must be a string (relative path to bundled SVG under dist)");
+    // Icon validation (bundled SVG) - OPTIONAL
+    if (packageJson.icon !== undefined && packageJson.icon !== null) {
+        if (typeof packageJson.icon !== "string") {
+            errors.push("icon must be a string (relative path to bundled SVG under dist)");
         } else {
-            validateIconPath("icon.dark", icon.dark as string, errors);
-        }
-
-        // Validate light icon
-        if (!icon.light || typeof icon.light !== "string") {
-            errors.push("icon.light is required and must be a string (relative path to bundled SVG under dist)");
-        } else {
-            validateIconPath("icon.light", icon.light as string, errors);
+            validateIconPath("icon", packageJson.icon, errors);
         }
     }
 
@@ -210,9 +177,9 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         });
     }
 
-    // Configurations validation (repository, iconUrl, readmeUrl are required)
+    // Configurations validation (repository and readmeUrl are required)
     if (!packageJson.configurations || typeof packageJson.configurations !== "object") {
-        errors.push("configurations is required and must include repository, iconUrl, and readmeUrl");
+        errors.push("configurations is required and must include repository and readmeUrl");
     } else {
         const configs = packageJson.configurations;
 
@@ -253,33 +220,9 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
             }
         }
 
-        // IconUrl validation
-        if (configs.iconUrl) {
-            if (typeof configs.iconUrl !== "string") {
-                errors.push("configurations.iconUrl must be a URL");
-            } else if (!isValidUrl(configs.iconUrl)) {
-                errors.push("configurations.iconUrl has an invalid URL format");
-            } else {
-                try {
-                    const iconHostname = new URL(configs.iconUrl).hostname.toLowerCase();
-                    if (iconHostname !== "raw.githubusercontent.com") {
-                        errors.push("configurations.iconUrl must be hosted on raw.githubusercontent.com");
-                    }
-                } catch {
-                    errors.push("configurations.iconUrl has an invalid URL format");
-                }
-
-                // Check image extension
-                if (!hasValidImageExtension(configs.iconUrl)) {
-                    errors.push("configurations.iconUrl must have a .png, .jpg, or .jpeg extension");
-                }
-
-                // Check if icon URL is accessible
-                const isAccessible = await isUrlAccessible(configs.iconUrl);
-                if (!isAccessible) {
-                    errors.push("configurations.iconUrl is not accessible");
-                }
-            }
+        // iconUrl is no longer supported under configurations
+        if ((configs as Record<string, unknown>).iconUrl !== undefined) {
+            errors.push("configurations.iconUrl is no longer supported; use top-level 'icon' for bundled SVG path");
         }
 
         // ReadmeUrl validation
@@ -377,7 +320,7 @@ export interface NpmPackageInfo {
     displayName?: string;
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
-    icon?: IconPaths;
+    icon?: string;
     configurations?: Configurations;
     features?: Features;
 }
@@ -390,7 +333,7 @@ interface NpmRegistryVersionData {
     displayName?: string;
     contributors?: Contributor[];
     cspExceptions?: CspExceptions;
-    icon?: IconPaths;
+    icon?: string;
     configurations?: Configurations;
     features?: Features;
     dist: {

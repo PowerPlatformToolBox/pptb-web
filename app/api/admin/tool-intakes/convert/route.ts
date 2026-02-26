@@ -109,7 +109,6 @@ export async function POST(request: NextRequest) {
                 npm_package_name: intake.package_name,
                 display_name: intake.display_name,
                 description: intake.description,
-                icon_url: intake.configurations?.iconUrl || "",
                 icon: intake.icon || "",
                 readme_url: intake.configurations?.readmeUrl || "",
                 version: intake.version || "1.0.0",

@@ -23,7 +23,7 @@ interface Tool {
     id: string;
     name: string;
     description: string;
-    iconurl: string;
+    icon: string;
     user_id?: string;
     status?: string;
     tool_categories?: Array<{
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="flex items-center gap-3">
                                                                     <Image
-                                                                        src={tool.iconurl && tool.iconurl.startsWith("http") ? tool.iconurl : PLACEHOLDER_ICON_PATH}
+                                                                        src={tool.icon && tool.icon.startsWith("http") ? tool.icon : PLACEHOLDER_ICON_PATH}
                                                                         alt={tool.name}
                                                                         width={32}
                                                                         height={32}

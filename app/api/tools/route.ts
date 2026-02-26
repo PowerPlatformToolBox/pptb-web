@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `id, name, description, iconurl, status,
+                `id, name, description, icon, status,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,
