@@ -382,7 +382,7 @@ export default function SubmitToolPage() {
   "version": "1.0.0",
   "displayName": "Sample Power Platform Tool",
   "description": "A sample tool for Power Platform",
-    "icon": "icon.svg",
+  "icon": "icon.svg",
   "contributors": [
     {
       "name": "Your Name",
