@@ -1,5 +1,6 @@
 import { sendEmail } from "@/lib/resend";
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-intake-validation";
+import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-validation";
+import { extractVersionInfo } from "@/lib/version-extraction";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -178,7 +179,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Step 3: Store the intake request
+        // Step 3: Extract version information (minAPI and maxAPI) — best-effort, null if unavailable
+        const versionInfoResult = await extractVersionInfo(cleanPackageName);
+
+        if (!versionInfoResult.success) {
+            console.warn(`[submit-tool] Could not extract version info for ${cleanPackageName}: ${versionInfoResult.error}`);
+        }
+
+        const minAPI = versionInfoResult.success ? versionInfoResult.data.minAPI : null;
+        const maxAPI = versionInfoResult.success ? versionInfoResult.data.maxAPI : null;
+
+        // Step 4: Store the intake request
         if (!supabase) {
             return NextResponse.json(
                 {
@@ -230,6 +241,8 @@ export async function POST(request: NextRequest) {
                 status: "pending_review",
                 validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
                 features: packageInfo.features || null,
+                min_api: minAPI,
+                max_api: maxAPI,
             })
             .select()
             .single();

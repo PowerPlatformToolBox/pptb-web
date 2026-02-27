@@ -1,4 +1,4 @@
-// Tool intake validation utilities
+// Tool validation utilities
 // Mirrors the validation logic from .github/workflows/intake-validation.yml
 
 export interface Contributor {
@@ -24,6 +24,7 @@ export interface Configurations {
 
 export interface Features {
     multiConnection?: "required" | "optional" | "none";
+    minAPI?: string;
 }
 
 export interface ToolPackageJson {
@@ -63,6 +64,9 @@ const APPROVED_LICENSES = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", 
 // List of valid multiConnection values
 const VALID_MULTI_CONNECTION_VALUES = ["required", "optional", "none"] as const;
 type MultiConnectionValue = (typeof VALID_MULTI_CONNECTION_VALUES)[number];
+
+// Semver regex for minAPI validation
+const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/;
 
 export function isValidUrl(url: string): boolean {
     try {
@@ -267,12 +271,12 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
 
     // Features validation (optional but validated if present)
     if (packageJson.features) {
-        // Check if features object has only multiConnection property
+        const VALID_FEATURE_KEYS = ["multiConnection", "minAPI"];
         const featureKeys = Object.keys(packageJson.features);
-        const invalidKeys = featureKeys.filter((key) => key !== "multiConnection");
+        const invalidKeys = featureKeys.filter((key) => !VALID_FEATURE_KEYS.includes(key));
 
         if (invalidKeys.length > 0) {
-            errors.push(`features can only contain 'multiConnection' property. Invalid properties: ${invalidKeys.join(", ")}`);
+            errors.push(`features can only contain ${VALID_FEATURE_KEYS.map((k) => `'${k}'`).join(", ")} properties. Invalid properties: ${invalidKeys.join(", ")}`);
         }
 
         // multiConnection must be present if features is provided
@@ -285,6 +289,13 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
 
             if (!isValidValue(packageJson.features.multiConnection)) {
                 errors.push(`features.multiConnection must be one of: ${VALID_MULTI_CONNECTION_VALUES.join(", ")}`);
+            }
+        }
+
+        // minAPI is optional, but must be a valid semver string if present
+        if (packageJson.features.minAPI !== undefined) {
+            if (typeof packageJson.features.minAPI !== "string" || !SEMVER_REGEX.test(packageJson.features.minAPI)) {
+                errors.push("features.minAPI must be a valid semantic version string (e.g., '1.0.0')");
             }
         }
     }
@@ -346,7 +357,7 @@ interface NpmRegistryVersionData {
  * @param packageName - The npm package name
  * @returns Package metadata including tarball URL or error
  */
-async function fetchNpmPackageMetadata(
+export async function fetchNpmPackageMetadata(
     packageName: string,
 ): Promise<{ success: true; data: { versionData: NpmRegistryVersionData; latestVersion: string; tarballUrl: string } } | { success: false; error: string }> {
     try {

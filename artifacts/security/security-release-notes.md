@@ -3,7 +3,7 @@
 ## 2026-01-20 Hardening Update
 
 - **Supabase Admin APIs** – Tightened Row Level Security to limit writes to members of the `pptb_admins` role only. Verified via Supabase policy tests.
-- **Tool Intake Validation** – Strengthened schema validation in `tool-intake-validation.ts` to close gaps that previously allowed malformed URLs. Covered by new unit tests.
+- **Tool Intake Validation** – Strengthened schema validation in `tool-validation.ts` to close gaps that previously allowed malformed URLs. Covered by new unit tests.
 - **Dashboard Session Handling** – Fixed a regression that could keep stale Supabase sessions alive after sign-out. Added integration test to ensure tokens are revoked immediately.
 
 **Upgrade Guidance**: Deploy the latest `/api` routes and re-run `supabase db push`. Desktop users no impact; web app users should clear cookies to ensure fresh sessions.

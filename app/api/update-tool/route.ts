@@ -1,6 +1,7 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { sendEmail } from "@/lib/resend";
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-intake-validation";
+import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-validation";
+import { extractVersionInfo } from "@/lib/version-extraction";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -182,6 +183,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Extract version information (minAPI and maxAPI) — best-effort, null if unavailable
+        const versionInfoResult = await extractVersionInfo(cleanPackageName);
+
+        if (!versionInfoResult.success) {
+            console.warn(`[update-tool] Could not extract version info for ${cleanPackageName}: ${versionInfoResult.error}`);
+        }
+
+        const minAPI = versionInfoResult.success ? versionInfoResult.data.minAPI : null;
+        const maxAPI = versionInfoResult.success ? versionInfoResult.data.maxAPI : null;
+
         // Update tool table entry with latest validated package info
         await supabase
             .from("tools")
@@ -196,13 +207,20 @@ export async function POST(request: NextRequest) {
                 features: packageJson.features || null,
                 repository: packageJson.configurations?.repository || null,
                 website: packageJson.configurations?.website || null,
+                min_api: minAPI,
+                max_api: maxAPI,
             })
             .eq("packagename", packageJson.name);
 
         // Update tool update record as validated
         await supabase
             .from("tool_updates")
-            .update({ status: "validated", validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null })
+            .update({
+                status: "validated",
+                validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
+                min_api: minAPI,
+                max_api: maxAPI,
+            })
             .eq("id", toolUpdateId);
 
         // Clean up all tool_update entries for this package upon successful validation
