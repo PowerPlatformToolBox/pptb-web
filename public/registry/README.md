@@ -24,7 +24,7 @@ Each tool entry in the registry contains the following fields:
 - `author`: Tool author or organization
 - `version`: Current version (semver)
 - `downloadUrl`: URL to download the tool package (.tar.gz)
-- `icon`: (Optional) URL to the tool's icon image
+- `icon`: (Optional) relative path to a bundled SVG icon (e.g., `icons/my-tool.svg`)
 - `readme`: URL to the tool's README documentation
 - `checksum`: SHA-256 checksum of the package
 - `size`: Package size in bytes
