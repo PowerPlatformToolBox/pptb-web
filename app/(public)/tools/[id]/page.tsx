@@ -7,8 +7,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import Markdown from "react-markdown";
-import remarkGfm from 'remark-gfm';
-import 'github-markdown-css/github-markdown-light.css';
+import remarkGfm from "remark-gfm";
+import "github-markdown-css/github-markdown-light.css";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
