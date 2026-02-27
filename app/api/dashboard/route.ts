@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
                 id, 
                 name, 
                 description, 
-                iconurl, 
+                icon, 
                 user_id,
                 status,
                 tool_analytics (downloads, rating, mau),

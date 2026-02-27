@@ -24,6 +24,7 @@ interface ToolIntake {
     display_name: string;
     description: string;
     license: string;
+    icon: string | null;
     contributors: Contributor[];
     csp_exceptions: Record<string, string[]> | null;
     features: {
@@ -33,7 +34,6 @@ interface ToolIntake {
         repository?: string;
         website?: string;
         funding?: string;
-        iconUrl?: string;
         readmeUrl?: string;
     };
     submitted_by: string | null;

@@ -19,7 +19,6 @@ export interface Configurations {
     repository?: string;
     website?: string;
     funding?: string;
-    iconUrl?: string;
     readmeUrl?: string;
 }
 
@@ -75,6 +74,34 @@ export function isValidUrl(url: string): boolean {
 }
 
 /**
+ * Validates an icon path string against common rules
+ */
+function validateIconPath(fieldName: string, path: string, errors: string[]): void {
+    // Check if it's an HTTP(S) URL (not allowed)
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+        errors.push(`${fieldName} cannot be an HTTP(S) URL - icons must be bundled under dist`);
+        return;
+    }
+
+    // Check if it's an absolute path (not allowed)
+    if (path.startsWith("/")) {
+        errors.push(`${fieldName} must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')`);
+        return;
+    }
+
+    // Check for path traversal attempts
+    if (path.includes("..")) {
+        errors.push(`${fieldName} cannot contain '..' (path traversal not allowed)`);
+        return;
+    }
+
+    // Check if it ends with .svg
+    if (!path.toLowerCase().endsWith(".svg")) {
+        errors.push(`${fieldName} must be an SVG file with .svg extension`);
+    }
+}
+
+/**
  * Checks if a URL is accessible by making a HEAD request
  * @param url - The URL to check
  * @returns Promise that resolves to true if URL is accessible (returns 200-399 status)
@@ -83,21 +110,6 @@ async function isUrlAccessible(url: string): Promise<boolean> {
     try {
         const response = await fetch(url, { method: "HEAD", redirect: "follow" });
         return response.ok || (response.status >= 200 && response.status < 400);
-    } catch {
-        return false;
-    }
-}
-
-/**
- * Validates that iconUrl has a .png or .jpg extension
- * @param url - The icon URL to validate
- * @returns true if the URL ends with .png or .jpg
- */
-function hasValidImageExtension(url: string): boolean {
-    try {
-        const urlObj = new URL(url);
-        const pathname = urlObj.pathname.toLowerCase();
-        return pathname.endsWith(".png") || pathname.endsWith(".jpg") || pathname.endsWith(".jpeg");
     } catch {
         return false;
     }
@@ -140,31 +152,14 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         errors.push(`License "${packageJson.license}" is not in the approved list. Approved licenses: ${APPROVED_LICENSES.join(", ")}`);
     }
 
-    // TODO: Reanable icon validation when SVG support is ready. For now, we are skipping this validation to allow tools without icons to be submitted, but we will require icons in the future once the infrastructure is in place.
-    // // Icon validation (bundled SVG) - REQUIRED
-    // if (!packageJson.icon || typeof packageJson.icon !== "string") {
-    //     errors.push("icon is required and must be a string (relative path to bundled SVG under dist, e.g., 'icon.svg' or 'icons/icon.svg')");
-    // } else {
-    //     // Check if it's an HTTP(S) URL (not allowed)
-    //     if (packageJson.icon.startsWith("http://") || packageJson.icon.startsWith("https://")) {
-    //         errors.push("icon cannot be an HTTP(S) URL - icons must be bundled under dist");
-    //     }
-
-    //     // Check if it's an absolute path (not allowed)
-    //     if (packageJson.icon.startsWith("/")) {
-    //         errors.push("icon must be a relative path (e.g., 'icon.svg' or 'icons/icon.svg')");
-    //     }
-
-    //     // Check for path traversal attempts
-    //     if (packageJson.icon.includes("..")) {
-    //         errors.push("icon path cannot contain '..' (path traversal not allowed)");
-    //     }
-
-    //     // Check if it ends with .svg
-    //     if (!packageJson.icon.toLowerCase().endsWith(".svg")) {
-    //         errors.push("icon must be an SVG file with .svg extension");
-    //     }
-    // }
+    // Icon validation (bundled SVG) - OPTIONAL
+    if (packageJson.icon !== undefined && packageJson.icon !== null) {
+        if (typeof packageJson.icon !== "string") {
+            errors.push("icon must be a string (relative path to bundled SVG under dist)");
+        } else {
+            validateIconPath("icon", packageJson.icon, errors);
+        }
+    }
 
     // Contributors validation
     if (!packageJson.contributors || !Array.isArray(packageJson.contributors)) {
@@ -182,9 +177,9 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
         });
     }
 
-    // Configurations validation (repository, iconUrl, readmeUrl are required)
+    // Configurations validation (repository and readmeUrl are required)
     if (!packageJson.configurations || typeof packageJson.configurations !== "object") {
-        errors.push("configurations is required and must include repository, iconUrl, and readmeUrl");
+        errors.push("configurations is required and must include repository and readmeUrl");
     } else {
         const configs = packageJson.configurations;
 
@@ -225,33 +220,9 @@ export async function validatePackageJson(packageJson: ToolPackageJson): Promise
             }
         }
 
-        // IconUrl validation
-        if (configs.iconUrl) {
-            if (typeof configs.iconUrl !== "string") {
-                errors.push("configurations.iconUrl must be a URL");
-            } else if (!isValidUrl(configs.iconUrl)) {
-                errors.push("configurations.iconUrl has an invalid URL format");
-            } else {
-                try {
-                    const iconHostname = new URL(configs.iconUrl).hostname.toLowerCase();
-                    if (iconHostname !== "raw.githubusercontent.com") {
-                        errors.push("configurations.iconUrl must be hosted on raw.githubusercontent.com");
-                    }
-                } catch {
-                    errors.push("configurations.iconUrl has an invalid URL format");
-                }
-
-                // Check image extension
-                if (!hasValidImageExtension(configs.iconUrl)) {
-                    errors.push("configurations.iconUrl must have a .png, .jpg, or .jpeg extension");
-                }
-
-                // Check if icon URL is accessible
-                const isAccessible = await isUrlAccessible(configs.iconUrl);
-                if (!isAccessible) {
-                    errors.push("configurations.iconUrl is not accessible");
-                }
-            }
+        // iconUrl is no longer supported under configurations
+        if ((configs as Record<string, unknown>).iconUrl !== undefined) {
+            errors.push("configurations.iconUrl is no longer supported; use top-level 'icon' for bundled SVG path");
         }
 
         // ReadmeUrl validation

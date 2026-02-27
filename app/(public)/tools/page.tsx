@@ -10,7 +10,7 @@ interface Tool {
     id: string;
     name: string;
     description: string;
-    iconurl: string;
+    icon: string;
     categories: string[];
     downloads: number;
     rating: number;
@@ -24,7 +24,7 @@ const mockTools: Tool[] = [
         id: "1",
         name: "Solution Manager",
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
-        iconurl: "📦",
+        icon: "📦",
         contributors: ["Power Platform ToolBox"],
         categories: ["Solutions"],
         downloads: 1250,
@@ -35,7 +35,7 @@ const mockTools: Tool[] = [
         id: "2",
         name: "Environment Tools",
         description: "Compare environments, copy configurations, and manage environment settings efficiently.",
-        iconurl: "🌍",
+        icon: "🌍",
         contributors: ["Power Platform ToolBox"],
         categories: ["Environments"],
         downloads: 980,
@@ -46,7 +46,7 @@ const mockTools: Tool[] = [
         id: "3",
         name: "Code Generator",
         description: "Generate early-bound classes, TypeScript definitions, and more from your Dataverse metadata.",
-        iconurl: "⚡",
+        icon: "⚡",
         contributors: ["Power Platform ToolBox"],
         categories: ["Development"],
         downloads: 2100,
@@ -57,7 +57,7 @@ const mockTools: Tool[] = [
         id: "4",
         name: "Plugin Manager",
         description: "Register, update, and manage your plugins and custom workflow activities with a modern interface.",
-        iconurl: "🔌",
+        icon: "🔌",
         contributors: ["Power Platform ToolBox"],
         categories: ["Development"],
         downloads: 1450,
@@ -68,7 +68,7 @@ const mockTools: Tool[] = [
         id: "5",
         name: "Data Import/Export",
         description: "Import and export data using Excel, CSV, or JSON. Support for bulk operations and data transformation.",
-        iconurl: "📊",
+        icon: "📊",
         contributors: ["Power Platform ToolBox"],
         categories: ["Data"],
         downloads: 1800,
@@ -79,7 +79,7 @@ const mockTools: Tool[] = [
         id: "6",
         name: "Performance Monitor",
         description: "Monitor and analyze the performance of your Power Platform solutions. Identify bottlenecks and optimize.",
-        iconurl: "📈",
+        icon: "📈",
         contributors: ["Power Platform ToolBox"],
         categories: ["Monitoring"],
         downloads: 750,
@@ -105,7 +105,7 @@ export default function ToolsPage() {
                         id: string;
                         name: string;
                         description: string;
-                        iconurl: string;
+                        icon: string;
                         tool_analytics?: unknown;
                         tool_categories?: Array<{ categories: unknown }>;
                         tool_contributors?: Array<{ contributors: unknown }>;
@@ -113,7 +113,7 @@ export default function ToolsPage() {
                         id: tool.id,
                         name: tool.name,
                         description: tool.description,
-                        iconurl: tool.iconurl || "📦",
+                        icon: tool.icon || "📦",
                         contributors: tool.tool_contributors?.flatMap((tc) => (tc.contributors as { name: string }).name) || [],
                         categories: tool.tool_categories?.flatMap((tc) => (tc.categories as { name: string }).name) || ["\u00A0"],
                         downloads: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.downloads || 0,
@@ -195,9 +195,9 @@ export default function ToolsPage() {
                                                     {/* Icon and Name Section */}
                                                     <div className="flex items-start gap-4 mb-4 h-20">
                                                         <div className="w-16 h-16 shrink-0 flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-lg">
-                                                            {tool.iconurl && tool.iconurl.startsWith("http") ? (
+                                                            {tool.icon && tool.icon.startsWith("http") ? (
                                                                 <Image
-                                                                    src={tool.iconurl}
+                                                                    src={tool.icon}
                                                                     alt={`${tool.name} icon`}
                                                                     width={48}
                                                                     height={48}
@@ -210,7 +210,7 @@ export default function ToolsPage() {
                                                                     }}
                                                                 />
                                                             ) : (
-                                                                <span className="text-4xl">{tool.iconurl || "📦"}</span>
+                                                                <span className="text-4xl">{tool.icon || "📦"}</span>
                                                             )}
                                                         </div>
                                                         <div className="flex-1 flex flex-col justify-between">

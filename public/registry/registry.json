@@ -14,7 +14,9 @@
             "checksum": "dd166473f298aef0e53673b83b812dc29c9e2d4d2e7c3a7cbd810cb9097b93e8",
             "size": 21453139,
             "publishedAt": "2025-11-18T03:23:11Z",
-            "tags": ["Utilities"]
+            "tags": [
+                "Utilities"
+            ]
         },
         {
             "id": "pptb-standard-sample-tool",
@@ -28,8 +30,10 @@
             "checksum": "b64a588f5c9c522c7b9d78c5688fb03a4afd48a4e97df7fc1f99a598db9b785d",
             "size": 87640,
             "publishedAt": "2025-11-23T19:28:01Z",
-            "tags": ["Other"],
-            "iconUrl": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/pptb-standard-sample-tool-1.0.2/pptb-standard-sample-tool-1.0.2-icon.png"
+            "tags": [
+                "Other"
+            ],
+            "icon": "https://github.com/PowerPlatformToolBox/pptb-web/releases/download/pptb-standard-sample-tool-1.0.2/pptb-standard-sample-tool-1.0.2-icon.png"
         }
     ]
 }

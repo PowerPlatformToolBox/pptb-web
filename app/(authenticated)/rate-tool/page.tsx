@@ -13,16 +13,16 @@ interface Tool {
     id: string;
     name: string;
     description: string;
-    iconurl: string;
+    icon: string;
 }
 
 const mockTools: Record<string, Tool> = {
-    "1": { id: "1", name: "Solution Manager", description: "Manage your Power Platform solutions with ease.", iconurl: "📦" },
-    "2": { id: "2", name: "Environment Tools", description: "Compare environments and manage settings efficiently.", iconurl: "🌍" },
-    "3": { id: "3", name: "Code Generator", description: "Generate early-bound classes and TypeScript definitions.", iconurl: "⚡" },
-    "4": { id: "4", name: "Plugin Manager", description: "Register and manage plugins with a modern interface.", iconurl: "🔌" },
-    "5": { id: "5", name: "Data Import/Export", description: "Import and export data using Excel, CSV, or JSON.", iconurl: "📊" },
-    "6": { id: "6", name: "Performance Monitor", description: "Monitor and analyze solution performance.", iconurl: "📈" },
+    "1": { id: "1", name: "Solution Manager", description: "Manage your Power Platform solutions with ease.", icon: "📦" },
+    "2": { id: "2", name: "Environment Tools", description: "Compare environments and manage settings efficiently.", icon: "🌍" },
+    "3": { id: "3", name: "Code Generator", description: "Generate early-bound classes and TypeScript definitions.", icon: "⚡" },
+    "4": { id: "4", name: "Plugin Manager", description: "Register and manage plugins with a modern interface.", icon: "🔌" },
+    "5": { id: "5", name: "Data Import/Export", description: "Import and export data using Excel, CSV, or JSON.", icon: "📊" },
+    "6": { id: "6", name: "Performance Monitor", description: "Monitor and analyze solution performance.", icon: "📈" },
 };
 
 export default function RateToolPage() {
@@ -77,7 +77,7 @@ export default function RateToolPage() {
                             id: toolData.id,
                             name: toolData.name,
                             description: toolData.description,
-                            iconurl: toolData.iconurl,
+                            icon: toolData.icon,
                         });
                     } else if (toolId && mockTools[toolId]) {
                         setTool(mockTools[toolId]);
@@ -178,7 +178,7 @@ export default function RateToolPage() {
                         <div className="card p-8 mb-8">
                             <div className="flex items-center gap-4 mb-4">
                                 <span className="text-5xl">
-                                    <Image src={tool.iconurl} alt={tool.name} width={32} height={32} className="rounded" />
+                                    <Image src={tool.icon} alt={tool.name} width={32} height={32} className="rounded" />
                                 </span>
                                 <div>
                                     <h1 className="text-3xl font-bold text-slate-900">{tool.name}</h1>
