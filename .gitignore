@@ -137,3 +137,7 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Next JS Typescript Env file
+# see https://nextjs.org/docs/app/api-reference/config/typescript#next-envdts for additional reference
+next-env.d.ts

@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { marked } from "marked";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import "github-markdown-css/github-markdown-light.css";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
@@ -190,8 +193,7 @@ export default function ToolDetailsPage() {
                 const response = await fetch(tool.readmeUrl!);
                 if (!response.ok) throw new Error("Failed to fetch README");
                 const markdown = await response.text();
-                const html = await marked(markdown);
-                setReadmeContent(html);
+                setReadmeContent(markdown);
             } catch (error) {
                 console.error("Error fetching README:", error);
                 setReadmeContent("");
@@ -353,10 +355,9 @@ export default function ToolDetailsPage() {
                                             <span>Loading documentation...</span>
                                         </div>
                                     ) : readmeContent ? (
-                                        <div
-                                            className="prose prose-slate max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-pre:bg-slate-100"
-                                            dangerouslySetInnerHTML={{ __html: readmeContent }}
-                                        />
+                                        <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-pre:bg-slate-100 markdown-body">
+                                            <Markdown remarkPlugins={[remarkGfm]}>{readmeContent}</Markdown>
+                                        </div>
                                     ) : (
                                         <p className="text-slate-700 leading-relaxed">{tool.longDescription || tool.description}</p>
                                     )}
