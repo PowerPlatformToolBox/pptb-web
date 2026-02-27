@@ -346,7 +346,7 @@ interface NpmRegistryVersionData {
  * @param packageName - The npm package name
  * @returns Package metadata including tarball URL or error
  */
-async function fetchNpmPackageMetadata(
+export async function fetchNpmPackageMetadata(
     packageName: string,
 ): Promise<{ success: true; data: { versionData: NpmRegistryVersionData; latestVersion: string; tarballUrl: string } } | { success: false; error: string }> {
     try {

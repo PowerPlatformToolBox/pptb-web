@@ -1,6 +1,8 @@
 // Version extraction utilities for tool packages
 // Reads minAPI from package.json features and maxAPI from npm-shrinkwrap.json
 
+import { fetchNpmPackageMetadata } from "@/lib/tool-intake-validation";
+
 const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/;
 
 export interface VersionInfo {
@@ -24,34 +26,14 @@ export function isValidSemver(version: string): boolean {
  */
 export async function extractVersionInfo(packageName: string): Promise<{ success: true; data: VersionInfo } | { success: false; error: string }> {
     try {
-        // Fetch package metadata from npm registry to get tarball URL
-        const registryResponse = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packageName)}`, {
-            headers: { Accept: "application/json" },
-        });
+        // Fetch package metadata (tarball URL) via shared helper
+        const metadataResult = await fetchNpmPackageMetadata(packageName);
 
-        if (!registryResponse.ok) {
-            if (registryResponse.status === 404) {
-                return { success: false, error: `Package "${packageName}" not found on npm` };
-            }
-            return { success: false, error: `Failed to fetch package metadata: HTTP ${registryResponse.status}` };
+        if (!metadataResult.success) {
+            return { success: false, error: metadataResult.error };
         }
 
-        const packageData = await registryResponse.json();
-
-        const latestVersion = packageData["dist-tags"]?.latest;
-        if (!latestVersion) {
-            return { success: false, error: `Package "${packageName}" has no latest version` };
-        }
-
-        const versionData = packageData.versions?.[latestVersion];
-        if (!versionData) {
-            return { success: false, error: `Could not find version data for ${latestVersion}` };
-        }
-
-        const tarballUrl = versionData.dist?.tarball;
-        if (!tarballUrl) {
-            return { success: false, error: "Could not find tarball URL" };
-        }
+        const { tarballUrl } = metadataResult.data;
 
         // Download the tarball
         const tarballResponse = await fetch(tarballUrl);
