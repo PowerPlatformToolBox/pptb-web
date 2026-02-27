@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
 
             const updatePayload = {
                 status: "validation_failed",
-                validation_warnings: validationResult,
+                validation_warnings: validationErrors,
                 notification_sent: notificationAlreadySent || notificationSentThisRequest,
             };
 
@@ -200,7 +200,10 @@ export async function POST(request: NextRequest) {
             .eq("packagename", packageJson.name);
 
         // Update tool update record as validated
-        await supabase.from("tool_updates").update({ status: "validated", validation_warnings: validationResult }).eq("id", toolUpdateId);
+        await supabase
+            .from("tool_updates")
+            .update({ status: "validated", validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null })
+            .eq("id", toolUpdateId);
 
         // Clean up all tool_update entries for this package upon successful validation
         await supabase.from("tool_updates").delete().eq("package_name", packageJson.name);
