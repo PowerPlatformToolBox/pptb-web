@@ -6,7 +6,7 @@
 | Authentication   | Are credentials or tokens ever persisted unencrypted on disk?  | Pass      | Supabase session stored in secure cookies; desktop client keeps tokens in OS keychain |
 | Access Control   | Are server routes protected by RLS / role checks?              | Pass      | Supabase RLS policies restrict admin APIs to `pptb_admins` role                       |
 | Access Control   | Are admin-only features hidden in UI when unauthenticated?     | Pass      | Header dynamically shows dashboard links only when Supabase session exists            |
-| Input Validation | Are form payloads sanitized server-side before persistence?    | Pass      | `tool-intake-validation.ts` enforces schema; additional Supabase validation           |
+| Input Validation | Are form payloads sanitized server-side before persistence?    | Pass      | `tool-validation.ts` enforces schema; additional Supabase validation           |
 | Input Validation | Are markdown/HTML outputs sanitized?                           | Follow-up | Need to add DOMPurify step to review detail rendering                                 |
 | Cryptography     | Are HTTPS/TLS enforced for all network calls?                  | Pass      | All Supabase/Entra/GitHub calls use HTTPS endpoints                                   |
 | Cryptography     | Are secrets stored in source control?                          | Pass      | Environment variables managed via Vercel/Supabase secrets                             |
