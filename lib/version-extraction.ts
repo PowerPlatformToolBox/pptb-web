@@ -1,7 +1,7 @@
 // Version extraction utilities for tool packages
 // Reads minAPI from package.json features and maxAPI from npm-shrinkwrap.json
 
-import { fetchNpmPackageMetadata } from "@/lib/tool-intake-validation";
+import { fetchNpmPackageMetadata } from "@/lib/tool-validation";
 
 const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/;
 

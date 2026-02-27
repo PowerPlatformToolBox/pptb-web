@@ -1,5 +1,5 @@
 import { sendEmail } from "@/lib/resend";
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-intake-validation";
+import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
