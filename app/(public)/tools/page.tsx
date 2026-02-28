@@ -96,9 +96,12 @@ export default function ToolsPage() {
     const animationsDisabled = useRef(false);
 
     const isFiltering = searchQuery !== "" || selectedCategory !== "All";
-    if (isFiltering && !animationsDisabled.current) {
-        animationsDisabled.current = true;
-    }
+
+    useEffect(() => {
+        if (isFiltering) {
+            animationsDisabled.current = true;
+        }
+    }, [isFiltering]);
 
     useEffect(() => {
         (async () => {
