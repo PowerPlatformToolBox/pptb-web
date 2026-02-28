@@ -92,6 +92,7 @@ export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
+    const [searchQuery, setSearchQuery] = useState<string>("");
 
     useEffect(() => {
         (async () => {
@@ -133,13 +134,19 @@ export default function ToolsPage() {
 
     const toolCount = tools.length;
     const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories)))];
-    const filteredTools = selectedCategory === "All" ? tools : tools.filter((t) => t.categories.includes(selectedCategory));
+    const filteredTools = tools.filter((tool) => {
+        const matchesCategory = selectedCategory === "All" || tool.categories.includes(selectedCategory);
+        const matchesSearch = searchQuery === "" || 
+            tool.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            tool.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
 
     return (
         <main>
             <Container className="mt-2 sm:mt-4">
-                <FadeIn direction="up" delay={0.2}>
-                    <div className="mx-auto max-w-2xl lg:max-w-7xl">
+                <div className="mx-auto max-w-2xl lg:max-w-7xl">
+                    <FadeIn direction="up" delay={0.2}>
                         <header className="max-w-2xl mb-16">
                             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Power Platform Tools</h1>
                             <p className="mt-6 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
@@ -147,23 +154,42 @@ export default function ToolsPage() {
                                 Featuring <span className="font-semibold text-slate-900">{toolCount}</span> community-built tools &mdash; and more are added every week.
                             </p>
                         </header>
+                    </FadeIn>
 
-                        {/* Category Filter */}
-                        <FadeIn direction="up" delay={0.3}>
-                            <div className="mb-12 flex flex-wrap gap-3">
-                                {categories.map((category) => (
-                                    <button
-                                        key={category}
-                                        onClick={() => setSelectedCategory(category)}
-                                        className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                                            selectedCategory === category
-                                                ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
-                                        }`}
-                                    >
-                                        {category}
-                                    </button>
-                                ))}
+                    {/* Search and Category Filters */}
+                    <FadeIn direction="up" delay={0.3}>
+                        <div className="mb-8 space-y-4">
+                                {/* Search Input - Full Width */}
+                                <div className="relative max-w-2xl mx-auto">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search tools by name or description..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="block w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm"
+                                    />
+                                </div>
+                                {/* Category Filters */}
+                                <div className="flex flex-wrap justify-center gap-3">
+                                    {categories.map((category) => (
+                                        <button
+                                            key={category}
+                                            onClick={() => setSelectedCategory(category)}
+                                            className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+                                                selectedCategory === category
+                                                    ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
+                                                    : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
+                                            }`}
+                                        >
+                                            {category}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </FadeIn>
 
@@ -177,7 +203,12 @@ export default function ToolsPage() {
                             <SlideIn direction="up" delay={0.4}>
                                 <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                                     {filteredTools.map((tool, index) => (
-                                        <FadeIn key={tool.id} direction="up" delay={0.5 + index * 0.05}>
+                                        <FadeIn
+                                            key={tool.id}
+                                            direction="up"
+                                            delay={0.5 + index * 0.05}
+                                            disabled={searchQuery !== "" || selectedCategory !== "All"}
+                                        >
                                             <Link
                                                 href={`/tools/${tool.id}`}
                                                 className="card group h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col rounded-2xl bg-linear-to-br from-blue-500/70 via-purple-500/70 to-blue-600/70 p-[1.5px]"
@@ -291,8 +322,7 @@ export default function ToolsPage() {
                                 </div>
                             </div>
                         </FadeIn>
-                    </div>
-                </FadeIn>
+                </div>
             </Container>
         </main>
     );

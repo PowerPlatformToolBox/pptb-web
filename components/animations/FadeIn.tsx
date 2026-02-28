@@ -9,6 +9,7 @@ interface FadeInProps {
     delay?: number;
     direction?: "up" | "down" | "left" | "right";
     duration?: number;
+    disabled?: boolean;
 }
 
 const fadeInVariants: Variants = {
@@ -24,7 +25,11 @@ const fadeInVariants: Variants = {
     },
 };
 
-export function FadeIn({ children, className, delay = 0, direction = "up", duration = 0.5 }: FadeInProps) {
+export function FadeIn({ children, className, delay = 0, direction = "up", duration = 0.5, disabled = false }: FadeInProps) {
+    if (disabled) {
+        return <div className={className}>{children}</div>;
+    }
+
     return (
         <motion.div
             custom={direction}
