@@ -9,9 +9,10 @@ interface SlideInProps {
     delay?: number;
     direction?: "left" | "right" | "up" | "down";
     duration?: number;
+    disabled?: boolean;
 }
 
-export function SlideIn({ children, className, delay = 0, direction = "left", duration = 0.5 }: SlideInProps) {
+export function SlideIn({ children, className, delay = 0, direction = "left", duration = 0.5, disabled = false }: SlideInProps) {
     const initialPosition = {
         left: { x: -100, opacity: 0 },
         right: { x: 100, opacity: 0 },
@@ -21,8 +22,9 @@ export function SlideIn({ children, className, delay = 0, direction = "left", du
 
     return (
         <motion.div
-            initial={initialPosition[direction]}
-            whileInView={{ x: 0, y: 0, opacity: 1 }}
+            initial={disabled ? false : initialPosition[direction]}
+            animate={disabled ? { x: 0, y: 0, opacity: 1 } : undefined}
+            whileInView={disabled ? undefined : { x: 0, y: 0, opacity: 1 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration, delay, ease: "easeOut" }}
             className={className}
