@@ -198,6 +198,32 @@ export default function ToolsPage() {
                             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
                             <p className="mt-4 text-slate-600">Loading tools...</p>
                         </div>
+                    ) : filteredTools.length === 0 ? (
+                        <div className="mt-16 text-center">
+                            <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
+                                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-medium text-slate-900 mb-2">No tools found</h3>
+                            <p className="text-slate-600 max-w-md mx-auto">
+                                {searchQuery || selectedCategory !== "All"
+                                    ? "Try adjusting your search terms or category filter to find what you're looking for."
+                                    : "No tools are currently available. Check back later for new additions!"
+                                }
+                            </p>
+                            {(searchQuery || selectedCategory !== "All") && (
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setSelectedCategory("All");
+                                    }}
+                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         <SlideIn direction="up" delay={0.4}>
                             <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
