@@ -181,8 +181,8 @@ export default function ToolsPage() {
                                         key={category}
                                         onClick={() => setSelectedCategory(category)}
                                         className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${selectedCategory === category
-                                                ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
+                                            ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
+                                            : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
                                             }`}
                                     >
                                         {category}
