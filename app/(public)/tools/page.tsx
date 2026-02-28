@@ -4,7 +4,7 @@ import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Tool {
     id: string;
@@ -93,6 +93,12 @@ export default function ToolsPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState<string>("");
+    const animationsDisabled = useRef(false);
+
+    const isFiltering = searchQuery !== "" || selectedCategory !== "All";
+    if (isFiltering && !animationsDisabled.current) {
+        animationsDisabled.current = true;
+    }
 
     useEffect(() => {
         (async () => {
@@ -199,7 +205,7 @@ export default function ToolsPage() {
                             <p className="mt-4 text-slate-600">Loading tools...</p>
                         </div>
                     ) : (
-                        <SlideIn direction="up" delay={0.4} disabled={searchQuery !== "" || selectedCategory !== "All"}>
+                        <SlideIn direction="up" delay={0.4} disabled={animationsDisabled.current}>
                             {filteredTools.length === 0 ? (
                                 <div className="mt-16 text-center">
                                     <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
@@ -233,7 +239,7 @@ export default function ToolsPage() {
                                             key={tool.id}
                                             direction="up"
                                             delay={0.5 + index * 0.05}
-                                            disabled={searchQuery !== "" || selectedCategory !== "All"}
+                                            disabled={animationsDisabled.current}
                                         >
                                             <Link
                                                 href={`/tools/${tool.id}`}
