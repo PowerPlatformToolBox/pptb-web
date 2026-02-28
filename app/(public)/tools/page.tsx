@@ -4,7 +4,7 @@ import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Tool {
     id: string;
@@ -93,15 +93,6 @@ export default function ToolsPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState<string>("");
-    const animationsDisabled = useRef(false);
-
-    const isFiltering = searchQuery !== "" || selectedCategory !== "All";
-
-    useEffect(() => {
-        if (isFiltering) {
-            animationsDisabled.current = true;
-        }
-    }, [isFiltering]);
 
     useEffect(() => {
         (async () => {
@@ -177,6 +168,7 @@ export default function ToolsPage() {
                                 </div>
                                 <input
                                     type="text"
+                                    aria-label="Search tools"
                                     placeholder="Search tools by name or description..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -189,6 +181,7 @@ export default function ToolsPage() {
                                     <button
                                         key={category}
                                         onClick={() => setSelectedCategory(category)}
+                                        aria-pressed={selectedCategory === category}
                                         className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${selectedCategory === category
                                             ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
                                             : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
@@ -208,7 +201,7 @@ export default function ToolsPage() {
                             <p className="mt-4 text-slate-600">Loading tools...</p>
                         </div>
                     ) : (
-                        <SlideIn direction="up" delay={0.4} disabled={animationsDisabled.current}>
+                        <SlideIn direction="up" delay={0.4}>
                             {filteredTools.length === 0 ? (
                                 <div className="mt-16 text-center">
                                     <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
@@ -237,17 +230,12 @@ export default function ToolsPage() {
                                 </div>
                             ) : (
                                 <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                                    {filteredTools.map((tool, index) => (
-                                        <FadeIn
+                                    {filteredTools.map((tool) => (
+                                        <Link
                                             key={tool.id}
-                                            direction="up"
-                                            delay={0.5 + index * 0.05}
-                                            disabled={animationsDisabled.current}
+                                            href={`/tools/${tool.id}`}
+                                            className="card group h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col rounded-2xl bg-linear-to-br from-blue-500/70 via-purple-500/70 to-blue-600/70 p-[1.5px]"
                                         >
-                                            <Link
-                                                href={`/tools/${tool.id}`}
-                                                className="card group h-full transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col rounded-2xl bg-linear-to-br from-blue-500/70 via-purple-500/70 to-blue-600/70 p-[1.5px]"
-                                            >
                                                 <div className="p-6 flex flex-col h-full bg-white rounded-2xl">
                                                     {/* Tags Section */}
                                                     <div className="flex flex-wrap gap-2 mb-4 h-7">
@@ -324,7 +312,6 @@ export default function ToolsPage() {
                                                     </div>
                                                 </div>
                                             </Link>
-                                        </FadeIn>
                                     ))}
                                 </div>
                             )}
