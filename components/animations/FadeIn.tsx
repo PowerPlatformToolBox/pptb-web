@@ -9,6 +9,7 @@ interface FadeInProps {
     delay?: number;
     direction?: "up" | "down" | "left" | "right";
     duration?: number;
+    disabled?: boolean;
 }
 
 const fadeInVariants: Variants = {
@@ -24,15 +25,16 @@ const fadeInVariants: Variants = {
     },
 };
 
-export function FadeIn({ children, className, delay = 0, direction = "up", duration = 0.5 }: FadeInProps) {
+export function FadeIn({ children, className, delay = 0, direction = "up", duration = 0.5, disabled = false }: FadeInProps) {
     return (
         <motion.div
             custom={direction}
-            initial="hidden"
-            whileInView="visible"
+            initial={disabled ? false : "hidden"}
+            animate={disabled ? { opacity: 1, y: 0, x: 0 } : undefined}
+            whileInView={disabled ? undefined : "visible"}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration, delay }}
-            variants={fadeInVariants}
+            variants={disabled ? undefined : fadeInVariants}
             className={className}
         >
             {children}
