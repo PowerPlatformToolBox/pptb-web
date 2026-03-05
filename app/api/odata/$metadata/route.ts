@@ -11,7 +11,14 @@ export async function GET() {
         </Key>
         <Property Name="Name" Type="Edm.String" Nullable="false" />
         <Property Name="Description" Type="Edm.String" />
-        <Property Name="Icon" Type="Edm.String" />
+        <Property Name="Version" Type="Edm.String" />
+        <Property Name="License" Type="Edm.String" />
+        <Property Name="ReadmeUrl" Type="Edm.String" />
+        <Property Name="Website" Type="Edm.String" />
+        <Property Name="Repository" Type="Edm.String" />
+        <Property Name="MinAPI" Type="Edm.String" />
+        <Property Name="MaxAPI" Type="Edm.String" />
+        <Property Name="PublishedAt" Type="Edm.DateTimeOffset" />
         <Property Name="Downloads" Type="Edm.Int32" />
         <Property Name="Rating" Type="Edm.Decimal" />
         <Property Name="MAU" Type="Edm.Int32" />
