@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
             {
                 name: "Tools",
                 kind: "EntitySet",
-                url: "Tools",
+                url: "tools",
             },
         ],
     };
