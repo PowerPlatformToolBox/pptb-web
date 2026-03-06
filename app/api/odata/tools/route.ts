@@ -59,9 +59,9 @@ export async function GET(request: NextRequest) {
             MinAPI: (tool.min_api as string | null) ?? null,
             MaxAPI: (tool.max_api as string | null) ?? null,
             PublishedAt: (tool.updated_at as string | null) ?? null,
-            Downloads: (tool.tool_analytics?.[0]?.downloads as number) ?? 0,
-            Rating: (tool.tool_analytics?.[0]?.rating as number) ?? 0,
-            MAU: (tool.tool_analytics?.[0]?.mau as number) ?? 0,
+            Downloads: (tool.tool_analytics?.downloads as number) ?? 0,
+            Rating: (tool.tool_analytics?.rating as number) ?? 0,
+            MAU: (tool.tool_analytics?.mau as number) ?? 0,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             Categories: (tool.tool_categories as any[])?.map((toolCategory: any) => toolCategory.categories?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
