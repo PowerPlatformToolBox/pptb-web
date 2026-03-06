@@ -7,8 +7,9 @@ export async function GET() {
     <Schema Namespace="PPTB" xmlns="http://docs.oasis-open.org/odata/ns/edm">
       <EntityType Name="Tool">
         <Key>
-          <PropertyRef Name="Name" />
+          <PropertyRef Name="PackageName" />
         </Key>
+        <Property Name="PackageName" Type="Edm.String" Nullable="false" />
         <Property Name="Name" Type="Edm.String" Nullable="false" />
         <Property Name="Description" Type="Edm.String" />
         <Property Name="Version" Type="Edm.String" />
@@ -18,7 +19,7 @@ export async function GET() {
         <Property Name="Repository" Type="Edm.String" />
         <Property Name="MinAPI" Type="Edm.String" />
         <Property Name="MaxAPI" Type="Edm.String" />
-        <Property Name="PublishedAt" Type="Edm.DateTimeOffset" />
+        <Property Name="LastPublishedOn" Type="Edm.DateTimeOffset" />
         <Property Name="Downloads" Type="Edm.Int32" />
         <Property Name="Rating" Type="Edm.Decimal" />
         <Property Name="MAU" Type="Edm.Int32" />

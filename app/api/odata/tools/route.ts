@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `name, description, version, license, readmeurl, website, repository, min_api, max_api, updated_at,
+                `packagename, name, description, version, license, readmeurl, website, repository, min_api, max_api, published_at,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,
@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tools = (data as any[])?.map((tool) => ({
+            PackageName: tool.packagename as string,
             Name: tool.name as string,
             Description: tool.description as string,
             Version: (tool.version as string | null) ?? null,
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
             Repository: (tool.repository as string | null) ?? null,
             MinAPI: (tool.min_api as string | null) ?? null,
             MaxAPI: (tool.max_api as string | null) ?? null,
-            PublishedAt: (tool.updated_at as string | null) ?? null,
+            LastPublishedOn: (tool.published_at as string | null) ?? null,
             Downloads: (tool.tool_analytics?.downloads as number) ?? 0,
             Rating: (tool.tool_analytics?.rating as number) ?? 0,
             MAU: (tool.tool_analytics?.mau as number) ?? 0,
