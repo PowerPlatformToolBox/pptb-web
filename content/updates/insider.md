@@ -2,7 +2,7 @@
 title: "Insider"
 date: "2026-03-15"
 description: "Rolling release notes for Insider (dev) builds — all *-dev.* versions map here."
-heroImage: "/images/updates/insider.png"
+heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
