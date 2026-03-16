@@ -1,0 +1,16 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#0078D4" />
+            <stop offset="1" stop-color="#8A3FFC" />
+        </linearGradient>
+    </defs>
+    <rect width="1200" height="630" rx="48" fill="url(#g)" />
+    <rect x="48" y="48" width="1104" height="534" rx="32" fill="rgba(255,255,255,0.10)"
+        stroke="rgba(255,255,255,0.25)" />
+    <g fill="white" font-family="system-ui, -apple-system, Segoe UI, Inter, sans-serif">
+        <text x="96" y="210" font-size="56" font-weight="700">Power Platform ToolBox</text>
+        <text x="96" y="280" font-size="40" font-weight="600" opacity="0.95">Updates</text>
+        <text x="96" y="340" font-size="24" font-weight="500" opacity="0.85">Hero image placeholder</text>
+    </g>
+</svg>
