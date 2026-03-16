@@ -236,25 +236,25 @@ export default function ToolDetailsPage() {
                         </Link>
 
                         {/* Tool Header */}
-                        <header className="flex items-start gap-6 mb-8">
-                            <div className="w-20 h-20 relative flex items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 rounded-xl shrink-0">
-                                {tool.icon && tool.icon.startsWith("http") ? (
-                                    <Image src={tool.icon} alt={`${tool.name} icon`} width={64} height={64} className="object-contain" />
-                                ) : (
-                                    <span className="text-5xl">{tool.icon || "📦"}</span>
-                                )}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                    <h1 className="text-4xl font-bold tracking-tight text-slate-900">{tool.name}</h1>
-                                    {tool.categories.map((category) => (
-                                        <span key={category} className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">
-                                            {category}
-                                        </span>
-                                    ))}
+                        <header className="mb-8 space-y-4">
+                            <div className="flex items-center gap-4 sm:gap-6">
+                                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-blue-50 to-purple-50 sm:h-20 sm:w-20">
+                                    {tool.icon && tool.icon.startsWith("http") ? (
+                                        <Image src={tool.icon} alt={`${tool.name} icon`} width={64} height={64} className="h-12 w-12 object-contain sm:h-16 sm:w-16" />
+                                    ) : (
+                                        <span className="text-4xl sm:text-5xl">{tool.icon || "📦"}</span>
+                                    )}
                                 </div>
-                                <p className="text-lg text-slate-600 mb-4">{tool.description}</p>
+                                <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{tool.name}</h1>
                             </div>
+                            <div className="flex flex-wrap gap-2 sm:gap-3">
+                                {tool.categories.map((category) => (
+                                    <span key={category} className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">
+                                        {category}
+                                    </span>
+                                ))}
+                            </div>
+                            <p className="text-lg text-slate-600 mb-4">{tool.description}</p>
                         </header>
 
                         {/* Action Buttons */}

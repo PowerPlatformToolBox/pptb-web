@@ -238,7 +238,7 @@ export default function ToolsPage() {
                                         >
                                             <div className="p-6 flex flex-col h-full bg-white rounded-2xl">
                                                 {/* Tags Section */}
-                                                <div className="flex flex-wrap gap-2 mb-4 h-7">
+                                                <div className="flex flex-wrap gap-2 mb-4 min-h-7">
                                                     {tool.categories.slice(0, 3).map((category) => (
                                                         <span key={category} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
                                                             {category}

@@ -15,7 +15,7 @@ export function Footer() {
                 <div className="py-16">
                     <Logo className="mx-auto h-10 w-auto" alt="PPTB" />
                     <nav className="mt-10 text-sm" aria-label="quick links">
-                        <div className="-my-1 flex justify-center gap-x-6">
+                        <div className="-my-1 flex flex-wrap justify-center gap-x-3 gap-y-2 sm:gap-x-6 [&_a]:whitespace-nowrap">
                             <NavLink href="#features">Features</NavLink>
                             <NavLink href="#faq">FAQs</NavLink>
                             <NavLink href="/security">Security</NavLink>
@@ -36,7 +36,7 @@ export function Footer() {
                             <Image src={discordLogo} alt="Discord Logo" width={24} height={24} className="h-6 w-6 fill-slate-500 group-hover:fill-slate-700" />
                         </Link>
                     </div>
-                    <p className="mt-6 text-sm text-slate-500 sm:mt-0">Copyright &copy; {new Date().getFullYear()} Power Platform ToolBox. All rights reserved.</p>
+                    <p className="mt-6 text-sm text-center text-slate-500 sm:mt-0">Copyright &copy; {new Date().getFullYear()} Power Platform ToolBox. All rights reserved.</p>
                 </div>
             </Container>
         </footer>
