@@ -111,6 +111,121 @@ function parseSectionsByH2(markdown) {
     return sections;
 }
 
+function stripEmojiAndPunctuation(text) {
+    return (text ?? "")
+        .replace(/[\u{1F300}-\u{1FAFF}]/gu, "")
+        .replace(/[\u2600-\u27BF]/g, "")
+        .replace(/[\p{P}\p{S}]+/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function parseSectionsByHeading(markdown, levels = [2, 3]) {
+    // Parses sections for headings like "## Title" and "### Title".
+    const lines = (markdown ?? "").split(/\r?\n/);
+    const sections = new Map();
+    let current = null;
+    let buf = [];
+
+    const flush = () => {
+        if (!current) return;
+        sections.set(current, buf.join("\n").trim());
+    };
+
+    const re = /^(#{1,6})\s+(.+?)\s*$/;
+    for (const line of lines) {
+        const m = line.match(re);
+        if (m) {
+            const level = m[1].length;
+            if (levels.includes(level)) {
+                flush();
+                current = m[2].trim();
+                buf = [];
+                continue;
+            }
+        }
+        if (current) buf.push(line);
+    }
+
+    flush();
+    return sections;
+}
+
+function extractBullets(markdown) {
+    const lines = (markdown ?? "").split(/\r?\n/);
+    const bullets = [];
+    for (const raw of lines) {
+        const line = raw.trimEnd();
+        const m = line.match(/^\s*[-*+]\s+(.*)$/);
+        if (m) bullets.push(m[1].trim());
+    }
+    return bullets;
+}
+
+function normalizeBulletText(text) {
+    // Remove leading short SHA and common separators.
+    const t = (text ?? "")
+        .replace(/^[0-9a-f]{7,40}\s+/i, "")
+        .replace(/^[-–—]\s+/, "")
+        .trim();
+    return stripMarkdownInline(t);
+}
+
+function bulletsToMarkdown(bullets) {
+    const cleaned = (bullets ?? [])
+        .map(normalizeBulletText)
+        .filter(Boolean)
+        .map((b) => `- ${b}`);
+    return cleaned.length ? cleaned.join("\n") : "- N/A";
+}
+
+function isFixLike(text) {
+    return /\bfix\b|\bfixes\b|\bbug\b|\bbugfix\b|hotfix|regression|patch/i.test(text ?? "");
+}
+
+function findSectionContent(sections, keywords) {
+    for (const [key, value] of sections.entries()) {
+        const normalized = stripEmojiAndPunctuation(key).toLowerCase();
+        if (keywords.some((k) => normalized.includes(k))) return value;
+    }
+    return "";
+}
+
+function extractDevBuildInfo(markdown) {
+    const lines = (markdown ?? "").split(/\r?\n/);
+    const wanted = [
+        { label: "Version", re: /^\*\*Version:\*\*\s*(.+)\s*$/i },
+        { label: "Branch", re: /^\*\*Branch:\*\*\s*(.+)\s*$/i },
+        { label: "Commits", re: /^\*\*Commits:\*\*\s*(.+)\s*$/i },
+        { label: "Build Date", re: /^\*\*Build Date:\*\*\s*(.+)\s*$/i },
+    ];
+    const out = [];
+    for (const line of lines) {
+        for (const w of wanted) {
+            const m = line.trim().match(w.re);
+            if (m) out.push(`- ${w.label}: ${stripMarkdownInline(m[1])}`);
+        }
+    }
+    return out.length ? out.join("\n") : "- N/A";
+}
+
+function extractHighlightsFixesDev(markdown) {
+    const body = markdown ?? "";
+    const sections = parseSectionsByHeading(body, [2, 3]);
+
+    const primary = findSectionContent(sections, ["what s new", "whats new", "what s changed", "whats changed", "changes", "what is new", "new"]) || body;
+
+    const allBullets = extractBullets(primary).map(normalizeBulletText).filter(Boolean);
+    const fixBullets = allBullets.filter(isFixLike);
+    const highlightBullets = allBullets.filter((b) => !isFixLike(b));
+
+    const highlights = bulletsToMarkdown(highlightBullets.length ? highlightBullets : allBullets);
+    const fixes = bulletsToMarkdown(fixBullets);
+    const devBuild = extractDevBuildInfo(body);
+
+    return { highlights, fixes, devBuild };
+}
+
 function pickSection(sections, matcher) {
     for (const [key, value] of sections.entries()) {
         if (matcher(key.toLowerCase())) {
@@ -386,11 +501,7 @@ async function main() {
         } else {
             const tag = insiderRelease.tag_name;
             const date = toIsoDateOnly(getPublishedAt(insiderRelease));
-            const sections = parseSectionsByH2(insiderRelease.body || "");
-
-            const highlights = bulletsOrNA(pickSection(sections, (t) => t.includes("highlight")));
-            const fixes = bulletsOrNA(pickSection(sections, (t) => t.includes("fix")));
-            const devBuild = bulletsOrNA(pickSection(sections, (t) => t.includes("developer") || t.includes("build")));
+            const { highlights, fixes, devBuild } = extractHighlightsFixesDev(insiderRelease.body || "");
 
             const existing = readFileIfExists(INSIDER_PATH) ?? "";
             const { frontmatter, body } = parseFrontmatter(existing);
@@ -424,11 +535,7 @@ async function main() {
                 console.log(`[stable] ${path.relative(process.cwd(), filePath)} already exists; skipping.`);
             } else {
                 const date = toIsoDateOnly(getPublishedAt(stableRelease));
-                const sections = parseSectionsByH2(stableRelease.body || "");
-
-                const highlights = bulletsOrNA(pickSection(sections, (t) => t.includes("highlight")));
-                const fixes = bulletsOrNA(pickSection(sections, (t) => t.includes("fix")));
-                const devBuild = bulletsOrNA(pickSection(sections, (t) => t.includes("developer") || t.includes("build")));
+                const { highlights, fixes, devBuild } = extractHighlightsFixesDev(stableRelease.body || "");
 
                 const install = buildInstallSectionFromAssets(stableRelease.assets);
 
