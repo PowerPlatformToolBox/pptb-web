@@ -26,6 +26,9 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  # Prefer fine-grained PAT; fall back to classic PAT; then default token.
+                  token: ${{ secrets.GH_PAT_TOKEN || secrets.GH_CLASSIC_TOKEN || github.token }}
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -34,13 +37,16 @@ jobs:
 
             - name: Generate update markdown
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
-                  node scripts/generate-update-notes.mjs --mode "${{ inputs.mode || 'both' }}"
+                  # Used by scripts/generate-update-notes.mjs for GitHub API calls (rate limiting, etc.)
+                  GITHUB_TOKEN: ${{ secrets.GH_PAT_TOKEN || secrets.GH_CLASSIC_TOKEN || github.token }}
+              run: node scripts/generate-update-notes.mjs --mode "${{ inputs.mode || 'both' }}"
 
             - name: Create pull request
               uses: peter-evans/create-pull-request@v6
               with:
+                  # GITHUB_TOKEN PR creation can be blocked by repo/org settings.
+                  # Use a PAT to allow PR creation.
+                  token: ${{ secrets.GH_PAT_TOKEN || secrets.GH_CLASSIC_TOKEN || github.token }}
                   commit-message: "chore(updates): refresh release notes"
                   title: "chore(updates): refresh release notes"
                   body: "Automated update of content/updates from desktop-app GitHub releases."
