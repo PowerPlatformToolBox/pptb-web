@@ -186,6 +186,72 @@ Populate content as follows:
 - For **Full Changelog**, include a compare link if you can identify the previous stable tag (example):
     - `https://github.com/PowerPlatformToolBox/desktop-app/compare/vPREV...vX.Y.Z`
 
+## Automation templates (single source of truth)
+
+The scheduled GitHub Action in this repo generates markdown by reading the templates below from this file.
+If you change these templates, the automation output changes too.
+
+<!-- PPTB_TEMPLATE_STABLE_START -->
+
+```md
+---
+title: "{{TAG}}"
+date: "{{DATE}}"
+description: "{{DESCRIPTION}}"
+heroImage: "{{HERO_IMAGE}}"
+---
+
+## Highlights
+
+{{HIGHLIGHTS}}
+
+## Fixes
+
+{{FIXES}}
+
+## Developer & Build
+
+{{DEV_BUILD}}
+
+## Install
+
+{{INSTALL}}
+
+## Notes
+
+{{NOTES}}
+
+## Full Changelog
+
+{{CHANGELOG}}
+```
+
+<!-- PPTB_TEMPLATE_STABLE_END -->
+
+<!-- PPTB_TEMPLATE_INSIDER_BODY_START -->
+
+```md
+## Highlights
+
+{{HIGHLIGHTS}}
+
+## Fixes
+
+{{FIXES}}
+
+## Developer & Build
+
+{{DEV_BUILD}}
+
+## Notes
+
+{{NOTES}}
+
+{{TAIL}}
+```
+
+<!-- PPTB_TEMPLATE_INSIDER_BODY_END -->
+
 ## Quality checklist
 
 Before finishing:

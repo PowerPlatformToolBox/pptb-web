@@ -1,0 +1,49 @@
+name: Update Release Notes
+
+on:
+    schedule:
+        # Nightly (UTC) - Insider is released almost every night.
+        - cron: "20 3 * * *"
+    workflow_dispatch:
+        inputs:
+            mode:
+                description: "Which notes to update"
+                required: false
+                default: "both"
+                type: choice
+                options:
+                    - both
+                    - stable
+                    - insider
+
+jobs:
+    generate:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Generate update markdown
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  node scripts/generate-update-notes.mjs --mode "${{ inputs.mode || 'both' }}"
+
+            - name: Create pull request
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  commit-message: "chore(updates): refresh release notes"
+                  title: "chore(updates): refresh release notes"
+                  body: "Automated update of content/updates from desktop-app GitHub releases."
+                  branch: "automation/update-release-notes"
+                  delete-branch: true
+                  labels: "automation"
