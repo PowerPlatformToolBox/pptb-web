@@ -245,18 +245,36 @@ function writeIfChanged(filePath, next) {
 }
 
 async function fetchJson(url, token) {
-    const headers = {
+    const baseHeaders = {
         Accept: "application/vnd.github+json",
         "User-Agent": "pptb-web-release-notes-bot",
         "X-GitHub-Api-Version": "2022-11-28",
     };
-    if (token) headers.Authorization = `Bearer ${token}`;
 
-    const res = await fetch(url, { headers });
+    const tryFetch = async (authToken) => {
+        const headers = { ...baseHeaders };
+        if (authToken) headers.Authorization = `Bearer ${authToken}`;
+        return fetch(url, { headers });
+    };
+
+    let res = await tryFetch(token);
+
+    // Fine-grained PATs can be scoped to a single repo and may not be able to read other repos.
+    // If that happens for a public endpoint, retry without auth.
+    if (token && res.status === 403) {
+        const text = await res.text().catch(() => "");
+        if (/resource not accessible by personal access token/i.test(text)) {
+            res = await tryFetch("");
+        } else {
+            throw new Error(`GitHub API request failed: ${res.status} ${res.statusText}${text ? `\n${text}` : ""}`);
+        }
+    }
+
     if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`GitHub API request failed: ${res.status} ${res.statusText}${text ? `\n${text}` : ""}`);
     }
+
     return res.json();
 }
 
