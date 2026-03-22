@@ -18,7 +18,7 @@ heroImage: "/images/updates/Insider.png"
 ## Fixes
 
 - Fix dual-connection tab color split, swap Test/UAT env defaults, improve category and environment color UX (#476)
-- fix: deprecate showLoading and hideLoading methods in toolboxAPI (#475)
+- Deprecate `showLoading` and `hideLoading` methods in `toolboxAPI` (#475)
 - Fix: Wrong BrowserView dimensions and connection prompt after force-reload (#461)
 
 ## Developer & Build
