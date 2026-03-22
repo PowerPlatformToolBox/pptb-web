@@ -7,7 +7,7 @@ heroImage: "/images/updates/Insider.png"
 
 ## Highlights
 
-- minor change to clarify usage of metadata api functions (#474)
+- Minor change to clarify usage of Metadata API functions (#474)
 - Add a Links Hub and Multi-agent Orchestration (#470)
 - feat: Support US Government cloud (GCC High / DoD) Dataverse URLs (#469)
 - feat: Import connections from XrmToolBox XML files (#463)
