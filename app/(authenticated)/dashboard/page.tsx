@@ -26,6 +26,7 @@ interface Tool {
     icon: string;
     user_id?: string;
     status?: string;
+    packagename?: string;
     tool_categories?: Array<{
         categories: {
             id: number;
@@ -48,6 +49,7 @@ export default function DashboardPage() {
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
+    const [triggeringUpdateForToolId, setTriggeringUpdateForToolId] = useState<string | null>(null);
 
     useEffect(() => {
         // Get auth token from sessionStorage (set by layout)
@@ -120,6 +122,34 @@ export default function DashboardPage() {
         } catch (error) {
             console.error("Error updating tool:", error);
             alert(`Failed to ${action} tool. Please try again.`);
+        }
+    };
+
+    const handleTriggerUpdate = async (toolId: string) => {
+        if (!user || !authToken) return;
+
+        if (!confirm("Are you sure you want to trigger an update for this tool? This will run the update workflow.")) return;
+
+        setTriggeringUpdateForToolId(toolId);
+        try {
+            const response = await fetch(`/api/tools/${toolId}/trigger-update`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to trigger update");
+            }
+
+            alert("Update workflow triggered successfully!");
+        } catch (error) {
+            console.error("Error triggering tool update:", error);
+            alert(`Failed to trigger update: ${error instanceof Error ? error.message : "Please try again."}`);
+        } finally {
+            setTriggeringUpdateForToolId(null);
         }
     };
 
@@ -396,6 +426,14 @@ export default function DashboardPage() {
                                                                             <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
                                                                                 View
                                                                             </Link>
+                                                                            <span className="text-slate-300">|</span>
+                                                                            <button
+                                                                                onClick={() => handleTriggerUpdate(tool.id)}
+                                                                                disabled={triggeringUpdateForToolId === tool.id || tool.status === TOOL_STATUSES.DELETED}
+                                                                                className="text-green-600 hover:text-green-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                                                                            >
+                                                                                {triggeringUpdateForToolId === tool.id ? "Updating..." : "Trigger Update"}
+                                                                            </button>
                                                                             <span className="text-slate-300">|</span>
                                                                             <button
                                                                                 onClick={() => handleToolAction(tool.id, "deprecate")}
