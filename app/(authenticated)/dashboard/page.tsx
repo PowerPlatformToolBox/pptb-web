@@ -471,9 +471,18 @@ export default function DashboardPage() {
                                                                                         <div
                                                                                             className="fixed inset-0 z-10"
                                                                                             onClick={() => setOpenMoreMenuForToolId(null)}
-                                                                                            onKeyDown={(e) => e.key === "Escape" && setOpenMoreMenuForToolId(null)}
                                                                                         />
-                                                                                        <div role="menu" className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                                                                                        <div
+                                                                                            role="menu"
+                                                                                            className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                            tabIndex={-1}
+                                                                                            autoFocus
+                                                                                            onKeyDown={(e) => {
+                                                                                                if (e.key === "Escape") {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                }
+                                                                                            }}
+                                                                                        >
                                                                                             <button
                                                                                                 role="menuitem"
                                                                                                 onClick={() => {
