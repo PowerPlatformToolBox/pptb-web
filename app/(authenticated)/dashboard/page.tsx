@@ -366,7 +366,7 @@ export default function DashboardPage() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="card overflow-hidden">
+                                <div className="card overflow-visible">
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-slate-200">
                                             <thead className="bg-slate-50">
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                                                 {sortedTools.map((tool) => {
                                                     const analytics = tool.tool_analytics;
                                                     return (
-                                                        <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
+                                                        <tr key={tool.id} className={`hover:bg-slate-50 transition-colors${openMoreMenuForToolId === tool.id ? " relative z-10" : ""}`}>
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="flex items-center gap-3">
                                                                     <Image
