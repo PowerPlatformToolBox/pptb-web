@@ -1,6 +1,5 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-validation";
-import { extractVersionInfo } from "@/lib/version-extraction";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
 
         // Fetch the tool and verify ownership
-        const { data: tool, error: fetchError } = await supabase.from("tools").select("id, user_id, packagename").eq("id", toolId).single();
+        const { data: tool, error: fetchError } = await supabase.from("tools").select("id, user_id, packagename, version").eq("id", toolId).single();
 
         if (fetchError || !tool) {
             return NextResponse.json({ error: "Tool not found" }, { status: 404 });
@@ -110,12 +109,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 },
                 { status: 400 },
             );
-        }
-
-        // Extract version info (best-effort)
-        const versionInfoResult = await extractVersionInfo(packageName);
-        if (!versionInfoResult.success) {
-            console.warn(`[trigger-update] Could not extract version info for ${packageName}: ${versionInfoResult.error}`);
         }
 
         // Invoke the GitHub update workflow for this specific tool

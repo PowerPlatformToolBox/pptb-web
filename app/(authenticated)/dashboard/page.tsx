@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
@@ -52,6 +52,7 @@ export default function DashboardPage() {
     const [authToken, setAuthToken] = useState<string>("");
     const [triggeringUpdateForToolId, setTriggeringUpdateForToolId] = useState<string | null>(null);
     const [openMoreMenuForToolId, setOpenMoreMenuForToolId] = useState<string | null>(null);
+    const moreMenuAnchorRef = useRef<DOMRect | null>(null);
     const [validationModal, setValidationModal] = useState<{
         packageName: string;
         errors: string[];
@@ -93,6 +94,21 @@ export default function DashboardPage() {
             }
         })();
     }, []);
+
+    // Close the "More" dropdown on scroll or resize to avoid stale fixed positioning
+    useEffect(() => {
+        if (openMoreMenuForToolId === null) return;
+        const close = () => {
+            setOpenMoreMenuForToolId(null);
+            moreMenuAnchorRef.current = null;
+        };
+        window.addEventListener("scroll", close, true);
+        window.addEventListener("resize", close);
+        return () => {
+            window.removeEventListener("scroll", close, true);
+            window.removeEventListener("resize", close);
+        };
+    }, [openMoreMenuForToolId]);
 
     // Sign out logic handled in Header component.
 
@@ -385,7 +401,7 @@ export default function DashboardPage() {
                                                 {sortedTools.map((tool) => {
                                                     const analytics = tool.tool_analytics;
                                                     return (
-                                                        <tr key={tool.id} className={`hover:bg-slate-50 transition-colors${openMoreMenuForToolId === tool.id ? " relative z-10" : ""}`}>
+                                                        <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="flex items-center gap-3">
                                                                     <Image
@@ -456,7 +472,11 @@ export default function DashboardPage() {
                                                                             <span className="text-slate-300">|</span>
                                                                             <div className="relative">
                                                                                 <button
-                                                                                    onClick={() => setOpenMoreMenuForToolId(openMoreMenuForToolId === tool.id ? null : tool.id)}
+                                                                                    onClick={(e) => {
+                                                                                        const newId = openMoreMenuForToolId === tool.id ? null : tool.id;
+                                                                                        moreMenuAnchorRef.current = newId ? e.currentTarget.getBoundingClientRect() : null;
+                                                                                        setOpenMoreMenuForToolId(newId);
+                                                                                    }}
                                                                                     aria-haspopup="true"
                                                                                     aria-expanded={openMoreMenuForToolId === tool.id}
                                                                                     className="flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium"
@@ -469,15 +489,26 @@ export default function DashboardPage() {
                                                                                 {openMoreMenuForToolId === tool.id && (
                                                                                     <>
                                                                                         <div
-                                                                                            className="fixed inset-0 z-10"
-                                                                                            onClick={() => setOpenMoreMenuForToolId(null)}
-                                                                                            onKeyDown={(e) => e.key === "Escape" && setOpenMoreMenuForToolId(null)}
+                                                                                            className="fixed inset-0 z-[9998]"
+                                                                                            onClick={() => { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; }}
+                                                                                            onKeyDown={(e) => { if (e.key === "Escape") { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; } }}
                                                                                         />
-                                                                                        <div role="menu" className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                                                                                        <div
+                                                                                            role="menu"
+                                                                                            tabIndex={-1}
+                                                                                            autoFocus
+                                                                                            className="fixed z-[9999] w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                            style={moreMenuAnchorRef.current ? {
+                                                                                                top: moreMenuAnchorRef.current.bottom + 4,
+                                                                                                left: moreMenuAnchorRef.current.right - 192,
+                                                                                            } : undefined}
+                                                                                            onKeyDown={(e) => { if (e.key === "Escape") { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; } }}
+                                                                                        >
                                                                                             <button
                                                                                                 role="menuitem"
                                                                                                 onClick={() => {
                                                                                                     setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
                                                                                                     handleTriggerUpdate(tool.id);
                                                                                                 }}
                                                                                                 disabled={triggeringUpdateForToolId !== null || tool.status === TOOL_STATUSES.DELETED}
@@ -492,6 +523,7 @@ export default function DashboardPage() {
                                                                                                 role="menuitem"
                                                                                                 onClick={() => {
                                                                                                     setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
                                                                                                     handleToolAction(tool.id, "deprecate");
                                                                                                 }}
                                                                                                 disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
@@ -507,6 +539,7 @@ export default function DashboardPage() {
                                                                                                 role="menuitem"
                                                                                                 onClick={() => {
                                                                                                     setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
                                                                                                     handleToolAction(tool.id, "delete");
                                                                                                 }}
                                                                                                 disabled={tool.status === TOOL_STATUSES.DELETED}
