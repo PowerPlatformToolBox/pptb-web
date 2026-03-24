@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
                 name, 
                 description, 
                 icon, 
+                packagename,
                 user_id,
                 status,
                 tool_analytics (downloads, rating, mau),
@@ -79,10 +80,28 @@ export async function GET(request: NextRequest) {
                 categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
             })) || [];
 
+        // Fetch failed tool updates for the authenticated user's tools
+        let failedToolUpdates: Array<{ id: string; package_name: string; version: string; validation_warnings: string[] | null }> = [];
+        if (user) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const userToolPackageNames = (toolsData || []).filter((t: any) => t.user_id === user.id).map((t: any) => t.packagename).filter(Boolean);
+
+            if (userToolPackageNames.length > 0) {
+                const { data: failedUpdates } = await supabase
+                    .from("tool_updates")
+                    .select("id, package_name, version, validation_warnings")
+                    .in("package_name", userToolPackageNames)
+                    .eq("status", "validation_failed");
+
+                failedToolUpdates = failedUpdates || [];
+            }
+        }
+
         return NextResponse.json({
             user,
             isAdmin,
             tools: transformedTools,
+            failedToolUpdates,
         });
     } catch (error) {
         console.error("Error fetching dashboard data:", error);

@@ -24,6 +24,7 @@ interface Tool {
     name: string;
     description: string;
     icon: string;
+    packagename?: string;
     user_id?: string;
     status?: string;
     tool_categories?: Array<{
@@ -40,9 +41,17 @@ interface Tool {
     };
 }
 
+interface FailedToolUpdate {
+    id: string;
+    package_name: string;
+    version: string;
+    validation_warnings: string[] | null;
+}
+
 export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>([]);
+    const [failedToolUpdates, setFailedToolUpdates] = useState<FailedToolUpdate[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "mau">("downloads");
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
@@ -69,12 +78,13 @@ export default function DashboardPage() {
 
                 if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
-                const { user: dashUser, isAdmin: admin, tools: dashTools } = await response.json();
+                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates } = await response.json();
 
                 if (dashUser) {
                     setUser(dashUser);
                     setIsAdmin(admin);
                     setTools(dashTools);
+                    setFailedToolUpdates(failedUpdates || []);
                 }
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
@@ -295,6 +305,42 @@ export default function DashboardPage() {
                             </div>
                         </FadeIn>
 
+                        {/* Failed Tool Updates Alert - shown only in My Tools view */}
+                        {viewMode === "my" && failedToolUpdates.length > 0 && (
+                            <FadeIn direction="up" delay={0.45}>
+                                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="shrink-0">
+                                            <svg className="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-semibold text-red-800">
+                                                {failedToolUpdates.length === 1
+                                                    ? "1 tool update failed validation"
+                                                    : `${failedToolUpdates.length} tool updates failed validation`}
+                                            </h3>
+                                            <p className="mt-1 text-sm text-red-700">
+                                                The following tool{failedToolUpdates.length > 1 ? "s have" : " has"} a pending update that failed validation. Please review and fix the issues to publish the update.
+                                            </p>
+                                            <ul className="mt-2 space-y-1">
+                                                {failedToolUpdates.map((update) => (
+                                                    <li key={update.id} className="text-sm text-red-700">
+                                                        <span className="font-medium">{update.package_name}</span>
+                                                        {update.version && <span className="ml-1 text-red-600">v{update.version}</span>}
+                                                        {update.validation_warnings && update.validation_warnings.length > 0 && (
+                                                            <span className="ml-2 text-red-600">({update.validation_warnings[0]}{update.validation_warnings.length > 1 ? ` +${update.validation_warnings.length - 1} more` : ""})</span>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </FadeIn>
+                        )}
+
                         {/* Tools Table */}
                         <SlideIn direction="up" delay={0.5}>
                             {sortedTools.length === 0 ? (
@@ -336,6 +382,9 @@ export default function DashboardPage() {
                                             <tbody className="bg-white divide-y divide-slate-200">
                                                 {sortedTools.map((tool) => {
                                                     const analytics = tool.tool_analytics;
+                                                    const toolFailedUpdate = viewMode === "my"
+                                                        ? failedToolUpdates.find((u) => u.package_name === tool.packagename)
+                                                        : undefined;
                                                     return (
                                                         <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -348,7 +397,17 @@ export default function DashboardPage() {
                                                                         className="rounded"
                                                                     />
                                                                     <div>
-                                                                        <div className="text-sm font-medium text-slate-900">{tool.name}</div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium text-slate-900">{tool.name}</span>
+                                                                            {toolFailedUpdate && (
+                                                                                <span
+                                                                                    className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full"
+                                                                                    title="This tool has a pending update that failed validation"
+                                                                                >
+                                                                                    Update failed
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                         <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
                                                                             {tool.description}
                                                                         </div>
