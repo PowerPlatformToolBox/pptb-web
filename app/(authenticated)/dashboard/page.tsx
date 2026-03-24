@@ -50,6 +50,11 @@ export default function DashboardPage() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
     const [triggeringUpdateForToolId, setTriggeringUpdateForToolId] = useState<string | null>(null);
+    const [validationModal, setValidationModal] = useState<{
+        packageName: string;
+        errors: string[];
+        warnings: string[];
+    } | null>(null);
 
     useEffect(() => {
         // Get auth token from sessionStorage (set by layout)
@@ -141,7 +146,17 @@ export default function DashboardPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to trigger update");
+                if (errorData.step === "validation" && errorData.details) {
+                    const tool = tools.find((t) => t.id === toolId);
+                    setValidationModal({
+                        packageName: tool?.packagename || toolId,
+                        errors: errorData.details.errors || [],
+                        warnings: errorData.details.warnings || [],
+                    });
+                } else {
+                    throw new Error(errorData.error || "Failed to trigger update");
+                }
+                return;
             }
 
             alert("Update workflow triggered successfully!");
@@ -429,7 +444,7 @@ export default function DashboardPage() {
                                                                             <span className="text-slate-300">|</span>
                                                                             <button
                                                                                 onClick={() => handleTriggerUpdate(tool.id)}
-                                                                                disabled={triggeringUpdateForToolId === tool.id || tool.status === TOOL_STATUSES.DELETED}
+                                                                                disabled={triggeringUpdateForToolId !== null || tool.status === TOOL_STATUSES.DELETED}
                                                                                 className="text-green-600 hover:text-green-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
                                                                             >
                                                                                 {triggeringUpdateForToolId === tool.id ? "Updating..." : "Trigger Update"}
@@ -476,6 +491,78 @@ export default function DashboardPage() {
                     </div>
                 </FadeIn>
             </Container>
+
+            {/* Validation Error Modal */}
+            {validationModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="validation-modal-title"
+                    onKeyDown={(e) => e.key === "Escape" && setValidationModal(null)}
+                >
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setValidationModal(null)} />
+                    <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
+                        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                                    <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 id="validation-modal-title" className="text-lg font-semibold text-slate-900">Package Validation Failed</h2>
+                                    <p className="text-sm text-slate-500">
+                                        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">{validationModal.packageName}</code>
+                                    </p>
+                                </div>
+                            </div>
+                            <button onClick={() => setValidationModal(null)} className="ml-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto px-6 py-4 space-y-4" tabIndex={0}>
+                            {validationModal.errors.length > 0 && (
+                                <div>
+                                    <h3 className="mb-2 text-sm font-semibold text-red-700">Errors ({validationModal.errors.length})</h3>
+                                    <ul className="space-y-1.5">
+                                        {validationModal.errors.map((err, i) => (
+                                            <li key={`error-${i}`} className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                                                <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                {err}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {validationModal.warnings.length > 0 && (
+                                <div>
+                                    <h3 className="mb-2 text-sm font-semibold text-amber-700">Warnings ({validationModal.warnings.length})</h3>
+                                    <ul className="space-y-1.5">
+                                        {validationModal.warnings.map((warn, i) => (
+                                            <li key={`warning-${i}`} className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                                <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                {warn}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+                            <button onClick={() => setValidationModal(null)} className="btn-primary">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
