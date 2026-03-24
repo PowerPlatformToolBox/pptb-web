@@ -555,6 +555,8 @@ export default function DashboardPage() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="validation-modal-title"
+                    tabIndex={-1}
+                    autoFocus
                     onKeyDown={(e) => e.key === "Escape" && setValidationModal(null)}
                 >
                     <div className="absolute inset-0 bg-black/50" onClick={() => setValidationModal(null)} />
