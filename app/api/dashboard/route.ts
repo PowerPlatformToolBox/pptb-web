@@ -13,6 +13,36 @@ function getSupabaseClient() {
     return createClient(supabaseUrl, supabaseServiceKey);
 }
 
+/**
+ * Compare two semver strings. Returns:
+ *  > 0 if a > b
+ *  0   if a === b
+ *  < 0 if a < b
+ * Non-numeric pre-release segments are compared lexicographically.
+ */
+function compareSemver(a: string, b: string): number {
+    const parse = (v: string) =>
+        v
+            .replace(/^v/, "")
+            .split(".")
+            .map((p) => {
+                const n = parseInt(p, 10);
+                return isNaN(n) ? p : n;
+            });
+
+    const aParts = parse(a);
+    const bParts = parse(b);
+    const len = Math.max(aParts.length, bParts.length);
+
+    for (let i = 0; i < len; i++) {
+        const ap = aParts[i] ?? 0;
+        const bp = bParts[i] ?? 0;
+        if (ap < bp) return -1;
+        if (ap > bp) return 1;
+    }
+    return 0;
+}
+
 export async function GET(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
@@ -57,6 +87,7 @@ export async function GET(request: NextRequest) {
                 description, 
                 icon, 
                 packagename,
+                version,
                 user_id,
                 status,
                 tool_analytics (downloads, rating, mau),
@@ -84,7 +115,9 @@ export async function GET(request: NextRequest) {
         let failedToolUpdates: Array<{ id: string; package_name: string; version: string; validation_warnings: string[] | null }> = [];
         if (user) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const userToolPackageNames = (toolsData || []).filter((t: any) => t.user_id === user.id).map((t: any) => t.packagename).filter(Boolean);
+            const userTools = (toolsData || []).filter((t: any) => t.user_id === user.id && t.packagename);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const userToolPackageNames = userTools.map((t: any) => t.packagename);
 
             if (userToolPackageNames.length > 0) {
                 const { data: failedUpdates } = await supabase
@@ -93,7 +126,15 @@ export async function GET(request: NextRequest) {
                     .in("package_name", userToolPackageNames)
                     .eq("status", "validation_failed");
 
-                failedToolUpdates = failedUpdates || [];
+                if (failedUpdates) {
+                    // Only surface failed updates whose version is >= the tool's current published version
+                    failedToolUpdates = failedUpdates.filter((update) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const tool = userTools.find((t: any) => t.packagename === update.package_name);
+                        if (!tool || !tool.version || !update.version) return true;
+                        return compareSemver(update.version, tool.version) >= 0;
+                    });
+                }
             }
         }
 
