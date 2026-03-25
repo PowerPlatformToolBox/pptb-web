@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
@@ -152,6 +152,12 @@ export default function DashboardPage() {
                 return 0;
         }
     });
+
+    // Precompute a Set of package names with failed updates for O(1) row lookups
+    const failedUpdatePackageNames = useMemo(
+        () => new Set(failedToolUpdates.map((u) => u.package_name)),
+        [failedToolUpdates],
+    );
 
     if (loading) {
         return (
@@ -382,9 +388,7 @@ export default function DashboardPage() {
                                             <tbody className="bg-white divide-y divide-slate-200">
                                                 {sortedTools.map((tool) => {
                                                     const analytics = tool.tool_analytics;
-                                                    const toolFailedUpdate = viewMode === "my"
-                                                        ? failedToolUpdates.find((u) => u.package_name === tool.packagename)
-                                                        : undefined;
+                                                    const toolHasFailedUpdate = viewMode === "my" && !!tool.packagename && failedUpdatePackageNames.has(tool.packagename);
                                                     return (
                                                         <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -399,7 +403,7 @@ export default function DashboardPage() {
                                                                     <div>
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="text-sm font-medium text-slate-900">{tool.name}</span>
-                                                                            {toolFailedUpdate && (
+                                                                            {toolHasFailedUpdate && (
                                                                                 <span
                                                                                     className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full"
                                                                                     title="This tool has a pending update that failed validation"
