@@ -27,7 +27,6 @@ interface Tool {
     packagename?: string;
     user_id?: string;
     status?: string;
-    packagename?: string;
     version?: string;
     tool_categories?: Array<{
         categories: {
@@ -217,10 +216,7 @@ export default function DashboardPage() {
     });
 
     // Precompute a Set of package names with failed updates for O(1) row lookups
-    const failedUpdatePackageNames = useMemo(
-        () => new Set(failedToolUpdates.map((u) => u.package_name)),
-        [failedToolUpdates],
-    );
+    const failedUpdatePackageNames = useMemo(() => new Set(failedToolUpdates.map((u) => u.package_name)), [failedToolUpdates]);
 
     if (loading) {
         return (
@@ -381,17 +377,21 @@ export default function DashboardPage() {
                                     <div className="flex items-start gap-3">
                                         <div className="shrink-0">
                                             <svg className="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                                />
                                             </svg>
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="text-sm font-semibold text-red-800">
-                                                {failedToolUpdates.length === 1
-                                                    ? "1 tool update failed validation"
-                                                    : `${failedToolUpdates.length} tool updates failed validation`}
+                                                {failedToolUpdates.length === 1 ? "1 tool update failed validation" : `${failedToolUpdates.length} tool updates failed validation`}
                                             </h3>
                                             <p className="mt-1 text-sm text-red-700">
-                                                The following tool{failedToolUpdates.length > 1 ? "s have" : " has"} a pending update that failed validation. Please review and fix the issues to publish the update.
+                                                The following tool{failedToolUpdates.length > 1 ? "s have" : " has"} a pending update that failed validation. Please review and fix the issues to
+                                                publish the update.
                                             </p>
                                             <ul className="mt-2 space-y-1">
                                                 {failedToolUpdates.map((update) => (
@@ -399,7 +399,10 @@ export default function DashboardPage() {
                                                         <span className="font-medium">{update.package_name}</span>
                                                         {update.version && <span className="ml-1 text-red-600">v{update.version}</span>}
                                                         {update.validation_warnings && update.validation_warnings.length > 0 && (
-                                                            <span className="ml-2 text-red-600">({update.validation_warnings[0]}{update.validation_warnings.length > 1 ? ` +${update.validation_warnings.length - 1} more` : ""})</span>
+                                                            <span className="ml-2 text-red-600">
+                                                                ({update.validation_warnings[0]}
+                                                                {update.validation_warnings.length > 1 ? ` +${update.validation_warnings.length - 1} more` : ""})
+                                                            </span>
                                                         )}
                                                     </li>
                                                 ))}
@@ -553,19 +556,36 @@ export default function DashboardPage() {
                                                                                     <>
                                                                                         <div
                                                                                             className="fixed inset-0 z-[9998]"
-                                                                                            onClick={() => { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; }}
-                                                                                            onKeyDown={(e) => { if (e.key === "Escape") { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; } }}
+                                                                                            onClick={() => {
+                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                moreMenuAnchorRef.current = null;
+                                                                                            }}
+                                                                                            onKeyDown={(e) => {
+                                                                                                if (e.key === "Escape") {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                }
+                                                                                            }}
                                                                                         />
                                                                                         <div
                                                                                             role="menu"
                                                                                             tabIndex={-1}
                                                                                             autoFocus
                                                                                             className="fixed z-[9999] w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-                                                                                            style={moreMenuAnchorRef.current ? {
-                                                                                                top: moreMenuAnchorRef.current.bottom + 4,
-                                                                                                left: moreMenuAnchorRef.current.right - 192,
-                                                                                            } : undefined}
-                                                                                            onKeyDown={(e) => { if (e.key === "Escape") { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; } }}
+                                                                                            style={
+                                                                                                moreMenuAnchorRef.current
+                                                                                                    ? {
+                                                                                                          top: moreMenuAnchorRef.current.bottom + 4,
+                                                                                                          left: moreMenuAnchorRef.current.right - 192,
+                                                                                                      }
+                                                                                                    : undefined
+                                                                                            }
+                                                                                            onKeyDown={(e) => {
+                                                                                                if (e.key === "Escape") {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                }
+                                                                                            }}
                                                                                         >
                                                                                             <button
                                                                                                 role="menuitem"
@@ -578,7 +598,12 @@ export default function DashboardPage() {
                                                                                                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-400"
                                                                                             >
                                                                                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                                                    <path
+                                                                                                        strokeLinecap="round"
+                                                                                                        strokeLinejoin="round"
+                                                                                                        strokeWidth={2}
+                                                                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                                                                                    />
                                                                                                 </svg>
                                                                                                 {triggeringUpdateForToolId === tool.id ? "Updating..." : "Trigger Update"}
                                                                                             </button>
@@ -593,7 +618,12 @@ export default function DashboardPage() {
                                                                                                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-400"
                                                                                             >
                                                                                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                                                                                    <path
+                                                                                                        strokeLinecap="round"
+                                                                                                        strokeLinejoin="round"
+                                                                                                        strokeWidth={2}
+                                                                                                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                                                                                                    />
                                                                                                 </svg>
                                                                                                 {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
                                                                                             </button>
@@ -609,7 +639,12 @@ export default function DashboardPage() {
                                                                                                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
                                                                                             >
                                                                                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                                    <path
+                                                                                                        strokeLinecap="round"
+                                                                                                        strokeLinejoin="round"
+                                                                                                        strokeWidth={2}
+                                                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                                    />
                                                                                                 </svg>
                                                                                                 {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
                                                                                             </button>
@@ -661,11 +696,18 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-3">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                                     <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                        />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h2 id="validation-modal-title" className="text-lg font-semibold text-slate-900">Package Validation Failed</h2>
+                                    <h2 id="validation-modal-title" className="text-lg font-semibold text-slate-900">
+                                        Package Validation Failed
+                                    </h2>
                                     <p className="text-sm text-slate-500">
                                         <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">{validationModal.packageName}</code>
                                     </p>
@@ -700,7 +742,12 @@ export default function DashboardPage() {
                                         {validationModal.warnings.map((warn, i) => (
                                             <li key={`warning-${i}`} className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
                                                 <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                                    />
                                                 </svg>
                                                 {warn}
                                             </li>
