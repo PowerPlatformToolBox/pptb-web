@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
@@ -26,6 +26,8 @@ interface Tool {
     icon: string;
     user_id?: string;
     status?: string;
+    packagename?: string;
+    version?: string;
     tool_categories?: Array<{
         categories: {
             id: number;
@@ -48,6 +50,14 @@ export default function DashboardPage() {
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
+    const [triggeringUpdateForToolId, setTriggeringUpdateForToolId] = useState<string | null>(null);
+    const [openMoreMenuForToolId, setOpenMoreMenuForToolId] = useState<string | null>(null);
+    const moreMenuAnchorRef = useRef<DOMRect | null>(null);
+    const [validationModal, setValidationModal] = useState<{
+        packageName: string;
+        errors: string[];
+        warnings: string[];
+    } | null>(null);
 
     useEffect(() => {
         // Get auth token from sessionStorage (set by layout)
@@ -85,6 +95,21 @@ export default function DashboardPage() {
         })();
     }, []);
 
+    // Close the "More" dropdown on scroll or resize to avoid stale fixed positioning
+    useEffect(() => {
+        if (openMoreMenuForToolId === null) return;
+        const close = () => {
+            setOpenMoreMenuForToolId(null);
+            moreMenuAnchorRef.current = null;
+        };
+        window.addEventListener("scroll", close, true);
+        window.addEventListener("resize", close);
+        return () => {
+            window.removeEventListener("scroll", close, true);
+            window.removeEventListener("resize", close);
+        };
+    }, [openMoreMenuForToolId]);
+
     // Sign out logic handled in Header component.
 
     const handleToolAction = async (toolId: string, action: "deprecate" | "delete") => {
@@ -120,6 +145,44 @@ export default function DashboardPage() {
         } catch (error) {
             console.error("Error updating tool:", error);
             alert(`Failed to ${action} tool. Please try again.`);
+        }
+    };
+
+    const handleTriggerUpdate = async (toolId: string) => {
+        if (!user || !authToken) return;
+
+        if (!confirm("Are you sure you want to trigger an update for this tool? This will run the update workflow.")) return;
+
+        setTriggeringUpdateForToolId(toolId);
+        try {
+            const response = await fetch(`/api/tools/${toolId}/trigger-update`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.step === "validation" && errorData.details) {
+                    const tool = tools.find((t) => t.id === toolId);
+                    setValidationModal({
+                        packageName: tool?.packagename || toolId,
+                        errors: errorData.details.errors || [],
+                        warnings: errorData.details.warnings || [],
+                    });
+                } else {
+                    throw new Error(errorData.error || "Failed to trigger update");
+                }
+                return;
+            }
+
+            alert("Update workflow triggered successfully!");
+        } catch (error) {
+            console.error("Error triggering tool update:", error);
+            alert(`Failed to trigger update: ${error instanceof Error ? error.message : "Please try again."}`);
+        } finally {
+            setTriggeringUpdateForToolId(null);
         }
     };
 
@@ -319,13 +382,14 @@ export default function DashboardPage() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="card overflow-hidden">
+                                <div className="card overflow-visible">
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-slate-200">
                                             <thead className="bg-slate-50">
                                                 <tr>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tool</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                                                    {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Version</th>}
                                                     {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>}
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Downloads</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rating</th>
@@ -369,6 +433,15 @@ export default function DashboardPage() {
                                                                 </div>
                                                             </td>
                                                             {viewMode === "my" && (
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                    {tool.version ? (
+                                                                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
+                                                                    ) : (
+                                                                        <span className="text-slate-400">--</span>
+                                                                    )}
+                                                                </td>
+                                                            )}
+                                                            {viewMode === "my" && (
                                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                                     {tool.status === TOOL_STATUSES.DEPRECATED ? (
                                                                         <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Deprecated</span>
@@ -390,28 +463,97 @@ export default function DashboardPage() {
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "--"}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                <div className="flex gap-2">
+                                                                <div className="flex items-center gap-2">
                                                                     {viewMode === "my" ? (
                                                                         <>
                                                                             <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
                                                                                 View
                                                                             </Link>
                                                                             <span className="text-slate-300">|</span>
-                                                                            <button
-                                                                                onClick={() => handleToolAction(tool.id, "deprecate")}
-                                                                                disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
-                                                                                className="text-amber-600 hover:text-amber-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
-                                                                            >
-                                                                                {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
-                                                                            </button>
-                                                                            <span className="text-slate-300">|</span>
-                                                                            <button
-                                                                                onClick={() => handleToolAction(tool.id, "delete")}
-                                                                                disabled={tool.status === TOOL_STATUSES.DELETED}
-                                                                                className="text-red-600 hover:text-red-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
-                                                                            >
-                                                                                {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
-                                                                            </button>
+                                                                            <div className="relative">
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        const newId = openMoreMenuForToolId === tool.id ? null : tool.id;
+                                                                                        moreMenuAnchorRef.current = newId ? e.currentTarget.getBoundingClientRect() : null;
+                                                                                        setOpenMoreMenuForToolId(newId);
+                                                                                    }}
+                                                                                    aria-haspopup="true"
+                                                                                    aria-expanded={openMoreMenuForToolId === tool.id}
+                                                                                    className="flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium"
+                                                                                >
+                                                                                    More
+                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                                {openMoreMenuForToolId === tool.id && (
+                                                                                    <>
+                                                                                        <div
+                                                                                            className="fixed inset-0 z-[9998]"
+                                                                                            onClick={() => { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; }}
+                                                                                            onKeyDown={(e) => { if (e.key === "Escape") { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; } }}
+                                                                                        />
+                                                                                        <div
+                                                                                            role="menu"
+                                                                                            tabIndex={-1}
+                                                                                            autoFocus
+                                                                                            className="fixed z-[9999] w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                            style={moreMenuAnchorRef.current ? {
+                                                                                                top: moreMenuAnchorRef.current.bottom + 4,
+                                                                                                left: moreMenuAnchorRef.current.right - 192,
+                                                                                            } : undefined}
+                                                                                            onKeyDown={(e) => { if (e.key === "Escape") { setOpenMoreMenuForToolId(null); moreMenuAnchorRef.current = null; } }}
+                                                                                        >
+                                                                                            <button
+                                                                                                role="menuitem"
+                                                                                                onClick={() => {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                    handleTriggerUpdate(tool.id);
+                                                                                                }}
+                                                                                                disabled={triggeringUpdateForToolId !== null || tool.status === TOOL_STATUSES.DELETED}
+                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                            >
+                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                                                </svg>
+                                                                                                {triggeringUpdateForToolId === tool.id ? "Updating..." : "Trigger Update"}
+                                                                                            </button>
+                                                                                            <button
+                                                                                                role="menuitem"
+                                                                                                onClick={() => {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                    handleToolAction(tool.id, "deprecate");
+                                                                                                }}
+                                                                                                disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
+                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                            >
+                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                                                                                </svg>
+                                                                                                {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
+                                                                                            </button>
+                                                                                            <div className="my-1 border-t border-slate-100" />
+                                                                                            <button
+                                                                                                role="menuitem"
+                                                                                                onClick={() => {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                    handleToolAction(tool.id, "delete");
+                                                                                                }}
+                                                                                                disabled={tool.status === TOOL_STATUSES.DELETED}
+                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                            >
+                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                                </svg>
+                                                                                                {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
                                                                         </>
                                                                     ) : (
                                                                         <>
@@ -438,6 +580,80 @@ export default function DashboardPage() {
                     </div>
                 </FadeIn>
             </Container>
+
+            {/* Validation Error Modal */}
+            {validationModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="validation-modal-title"
+                    tabIndex={-1}
+                    autoFocus
+                    onKeyDown={(e) => e.key === "Escape" && setValidationModal(null)}
+                >
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setValidationModal(null)} />
+                    <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
+                        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                                    <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 id="validation-modal-title" className="text-lg font-semibold text-slate-900">Package Validation Failed</h2>
+                                    <p className="text-sm text-slate-500">
+                                        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">{validationModal.packageName}</code>
+                                    </p>
+                                </div>
+                            </div>
+                            <button onClick={() => setValidationModal(null)} className="ml-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto px-6 py-4 space-y-4" tabIndex={0}>
+                            {validationModal.errors.length > 0 && (
+                                <div>
+                                    <h3 className="mb-2 text-sm font-semibold text-red-700">Errors ({validationModal.errors.length})</h3>
+                                    <ul className="space-y-1.5">
+                                        {validationModal.errors.map((err, i) => (
+                                            <li key={`error-${i}`} className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                                                <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                {err}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {validationModal.warnings.length > 0 && (
+                                <div>
+                                    <h3 className="mb-2 text-sm font-semibold text-amber-700">Warnings ({validationModal.warnings.length})</h3>
+                                    <ul className="space-y-1.5">
+                                        {validationModal.warnings.map((warn, i) => (
+                                            <li key={`warning-${i}`} className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                                <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                {warn}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+                            <button onClick={() => setValidationModal(null)} className="btn-primary">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

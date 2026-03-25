@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
                 icon, 
                 user_id,
                 status,
+                packagename,
+                version,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (
                     categories (id, name)
