@@ -13,6 +13,36 @@ function getSupabaseClient() {
     return createClient(supabaseUrl, supabaseServiceKey);
 }
 
+/**
+ * Compare two semver strings. Returns:
+ *  > 0 if a > b
+ *  0   if a === b
+ *  < 0 if a < b
+ * Non-numeric pre-release segments are compared lexicographically.
+ */
+function compareSemver(a: string, b: string): number {
+    const parse = (v: string) =>
+        v
+            .replace(/^v/, "")
+            .split(".")
+            .map((p) => {
+                const n = parseInt(p, 10);
+                return isNaN(n) ? p : n;
+            });
+
+    const aParts = parse(a);
+    const bParts = parse(b);
+    const len = Math.max(aParts.length, bParts.length);
+
+    for (let i = 0; i < len; i++) {
+        const ap = aParts[i] ?? 0;
+        const bp = bParts[i] ?? 0;
+        if (ap < bp) return -1;
+        if (ap > bp) return 1;
+    }
+    return 0;
+}
+
 export async function GET(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
@@ -56,6 +86,8 @@ export async function GET(request: NextRequest) {
                 name, 
                 description, 
                 icon, 
+                packagename,
+                version,
                 user_id,
                 status,
                 packagename,
@@ -81,10 +113,38 @@ export async function GET(request: NextRequest) {
                 categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
             })) || [];
 
+        // Fetch failed tool updates for the authenticated user's tools
+        let failedToolUpdates: Array<{ id: string; package_name: string; version: string; validation_warnings: string[] | null }> = [];
+        if (user) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const userTools = (toolsData || []).filter((t: any) => t.user_id === user.id && t.packagename);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const userToolPackageNames = userTools.map((t: any) => t.packagename);
+
+            if (userToolPackageNames.length > 0) {
+                const { data: failedUpdates } = await supabase
+                    .from("tool_updates")
+                    .select("id, package_name, version, validation_warnings")
+                    .in("package_name", userToolPackageNames)
+                    .eq("status", "validation_failed");
+
+                if (failedUpdates) {
+                    // Only surface failed updates whose version is >= the tool's current published version
+                    failedToolUpdates = failedUpdates.filter((update) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const tool = userTools.find((t: any) => t.packagename === update.package_name);
+                        if (!tool || !tool.version || !update.version) return true;
+                        return compareSemver(update.version, tool.version) >= 0;
+                    });
+                }
+            }
+        }
+
         return NextResponse.json({
             user,
             isAdmin,
             tools: transformedTools,
+            failedToolUpdates,
         });
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
