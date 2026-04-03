@@ -1,37 +1,37 @@
 ---
 title: "Insider"
-date: "2026-03-21"
+date: "2026-04-03"
 description: "Rolling release notes for Insider (dev) builds — all *-dev.* versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- Minor change to clarify usage of Metadata API functions (#474)
-- Add a Links Hub and Multi-agent Orchestration (#470)
-- feat: Support US Government cloud (GCC High / DoD) Dataverse URLs (#469)
-- feat: Import connections from XrmToolBox XML files (#463)
-- Settings opens as a tab with VSCode-style UI; adds Settings to View menu (#464)
-- feat: Allow sharing of connection files (import/export) (#444)
-- Feature/tab context menu (#456)
+- feat: source selection modal for connection import (XTB vs PPTB) (#500)
+- Rename "Important Links" to "Community Resources" with dynamic Supabase-backed links (#499)
+- Add option to disable session restore on startup (#482)
 
 ## Fixes
 
-- Fix dual-connection tab color split, swap Test/UAT env defaults, improve category and environment color UX (#476)
-- Deprecate `showLoading` and `hideLoading` methods in `toolboxAPI` (#475)
-- Fix: Wrong BrowserView dimensions and connection prompt after force-reload (#461)
+- fix: improve formatting and organization of changelog entries for clarity
+- chore: update release notes for version 1.2.1 with highlights, fixes, and developer notes
+- fix: update DevTools opening mode to detach for main and tool windows
+- Fix: TypeError "Object has been destroyed" in emitModalClosed during force-close with auto-update (#501)
+- Fix: Global search command palette renders behind active tool BrowserView and align UI with modal windows (#491)
+- fix: improve connection import handling and clean up logger imports (#495)
+- fix: enhance dual connection handling in tool management (#483)
 
 ## Developer & Build
 
-- Version: 1.2.1-dev.20260321
+- Version: 1.2.1-dev.20260403
 - Branch: dev
-- Commits: 5 in the last 24 hours
-- Build Date: 23370141363
+- Commits: 2 in the last 24 hours
+- Build Date: 23929196352
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.1-dev.20260321` (and newer).
+- This page currently reflects Insider build `v1.2.1-dev.20260403` (and newer).
 
 ## Getting an Insider build
 
