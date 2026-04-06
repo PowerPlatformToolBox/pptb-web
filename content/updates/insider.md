@@ -1,32 +1,22 @@
-‎content/updates/insider.md‎
-+15
--15
-Lines changed: 15 additions & 15 deletions
-
-## Original file line number Original file line Diff line number Diff line change
-
+---
 title: "Insider"
 date: "2026-04-06"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
-
 ---
 
 ## Highlights
 
-- chore(deps): bump @xmldom/xmldom (#514)
-- chore(deps): bump lodash in the npmandyarn group across 1 directory (#513)
-- chore(deps): bump handlebars (#512)
-- Pre-filter marketplace to "new tools only" when clicking the homepage notification banner (#511)
-- feat: Add visual indicator and one-click clear to filter button when filters are active (#509)
+- Add visual indicator and one-click clear to filter button when filters are active (#509)
 
 ## Fixes
 
-- fix: update version to 1.2.2-beta.0 in package.json
-- fix: update version from 1.2.1-beta.0 to 1.2.1 in package.json
-- fix: update version to 1.2.2 in package.json
-- fix: improve empty state handling in sidebar tools by updating hint display (#516)
-- Fix: Tool detail page icon not adapting to dark/light theme (#510)
+- Improve empty state handling in sidebar tools by updating hint display (#516)
+- Tool detail page icon not adapting to dark/light theme (#510)
+- Dependencies Fixed: bump @xmldom/xmldom (#514)
+- Dependencies Fixed: bump lodash in the npmandyarn group across 1 directory (#513)
+- Dependencies Fixed: bump handlebars (#512)
+- Pre-filter marketplace to "new tools only" when clicking the homepage notification banner (#511)
 
 ## Developer & Build
 
