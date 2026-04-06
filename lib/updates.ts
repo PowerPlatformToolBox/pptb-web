@@ -62,11 +62,6 @@ export function normalizeUpdateSlug(inputSlug: string): string {
         return INSIDER_SLUG;
     }
 
-    // Back-compat: previously used as a placeholder update entry.
-    if (slug.toLowerCase() === "v1_2_1") {
-        return INSIDER_SLUG;
-    }
-
     return slug;
 }
 
