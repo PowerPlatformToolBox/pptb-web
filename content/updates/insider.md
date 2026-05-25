@@ -1,34 +1,37 @@
 ---
 title: "Insider"
-date: "2026-04-06"
+date: "2026-05-25"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- Add visual indicator and one-click clear to filter button when filters are active (#509)
+- chore: update package version to 1.2.2 and release notes for consistency
+- feat: Open URLs in external browser using connection's browser profile (#547)
+- docs: add Inter-Tool Invocation documentation
+- feat: enhance protocol handler to support single-instance lock for stable builds only and add insider tag to About modal
+- feat: enable mock updates in development environment
+- feat: update zoom in accelerator keys and improve window menu structure
 
 ## Fixes
 
-- Improve empty state handling in sidebar tools by updating hint display (#516)
-- Tool detail page icon not adapting to dark/light theme (#510)
-- Dependencies Fixed: bump @xmldom/xmldom (#514)
-- Dependencies Fixed: bump lodash in the npmandyarn group across 1 directory (#513)
-- Dependencies Fixed: bump handlebars (#512)
-- Pre-filter marketplace to "new tools only" when clicking the homepage notification banner (#511)
+- docs: fix markdown escaping in parameter table
+- fix: avoid full-url lowercase in mailto scheme checks
+- fix: improve parse-failure log message with scheme context (no PII)
+- fix: correct zoom-in accelerator and re-fit BrowserView bounds after zoom
 
 ## Developer & Build
 
-- Version: 1.2.2-dev.20260406
+- Version: 1.2.2-dev.20260525
 - Branch: dev
-- Commits: 4 in the last 24 hours
-- Build Date: 24016880086
+- Commits: 2 in the last 24 hours
+- Build Date: 26379277340
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.2-dev.20260406` (and newer).
+- This page currently reflects Insider build `v1.2.2-dev.20260525` (and newer).
 
 ## Getting an Insider build
 
