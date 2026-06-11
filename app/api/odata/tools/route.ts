@@ -17,22 +17,19 @@ export async function GET(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
         if (!supabase) {
-            return new NextResponse(
-                JSON.stringify({ error: { code: "500", message: "Supabase is not configured" } }),
-                {
-                    status: 500,
-                    headers: {
-                        "Content-Type": "application/json;odata.metadata=minimal",
-                        "OData-Version": "4.0",
-                    },
+            return new NextResponse(JSON.stringify({ error: { code: "500", message: "Supabase is not configured" } }), {
+                status: 500,
+                headers: {
+                    "Content-Type": "application/json;odata.metadata=minimal",
+                    "OData-Version": "4.0",
                 },
-            );
+            });
         }
 
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `packagename, name, description, version, license, readmeurl, website, repository, min_api, max_api, published_at,
+                `packagename, name, description, version, license, readmeurl, website, repository, min_api, max_api, published_at, created_at,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,
@@ -59,14 +56,16 @@ export async function GET(request: NextRequest) {
             Repository: (tool.repository as string | null) ?? null,
             MinAPI: (tool.min_api as string | null) ?? null,
             MaxAPI: (tool.max_api as string | null) ?? null,
+            CreatedOn: (tool.created_at as string | null) ?? null,
             LastPublishedOn: (tool.published_at as string | null) ?? null,
             Downloads: (tool.tool_analytics?.downloads as number) ?? 0,
             Rating: (tool.tool_analytics?.rating as number) ?? 0,
             MAU: (tool.tool_analytics?.mau as number) ?? 0,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             Categories: (tool.tool_categories as any[])?.map((toolCategory: any) => toolCategory.categories?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            Contributors: (tool.tool_contributors as any[])?.map((toolContributor: any) => toolContributor.contributors?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
+            Contributors:
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (tool.tool_contributors as any[])?.map((toolContributor: any) => toolContributor.contributors?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
         }));
 
         return new NextResponse(
@@ -83,15 +82,12 @@ export async function GET(request: NextRequest) {
         );
     } catch (error) {
         console.error("Error fetching tools for OData feed:", error);
-        return new NextResponse(
-            JSON.stringify({ error: { code: "500", message: "Failed to fetch tools" } }),
-            {
-                status: 500,
-                headers: {
-                    "Content-Type": "application/json;odata.metadata=minimal",
-                    "OData-Version": "4.0",
-                },
+        return new NextResponse(JSON.stringify({ error: { code: "500", message: "Failed to fetch tools" } }), {
+            status: 500,
+            headers: {
+                "Content-Type": "application/json;odata.metadata=minimal",
+                "OData-Version": "4.0",
             },
-        );
+        });
     }
 }
