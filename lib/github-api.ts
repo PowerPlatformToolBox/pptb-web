@@ -159,6 +159,8 @@ export interface ConvertWorkflowInputs {
     authors: string;
     repository?: string;
     website?: string;
+    minAPI?: string;
+    maxAPI?: string;
 }
 
 export interface UpdateWorkflowInputs {
