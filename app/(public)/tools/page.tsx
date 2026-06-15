@@ -136,9 +136,7 @@ export default function ToolsPage() {
     const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories)))];
     const filteredTools = tools.filter((tool) => {
         const matchesCategory = selectedCategory === "All" || tool.categories.includes(selectedCategory);
-        const matchesSearch = searchQuery === "" ||
-            tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            tool.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = searchQuery === "" || tool.name.toLowerCase().includes(searchQuery.toLowerCase()) || tool.description.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
     });
 
@@ -151,7 +149,7 @@ export default function ToolsPage() {
                             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Power Platform Tools</h1>
                             <p className="mt-6 text-lg text-slate-700">Explore our collection of tools designed to supercharge your Power Platform development workflow.</p>
                             <p className="mt-3 text-base text-slate-500">
-                                Featuring <span className="font-semibold text-slate-900">{toolCount}</span> community-built tools &mdash; and more are added every week.
+                                Featuring <span className="font-semibold text-slate-900">{toolCount} </span> community-built tools &mdash; and more are added every week.
                             </p>
                         </header>
                     </FadeIn>
@@ -182,10 +180,11 @@ export default function ToolsPage() {
                                         key={category}
                                         onClick={() => setSelectedCategory(category)}
                                         aria-pressed={selectedCategory === category}
-                                        className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${selectedCategory === category
-                                            ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                            : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
-                                            }`}
+                                        className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+                                            selectedCategory === category
+                                                ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
+                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
+                                        }`}
                                     >
                                         {category}
                                     </button>
@@ -213,8 +212,7 @@ export default function ToolsPage() {
                                     <p className="text-slate-600 max-w-md mx-auto">
                                         {searchQuery || selectedCategory !== "All"
                                             ? "Try adjusting your search terms or category filter to find what you're looking for."
-                                            : "No tools are currently available. Check back later for new additions!"
-                                        }
+                                            : "No tools are currently available. Check back later for new additions!"}
                                     </p>
                                     {(searchQuery || selectedCategory !== "All") && (
                                         <button
