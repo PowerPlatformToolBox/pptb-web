@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import icon from "@/images/icon.png";
+import icon from "@/images/background-meta.png";
 
-const previewImageUrl = icon?.src ?? "/logo.png";
+const previewImageUrl = icon?.src ?? "/meta.png";
 const previewImage = {
     url: previewImageUrl,
     width: icon.width,
