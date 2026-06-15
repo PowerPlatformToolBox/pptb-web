@@ -7,7 +7,7 @@ import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.powerplatformtoolbox.com"),
     title: {
         template: "%s - PPTB",
         default: "PPTB - The ultimate desktop application for Power Platform",
