@@ -1,37 +1,37 @@
 ---
 title: "Insider"
-date: "2026-06-13"
+date: "2026-06-16"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- refactor: use Tool type instead of any casts in callee tab listener
-- docs: reorganize Table of Contents in INTERTOOLINVOCATION.md for improved navigation
-- feat: Inter-Tool Launch Context v2 — capabilities, auto-close, FXS inherit, one-at-a-time, banner, noReturn + multi-connection prompt + capability registry (#552)
-- feat: enhance DataverseConnection interface with optional fields for category and timestamps (#553)
-- chore: update package version to 1.2.2 and release notes for consistency
-- feat: Open URLs in external browser using connection's browser profile (#547)
+- feat: support beta/pre-release npm packages (#382)
+- Initial plan
+- refactor(terminal): reorganize imports and improve logging for stdout processing
+- refactor(terminal): extract flushStdoutBuffer helper to remove duplication
 
 ## Fixes
 
-- fix: offset BrowserView bounds by banner height to prevent tool content overlap
-- fix: move invocation banner into content-wrapper and update text labels
-- fix: open callee tool in its own tab during inter-tool invocation
-- docs: fix markdown escaping in parameter table
+- fix(version): update version to 1.2.3 in package.json
+- fix(styles): adjust button alignment and layout in settings and tool item sections
+- fix(terminal): filter sentinel echo lines from stdout display
+- fix: pass raw command string to shell stdin so && and other operators work correctly
+- fix: log warning when sentinel exit code is malformed
+- fix: address code review — cmd flags, pwsh exit code capture, sentinel default, shell injection guard
 
 ## Developer & Build
 
-- Version: 1.2.2-dev.20260613
+- Version: 1.2.3-dev.20260616
 - Branch: dev
 - Commits: 8 in the last 24 hours
-- Build Date: 27453201094
+- Build Date: 27589524512
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.2-dev.20260613` (and newer).
+- This page currently reflects Insider build `v1.2.3-dev.20260616` (and newer).
 
 ## Getting an Insider build
 
