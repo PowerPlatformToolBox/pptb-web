@@ -7,13 +7,12 @@ heroImage: "/images/updates/Insider.png"
 
 ## Highlights
 
-- Revert "Merge branch 'main' into dev"
 - fixed the uninstall issue for npm and local loaded tools
 - fixed the issue with npm install
 - fixed the icon path and check status badge in readme
 - Update RELEASE_NOTES.md
 - 1.2.3 Release Notes
-- moved out of beta into stable
+- @pptb/types moved out of beta into stable
 - Added capabilities to npm and locally loaded tools
 - Enhance terminal blocking
 
