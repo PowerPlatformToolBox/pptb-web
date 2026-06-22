@@ -1,7 +1,8 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { sendEmail } from "@/lib/resend";
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-validation";
+import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
+import { validatePackageJson } from "@pptb/validate";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 

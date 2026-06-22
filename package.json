@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.6",
+    "@pptb/validate": "^0.0.7",
     "@supabase/supabase-js": "^2.78.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@vercel/analytics": "^1.5.0",

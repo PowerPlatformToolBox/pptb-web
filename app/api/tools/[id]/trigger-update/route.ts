@@ -1,5 +1,6 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson } from "@/lib/tool-validation";
+import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
+import { validatePackageJson } from "@pptb/validate";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -127,7 +128,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             inputs: {
                 tool_id: packageJson.name,
                 version: packageJson.version,
-                authors: (packageJson.contributors || []).map((c) => (typeof c === "string" ? c : c.name)).filter(Boolean).join(", "),
+                authors: (packageJson.contributors || [])
+                    .map((c) => (typeof c === "string" ? c : c.name))
+                    .filter(Boolean)
+                    .join(", "),
                 repository: packageJson.configurations?.repository || "",
                 website: packageJson.configurations?.website || "",
             },

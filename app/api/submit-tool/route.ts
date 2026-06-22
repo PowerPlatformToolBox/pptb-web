@@ -1,6 +1,8 @@
 import { sendEmail } from "@/lib/resend";
-import { fetchNpmPackageInfo, ToolPackageJson, validatePackageJson, validatePackageStructure } from "@/lib/tool-validation";
+import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
+import { validatePackageJson } from "@pptb/validate";
+import { validatePackageStructure } from "@pptb/validate/npm";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -214,7 +216,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Extract packageInfo for cleaner access (validated to exist at this point)
-        const packageInfo = validationResult.packageInfo;
+        const packageInfo: ToolPackageJson = validationResult.packageInfo as ToolPackageJson;
         if (!packageInfo) {
             return NextResponse.json(
                 {
@@ -319,8 +321,8 @@ export async function POST(request: NextRequest) {
         await sendEmail({
             type: "tool-submission-admin",
             data: {
-                toolName: packageInfo.displayName,
-                description: packageInfo.description,
+                toolName: packageInfo.displayName!,
+                description: packageInfo.description!,
                 submissionDate: new Date().toISOString(),
             },
         });
