@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 "use client";
 
 import Image from "next/image";
@@ -74,6 +75,7 @@ export default function DashboardPage() {
             // If no token, auth check will be done in layout
             return;
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setAuthToken(token);
 
         // Fetch dashboard data

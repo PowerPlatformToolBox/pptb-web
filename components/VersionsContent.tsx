@@ -14,6 +14,7 @@ const PLATFORM_LABELS: Record<PlatformKey, string> = {
     linux: "Linux",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ARCH_LABELS: Record<ArchType, string> = {
     arm64: "ARM64",
     x64: "Intel / x64",

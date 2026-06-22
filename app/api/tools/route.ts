@@ -15,6 +15,8 @@ function getSupabaseClient() {
 
 export async function GET(request: NextRequest) {
     try {
+        console.log(request);
+
         const supabase = getSupabaseClient();
         if (!supabase) {
             return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });

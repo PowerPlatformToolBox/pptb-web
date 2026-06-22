@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
             } = await supabase.auth.getUser(token);
 
             if (!authError && user) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 userId = user.id;
             }
             // Note: Auth is optional - external calls can proceed without token

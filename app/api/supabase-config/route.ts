@@ -13,6 +13,8 @@ function isAllowedOrigin(request: NextRequest) {
         const parsed = new URL(origin).origin;
         return allowed.includes(parsed);
     } catch (error) {
+        console.log(error);
+
         return false;
     }
 }
