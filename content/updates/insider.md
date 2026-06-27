@@ -1,36 +1,38 @@
 ---
 title: "Insider"
-date: "2026-06-20"
+date: "2026-06-27"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- fixed the uninstall issue for npm and local loaded tools
-- fixed the issue with npm install
-- fixed the icon path and check status badge in readme
-- Update RELEASE_NOTES.md
-- 1.2.3 Release Notes
-- @pptb/types moved out of beta into stable
-- Added capabilities to npm and locally loaded tools
-- Enhance terminal blocking
+- [Feature] side by side toolview (#588)
+- Removed the incorrect filter and updated the wording on connection selection modal for PP API (#586)
+- feat: Add notification history panel with bell icon in footer (#585)
+- Enhanced Terminal Hardening Rules plus added Test Suites (#583)
+- Add MCP Headless for fully unattended flow (#582)
+- MCP-enabled agent assisted process (#581)
+- Added PP API scopes to Connection (#580)
+- Enable Power Platform API access (#575)
+- issue fixed for double encryption (#574)
+- Added common validate package for both types and web; incremented the versions as well
 
 ## Fixes
 
-- fix: version scope is sanitized from npm install
+- N/A
 
 ## Developer & Build
 
-- Version: 1.2.3-dev.20260620
+- Version: 1.2.4-dev.20260627
 - Branch: dev
-- Commits: 5 in the last 24 hours
-- Build Date: 27856779599
+- Commits: 1 in the last 24 hours
+- Build Date: 28274979841
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.3-dev.20260620` (and newer).
+- This page currently reflects Insider build `v1.2.4-dev.20260627` (and newer).
 
 ## Getting an Insider build
 
