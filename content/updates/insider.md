@@ -1,38 +1,37 @@
 ---
 title: "Insider"
-date: "2026-06-27"
+date: "2026-07-01"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
+- Implement headless mode support for tools, adding globals for toolboxAPI, dataverseAPI, and powerplatformAPI in Node.js environment. Update MCP server to handle headless invocations with connection management and logging. Enhance type definitions for headless API access and ensure compatibility with existing tools.
+- Added MCP to preview feature and added preview feature enablement in settings
+- [Feature] Add preview feature flagging, gate MCP Server behind it, move MCP icon to activity bar footer (#589)
+- added ElicitRequest to MCP
 - [Feature] side by side toolview (#588)
 - Removed the incorrect filter and updated the wording on connection selection modal for PP API (#586)
 - feat: Add notification history panel with bell icon in footer (#585)
 - Enhanced Terminal Hardening Rules plus added Test Suites (#583)
 - Add MCP Headless for fully unattended flow (#582)
-- MCP-enabled agent assisted process (#581)
-- Added PP API scopes to Connection (#580)
-- Enable Power Platform API access (#575)
-- issue fixed for double encryption (#574)
-- Added common validate package for both types and web; incremented the versions as well
 
 ## Fixes
 
-- N/A
+- fix: remove unused getPowerPlatformManager variable in headlessToolRuntime.ts
 
 ## Developer & Build
 
-- Version: 1.2.4-dev.20260627
+- Version: 1.2.4-dev.20260701
 - Branch: dev
-- Commits: 1 in the last 24 hours
-- Build Date: 28274979841
+- Commits: 3 in the last 24 hours
+- Build Date: 28488361701
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.4-dev.20260627` (and newer).
+- This page currently reflects Insider build `v1.2.4-dev.20260701` (and newer).
 
 ## Getting an Insider build
 
