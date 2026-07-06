@@ -50,10 +50,31 @@ interface FailedToolUpdate {
     validation_warnings: string[] | null;
 }
 
+interface PendingSubmission {
+    id: string;
+    package_name: string;
+    version?: string;
+    display_name: string;
+    description: string;
+    icon?: string | null;
+    status: string;
+    reviewer_notes?: string | null;
+    created_at?: string;
+    categories?: Array<{ id: number; name: string }>;
+}
+
+const INTAKE_STATUS_BADGES: Record<string, { label: string; className: string }> = {
+    pending_review: { label: "Under Review", className: "text-yellow-700 bg-yellow-100" },
+    needs_changes: { label: "Needs Changes", className: "text-orange-700 bg-orange-100" },
+    approved: { label: "Approved", className: "text-blue-700 bg-blue-100" },
+    rejected: { label: "Rejected", className: "text-red-700 bg-red-100" },
+};
+
 export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>([]);
     const [failedToolUpdates, setFailedToolUpdates] = useState<FailedToolUpdate[]>([]);
+    const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "mau">("downloads");
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
@@ -89,13 +110,14 @@ export default function DashboardPage() {
 
                 if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
-                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates } = await response.json();
+                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates, pendingSubmissions: pending } = await response.json();
 
                 if (dashUser) {
                     setUser(dashUser);
                     setIsAdmin(admin);
                     setTools(dashTools);
                     setFailedToolUpdates(failedUpdates || []);
+                    setPendingSubmissions(pending || []);
                 }
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
@@ -220,6 +242,10 @@ export default function DashboardPage() {
     // Precompute a Set of package names with failed updates for O(1) row lookups
     const failedUpdatePackageNames = useMemo(() => new Set(failedToolUpdates.map((u) => u.package_name)), [failedToolUpdates]);
 
+    // Pending submissions are only surfaced in the "My Tools" view
+    const visiblePendingCount = viewMode === "my" ? pendingSubmissions.length : 0;
+    const hasRows = sortedTools.length > 0 || visiblePendingCount > 0;
+
     if (loading) {
         return (
             <main>
@@ -288,7 +314,7 @@ export default function DashboardPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-blue-900">{viewMode === "my" ? "My Tools" : "Total Tools"}</p>
-                                            <p className="text-2xl font-bold text-blue-900">{filteredTools.length}</p>
+                                            <p className="text-2xl font-bold text-blue-900">{filteredTools.length + visiblePendingCount}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -417,7 +443,7 @@ export default function DashboardPage() {
 
                         {/* Tools Table */}
                         <SlideIn direction="up" delay={0.5}>
-                            {sortedTools.length === 0 ? (
+                            {!hasRows ? (
                                 <div className="card p-12 text-center">
                                     <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path
@@ -455,6 +481,73 @@ export default function DashboardPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-slate-200">
+                                                {viewMode === "my" &&
+                                                    pendingSubmissions.map((submission) => {
+                                                        const badge = INTAKE_STATUS_BADGES[submission.status] || {
+                                                            label: submission.status,
+                                                            className: "text-slate-700 bg-slate-100",
+                                                        };
+                                                        return (
+                                                            <tr key={`intake-${submission.id}`} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Image
+                                                                            src={submission.icon && submission.icon.startsWith("http") ? submission.icon : PLACEHOLDER_ICON_PATH}
+                                                                            alt={submission.display_name}
+                                                                            width={32}
+                                                                            height={32}
+                                                                            className="rounded"
+                                                                        />
+                                                                        <div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-sm font-medium text-slate-900">{submission.display_name}</span>
+                                                                            </div>
+                                                                            <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
+                                                                                {submission.description}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {submission.categories && submission.categories.length > 0 ? (
+                                                                            submission.categories.map((cat) => (
+                                                                                <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                                                                                    {cat.name}
+                                                                                </span>
+                                                                            ))
+                                                                        ) : (
+                                                                            <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">--</span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                    {submission.version ? (
+                                                                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{submission.version}</span>
+                                                                    ) : (
+                                                                        <span className="text-slate-400">--</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.className}`} title={submission.reviewer_notes || undefined}>
+                                                                        {badge.label}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                    {submission.status === "needs_changes" ? (
+                                                                        <Link href="/submit-tool" className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                            Resubmit
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <span className="text-slate-400">--</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 {sortedTools.map((tool) => {
                                                     const analytics = tool.tool_analytics;
                                                     const toolHasFailedUpdate = viewMode === "my" && !!tool.packagename && failedUpdatePackageNames.has(tool.packagename);

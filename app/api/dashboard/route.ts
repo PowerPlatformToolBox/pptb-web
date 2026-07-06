@@ -113,6 +113,42 @@ export async function GET(request: NextRequest) {
                 categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
             })) || [];
 
+        // Fetch the authenticated user's own tool submissions (intakes) that are still
+        // in the review pipeline so they can see them on the dashboard before publication.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let pendingSubmissions: any[] = [];
+        if (user) {
+            const { data: intakesData } = await supabase
+                .from("tool_intakes")
+                .select(
+                    `
+                    id,
+                    package_name,
+                    version,
+                    display_name,
+                    description,
+                    icon,
+                    status,
+                    reviewer_notes,
+                    created_at,
+                    categories:tool_intake_categories (
+                        categories (id, name)
+                    )
+                `,
+                )
+                .eq("submitted_by", user.id)
+                .in("status", ["pending_review", "needs_changes", "approved", "rejected"])
+                .order("created_at", { ascending: false });
+
+            pendingSubmissions =
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                intakesData?.map((intake: any) => ({
+                    ...intake,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    categories: intake.categories?.map((c: any) => c.categories).filter(Boolean) || [],
+                })) || [];
+        }
+
         // Fetch failed tool updates for the authenticated user's tools
         let failedToolUpdates: Array<{ id: string; package_name: string; version: string; validation_warnings: string[] | null }> = [];
         if (user) {
@@ -145,6 +181,7 @@ export async function GET(request: NextRequest) {
             isAdmin,
             tools: transformedTools,
             failedToolUpdates,
+            pendingSubmissions,
         });
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
