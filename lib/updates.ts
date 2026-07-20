@@ -10,6 +10,23 @@ export type UpdateReleaseMeta = {
     date: string;
     description?: string;
     heroImage?: string;
+    video?: UpdateReleaseVideoMeta;
+};
+
+export type UpdateReleaseVideoChapter = {
+    label: string;
+    timestamp: string;
+};
+
+export type UpdateReleaseVideoMeta = {
+    url: string;
+    youtubeId: string;
+    title?: string;
+    thumbnail?: string;
+    duration?: string;
+    publishedAt?: string;
+    highlights?: string[];
+    chapters?: UpdateReleaseVideoChapter[];
 };
 
 export type TocItem = {
@@ -42,6 +59,105 @@ function assertSafeSlug(slug: string) {
 function isDevBuildSlug(slug: string): boolean {
     // Example: v1.2.1-dev.20260315
     return /-dev\./i.test(slug);
+}
+
+function parseStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const normalized = value
+        .filter((item) => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    return normalized.length > 0 ? normalized : undefined;
+}
+
+function parseVideoChapters(value: unknown): UpdateReleaseVideoChapter[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const chapters: UpdateReleaseVideoChapter[] = [];
+
+    for (const item of value) {
+        if (!item || typeof item !== "object") {
+            continue;
+        }
+
+        const label = typeof (item as { label?: unknown }).label === "string" ? (item as { label: string }).label.trim() : "";
+        const timestamp = typeof (item as { timestamp?: unknown }).timestamp === "string" ? (item as { timestamp: string }).timestamp.trim() : "";
+
+        if (!label || !timestamp) {
+            continue;
+        }
+
+        chapters.push({ label, timestamp });
+    }
+
+    return chapters.length > 0 ? chapters : undefined;
+}
+
+function extractYouTubeVideoId(rawUrl: string): string | undefined {
+    let parsed: URL;
+
+    try {
+        parsed = new URL(rawUrl);
+    } catch {
+        return undefined;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    const normalizedHost = host.startsWith("www.") ? host.slice(4) : host;
+    const isYouTubeHost = normalizedHost === "youtube.com" || normalizedHost === "youtu.be" || normalizedHost === "youtube-nocookie.com";
+
+    if (!isYouTubeHost) {
+        return undefined;
+    }
+
+    if (normalizedHost === "youtu.be") {
+        const idFromPath = parsed.pathname.split("/").filter(Boolean)[0];
+        if (idFromPath) {
+            return idFromPath;
+        }
+    }
+
+    const watchVideoId = parsed.searchParams.get("v");
+    if (watchVideoId) {
+        return watchVideoId;
+    }
+
+    const [firstSegment, secondSegment] = parsed.pathname.split("/").filter(Boolean);
+    if (firstSegment === "shorts" || firstSegment === "embed") {
+        return secondSegment;
+    }
+
+    return undefined;
+}
+
+function parseReleaseVideoMeta(frontmatter: Record<string, unknown>): UpdateReleaseVideoMeta | undefined {
+    const videoUrl = typeof frontmatter.videoUrl === "string" ? frontmatter.videoUrl.trim() : "";
+    if (!videoUrl) {
+        return undefined;
+    }
+
+    const youtubeId = extractYouTubeVideoId(videoUrl);
+    if (!youtubeId) {
+        return undefined;
+    }
+
+    const video: UpdateReleaseVideoMeta = {
+        url: `https://www.youtube.com/watch?v=${youtubeId}`,
+        youtubeId,
+        title: typeof frontmatter.videoTitle === "string" ? frontmatter.videoTitle.trim() : undefined,
+        thumbnail: typeof frontmatter.videoThumbnail === "string" ? frontmatter.videoThumbnail.trim() : undefined,
+        duration: typeof frontmatter.videoDuration === "string" ? frontmatter.videoDuration.trim() : undefined,
+        publishedAt: typeof frontmatter.videoPublishedAt === "string" ? frontmatter.videoPublishedAt.trim() : undefined,
+        highlights: parseStringArray(frontmatter.videoHighlights),
+        chapters: parseVideoChapters(frontmatter.videoChapters),
+    };
+
+    return video;
 }
 
 export function normalizeUpdateSlug(inputSlug: string): string {
@@ -125,11 +241,13 @@ async function readReleaseFile(slug: string): Promise<{ meta: UpdateReleaseMeta;
 
     const fileContents = await fs.readFile(fullPath, "utf8");
     const parsed = matter(fileContents);
+    const frontmatter = parsed.data ?? {};
 
-    const title = typeof parsed.data?.title === "string" ? parsed.data.title : slug;
-    const date = typeof parsed.data?.date === "string" ? parsed.data.date : "";
-    const description = typeof parsed.data?.description === "string" ? parsed.data.description : undefined;
-    const heroImage = typeof parsed.data?.heroImage === "string" ? parsed.data.heroImage : undefined;
+    const title = typeof frontmatter.title === "string" ? frontmatter.title : slug;
+    const date = typeof frontmatter.date === "string" ? frontmatter.date : "";
+    const description = typeof frontmatter.description === "string" ? frontmatter.description : undefined;
+    const heroImage = typeof frontmatter.heroImage === "string" ? frontmatter.heroImage : undefined;
+    const video = parseReleaseVideoMeta(frontmatter);
 
     const meta: UpdateReleaseMeta = {
         slug,
@@ -137,6 +255,7 @@ async function readReleaseFile(slug: string): Promise<{ meta: UpdateReleaseMeta;
         date,
         description,
         heroImage,
+        video,
     };
 
     return {
@@ -174,4 +293,14 @@ export async function getLatestUpdateReleaseSlug(): Promise<string> {
 
     const latestNonInsider = releases.find((r) => r.slug.toLowerCase() !== INSIDER_SLUG);
     return (latestNonInsider ?? releases[0]).slug;
+}
+
+export function hasReleaseVideo(release: UpdateReleaseMeta): boolean {
+    return Boolean(release.video);
+}
+
+export async function getLatestUpdateReleaseWithVideoSlug(): Promise<string | null> {
+    const releases = await listUpdateReleases();
+    const latestWithVideo = releases.find((release) => hasReleaseVideo(release));
+    return latestWithVideo?.slug ?? null;
 }

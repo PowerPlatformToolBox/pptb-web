@@ -423,6 +423,7 @@ function buildStableMarkdown({ template, tag, date, description, heroImage, high
             DATE: date,
             DESCRIPTION: description,
             HERO_IMAGE: heroImage,
+            VIDEO_FRONTMATTER_BLOCK: "",
             HIGHLIGHTS: highlights,
             FIXES: fixes,
             DEV_BUILD: devBuild,

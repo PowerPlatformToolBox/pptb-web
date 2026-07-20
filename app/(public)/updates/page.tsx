@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { UpdatesShell } from "@/components/UpdatesShell";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata";
-import { getLatestUpdateReleaseSlug, getUpdateRelease, listUpdateReleases } from "@/lib/updates";
+import { getLatestUpdateReleaseSlug, getLatestUpdateReleaseWithVideoSlug, getUpdateRelease, hasReleaseVideo, listUpdateReleases } from "@/lib/updates";
 
 export async function generateMetadata(): Promise<Metadata> {
     const latestSlug = await getLatestUpdateReleaseSlug();
@@ -38,10 +38,15 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-export default async function UpdatesPage() {
+export default async function UpdatesPage({ searchParams }: { searchParams?: Promise<{ hasVideo?: string }> }) {
+    const hasVideoFilterEnabled = (await searchParams)?.hasVideo === "true";
     const releases = await listUpdateReleases();
     const latestSlug = await getLatestUpdateReleaseSlug();
-    const current = await getUpdateRelease(latestSlug);
 
-    return <UpdatesShell releases={releases} current={current} latestSlug={latestSlug} />;
+    const releasesToShow = hasVideoFilterEnabled ? releases.filter(hasReleaseVideo) : releases;
+    const latestWithVideoSlug = hasVideoFilterEnabled ? await getLatestUpdateReleaseWithVideoSlug() : null;
+    const currentSlug = latestWithVideoSlug ?? latestSlug;
+    const current = await getUpdateRelease(currentSlug);
+
+    return <UpdatesShell releases={releasesToShow.length > 0 ? releasesToShow : releases} current={current} latestSlug={latestSlug} />;
 }

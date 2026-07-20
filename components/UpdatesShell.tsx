@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Container } from "@/components/Container";
+import { ReleaseVideoCard } from "@/components/ReleaseVideoCard";
 import { UpdatesMarkdown } from "@/components/UpdatesMarkdown";
 import type { UpdateRelease, UpdateReleaseMeta } from "@/lib/updates";
 
@@ -40,6 +41,7 @@ export function UpdatesShell({ releases, current, latestSlug }: { releases: Upda
                                                         )}
                                                     >
                                                         <div className="text-sm font-semibold">{release.title}</div>
+                                                        {release.video && <span className="mt-1 inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">Video</span>}
                                                         {release.date && <div className="mt-0.5 text-xs text-slate-500">{formatDate(release.date)}</div>}
                                                     </Link>
                                                 </li>
@@ -68,6 +70,8 @@ export function UpdatesShell({ releases, current, latestSlug }: { releases: Upda
                                 )}
                             </div>
                         </header>
+
+                        {current.meta.video && <ReleaseVideoCard releaseTitle={current.meta.title} video={current.meta.video} />}
 
                         <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-card">
                             <UpdatesMarkdown markdown={current.markdown} />

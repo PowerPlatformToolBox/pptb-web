@@ -20,6 +20,16 @@ This repo’s update pages expect:
 - Frontmatter fields used by the UI: `title`, `date`, `description`, `heroImage`.
 - Release notes content written as Markdown with `##` / `###` headings (the UI generates a TOC from H2/H3).
 
+Optional frontmatter can include release walkthrough video details:
+
+- `videoUrl`: YouTube URL (`https://www.youtube.com/watch?v=...` or `https://youtu.be/...`)
+- `videoTitle`: Display title for the embedded walkthrough
+- `videoDuration`: Duration text (`12:34` or `1:02:45`)
+- `videoPublishedAt`: Video publish date (`YYYY-MM-DD`)
+- `videoThumbnail`: Optional thumbnail URL
+- `videoHighlights`: YAML list of short highlight bullets
+- `videoChapters`: YAML list with `{ label, timestamp }` entries
+
 ## Version → filename rules
 
 - Stable tags look like `vX.Y.Z` (example: `v1.2.0`).
@@ -150,6 +160,17 @@ title: "vX.Y.Z"
 date: "YYYY-MM-DD"
 description: "One-sentence summary of what matters in this release."
 heroImage: "/images/updates/vX_Y_Z.png"
+# Optional (only include these keys when a release video exists)
+# videoUrl: "https://www.youtube.com/watch?v=..."
+# videoTitle: "vX.Y.Z walkthrough"
+# videoDuration: "12:34"
+# videoPublishedAt: "YYYY-MM-DD"
+# videoThumbnail: "https://i.ytimg.com/vi/.../maxresdefault.jpg"
+# videoHighlights:
+#   - "Highlight one"
+# videoChapters:
+#   - label: "Overview"
+#     timestamp: "00:00"
 ---
 ```
 
@@ -199,6 +220,7 @@ title: "{{TAG}}"
 date: "{{DATE}}"
 description: "{{DESCRIPTION}}"
 heroImage: "{{HERO_IMAGE}}"
+{{VIDEO_FRONTMATTER_BLOCK}}
 ---
 
 ## Highlights
