@@ -55,6 +55,8 @@ If you are testing from a fork and do not have Supabase credentials, you can sti
 - `npm run build` - Build for production
 - `npm run start` - Start the production server
 - `npm run lint` - Run ESLint
+- `npm run test:unit` - Run Jest unit tests
+- `npm run test:e2e` - Run Playwright UI tests
 
 ## Deployment
 
