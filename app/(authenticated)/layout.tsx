@@ -10,9 +10,14 @@ import { useSupabase } from "@/lib/useSupabase";
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
-    const { supabase } = useSupabase();
+    const { supabase, error } = useSupabase();
 
     useEffect(() => {
+        if (error) {
+            router.push("/auth/signin");
+            return;
+        }
+
         if (!supabase) return; // wait for client
         (async () => {
             try {
@@ -36,7 +41,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
                 router.push("/auth/signin");
             }
         })();
-    }, [router, supabase]);
+    }, [error, router, supabase]);
 
     if (loading) {
         return (
