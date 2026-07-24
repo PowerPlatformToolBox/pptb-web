@@ -1,38 +1,36 @@
 ---
 title: "Insider"
-date: "2026-06-27"
+date: "2026-07-24"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- [Feature] side by side toolview (#588)
-- Removed the incorrect filter and updated the wording on connection selection modal for PP API (#586)
-- feat: Add notification history panel with bell icon in footer (#585)
-- Enhanced Terminal Hardening Rules plus added Test Suites (#583)
-- Add MCP Headless for fully unattended flow (#582)
-- MCP-enabled agent assisted process (#581)
-- Added PP API scopes to Connection (#580)
-- Enable Power Platform API access (#575)
-- issue fixed for double encryption (#574)
-- Added common validate package for both types and web; incremented the versions as well
+- some improvements to the workflows and updating the release notes
+- release v1.2.4 prep
+- feat: add MCP headless to related UI elements
+- chore: update MCP Server label and description for clarity on agentic AI capabilities
 
 ## Fixes
 
-- N/A
+- fix: enhance preflight check comments and handling for PRs
+- fix: make notification panel and toast respect the selected app theme
+- fix: correct PR title validation message to include proper formatting for types
+- fix: update PR title validation to include 'Release' type
+- fix: add validation for app-update.yml existence and enhance auto-update error handling
 
 ## Developer & Build
 
-- Version: 1.2.4-dev.20260627
+- Version: 1.2.4-dev.20260724
 - Branch: dev
-- Commits: 1 in the last 24 hours
-- Build Date: 28274979841
+- Commits: 16 in the last 24 hours
+- Build Date: 30058524696
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.4-dev.20260627` (and newer).
+- This page currently reflects Insider build `v1.2.4-dev.20260724` (and newer).
 
 ## Getting an Insider build
 
