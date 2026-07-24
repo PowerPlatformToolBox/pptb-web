@@ -11,7 +11,7 @@ export interface MockTool {
     version: string;
     repository: string;
     website: string;
-    readmeurl?: string;
+    readmeUrl?: string;
 }
 
 export const mockTools: MockTool[] = [
@@ -121,7 +121,7 @@ export function toToolSummaryApiRecord(tool: MockTool) {
 export function toToolDetailApiRecord(tool: MockTool) {
     return {
         ...toToolSummaryApiRecord(tool),
-        readmeurl: tool.readmeurl ?? null,
+        readmeurl: tool.readmeUrl ?? null,
         version: tool.version,
         repository: tool.repository,
         website: tool.website,
