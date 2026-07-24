@@ -8,7 +8,6 @@ heroImage: "/images/updates/Insider.png"
 ## Highlights
 
 - some improvements to the workflows and updating the release notes
-- Initial plan
 - release v1.2.4 prep
 - feat: add MCP headless to related UI elements
 - chore: update MCP Server label and description for clarity on agentic AI capabilities
