@@ -23,18 +23,6 @@ interface SubmitToolRequest {
     categoryIds: number[];
 }
 
-// Helper function to return a structured error response for package structure validation
-function structureValidationError(message: string) {
-    return NextResponse.json(
-        {
-            error: "Package validation failed",
-            step: "structure_validation",
-            details: { errors: [message], warnings: [] },
-        },
-        { status: 400 },
-    );
-}
-
 // Helper function to assert the package structure is valid
 async function assertPackageStructure(packageName: string): Promise<NextResponse | null> {
     const structureResult = await validatePackageStructure(packageName);
