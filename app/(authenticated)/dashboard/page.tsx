@@ -643,7 +643,7 @@ export default function DashboardPage() {
                                                                                 {openMoreMenuForToolId === tool.id && (
                                                                                     <>
                                                                                         <div
-                                                                                            className="fixed inset-0 z-9998"
+                                                                                            className="fixed inset-0 z-[9998]"
                                                                                             onClick={() => {
                                                                                                 setOpenMoreMenuForToolId(null);
                                                                                                 moreMenuAnchorRef.current = null;
@@ -659,7 +659,7 @@ export default function DashboardPage() {
                                                                                             role="menu"
                                                                                             tabIndex={-1}
                                                                                             autoFocus
-                                                                                            className="fixed z-9999 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                            className="fixed z-[9999] w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
                                                                                             style={
                                                                                                 moreMenuAnchorRef.current
                                                                                                     ? {

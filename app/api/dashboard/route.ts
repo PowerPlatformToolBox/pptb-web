@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let intakeTools: any[] = [];
         if (user) {
-            const { data: intakesData } = await supabase
+            const { data: intakesData, error: intakesError } = await supabase
                 .from("tool_intakes")
                 .select(
                     `
@@ -141,6 +141,10 @@ export async function GET(request: NextRequest) {
                 .eq("submitted_by", user.id)
                 .in("status", ["pending_review", "needs_changes", "approved", "rejected"])
                 .order("created_at", { ascending: false });
+
+            if (intakesError) {
+                throw intakesError;
+            }
 
             intakeTools =
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,11 +175,15 @@ export async function GET(request: NextRequest) {
             const userToolPackageNames = userTools.map((t: any) => t.packagename);
 
             if (userToolPackageNames.length > 0) {
-                const { data: failedUpdates } = await supabase
+                const { data: failedUpdates, error: failedUpdatesError } = await supabase
                     .from("tool_updates")
                     .select("id, package_name, version, validation_warnings")
                     .in("package_name", userToolPackageNames)
                     .eq("status", "validation_failed");
+
+                if (failedUpdatesError) {
+                    throw failedUpdatesError;
+                }
 
                 if (failedUpdates) {
                     // Only surface failed updates whose version is >= the tool's current published version
