@@ -109,14 +109,15 @@ export async function GET(request: NextRequest) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             toolsData?.map((tool: any) => ({
                 ...tool,
+                isIntake: false,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
             })) || [];
 
-        // Fetch the authenticated user's own tool submissions (intakes) that are still
-        // in the review pipeline so they can see them on the dashboard before publication.
+        // Merge the authenticated user's intakes into the same tools array
+        // so the client can render one list.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let pendingSubmissions: any[] = [];
+        let intakeTools: any[] = [];
         if (user) {
             const { data: intakesData } = await supabase
                 .from("tool_intakes")
@@ -131,6 +132,7 @@ export async function GET(request: NextRequest) {
                     status,
                     reviewer_notes,
                     created_at,
+                    submitted_by,
                     categories:tool_intake_categories (
                         categories (id, name)
                     )
@@ -140,12 +142,23 @@ export async function GET(request: NextRequest) {
                 .in("status", ["pending_review", "needs_changes", "approved", "rejected"])
                 .order("created_at", { ascending: false });
 
-            pendingSubmissions =
+            intakeTools =
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 intakesData?.map((intake: any) => ({
-                    ...intake,
+                    id: intake.id,
+                    name: intake.display_name,
+                    description: intake.description,
+                    icon: intake.icon,
+                    packagename: intake.package_name,
+                    version: intake.version,
+                    user_id: intake.submitted_by,
+                    status: intake.status,
+                    reviewer_notes: intake.reviewer_notes,
+                    created_at: intake.created_at,
+                    isIntake: true,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     categories: intake.categories?.map((c: any) => c.categories).filter(Boolean) || [],
+                    tool_analytics: null,
                 })) || [];
         }
 
@@ -179,9 +192,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             user,
             isAdmin,
-            tools: transformedTools,
+            tools: [...intakeTools, ...transformedTools],
             failedToolUpdates,
-            pendingSubmissions,
         });
     } catch (error) {
         console.error("Error fetching dashboard data:", error);

@@ -29,6 +29,8 @@ interface Tool {
     user_id?: string;
     status?: string;
     version?: string;
+    isIntake?: boolean;
+    reviewer_notes?: string | null;
     tool_categories?: Array<{
         categories: {
             id: number;
@@ -40,7 +42,7 @@ interface Tool {
         downloads: number;
         rating: number;
         mau?: number; // Monthly Active Users
-    };
+    } | null;
 }
 
 interface FailedToolUpdate {
@@ -48,19 +50,6 @@ interface FailedToolUpdate {
     package_name: string;
     version: string;
     validation_warnings: string[] | null;
-}
-
-interface PendingSubmission {
-    id: string;
-    package_name: string;
-    version?: string;
-    display_name: string;
-    description: string;
-    icon?: string | null;
-    status: string;
-    reviewer_notes?: string | null;
-    created_at?: string;
-    categories?: Array<{ id: number; name: string }>;
 }
 
 const INTAKE_STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -74,7 +63,6 @@ export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>([]);
     const [failedToolUpdates, setFailedToolUpdates] = useState<FailedToolUpdate[]>([]);
-    const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "mau">("downloads");
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
@@ -110,14 +98,13 @@ export default function DashboardPage() {
 
                 if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
-                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates, pendingSubmissions: pending } = await response.json();
+                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates } = await response.json();
 
                 if (dashUser) {
                     setUser(dashUser);
                     setIsAdmin(admin);
                     setTools(dashTools);
                     setFailedToolUpdates(failedUpdates || []);
-                    setPendingSubmissions(pending || []);
                 }
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
@@ -219,11 +206,16 @@ export default function DashboardPage() {
         }
     };
 
-    // Filter tools based on view mode
+    // Filter tools based on view mode. Intakes only appear in "My Tools".
     const filteredTools =
-        viewMode === "my" ? tools.filter((tool) => tool.user_id === user?.id) : tools.filter((tool) => tool.status !== TOOL_STATUSES.DELETED && tool.status !== TOOL_STATUSES.DEPRECATED);
+        viewMode === "my"
+            ? tools.filter((tool) => tool.user_id === user?.id)
+            : tools.filter((tool) => !tool.isIntake && tool.status !== TOOL_STATUSES.DELETED && tool.status !== TOOL_STATUSES.DEPRECATED);
 
     const sortedTools = [...filteredTools].sort((a, b) => {
+        // Keep in-review intakes above published tools
+        if (a.isIntake !== b.isIntake) return a.isIntake ? -1 : 1;
+
         const aAnalytics = a.tool_analytics;
         const bAnalytics = b.tool_analytics;
 
@@ -242,9 +234,8 @@ export default function DashboardPage() {
     // Precompute a Set of package names with failed updates for O(1) row lookups
     const failedUpdatePackageNames = useMemo(() => new Set(failedToolUpdates.map((u) => u.package_name)), [failedToolUpdates]);
 
-    // Pending submissions are only surfaced in the "My Tools" view
-    const visiblePendingCount = viewMode === "my" ? pendingSubmissions.length : 0;
-    const hasRows = sortedTools.length > 0 || visiblePendingCount > 0;
+    const publishedTools = filteredTools.filter((tool) => !tool.isIntake);
+    const hasRows = sortedTools.length > 0;
 
     if (loading) {
         return (
@@ -314,7 +305,7 @@ export default function DashboardPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-blue-900">{viewMode === "my" ? "My Tools" : "Total Tools"}</p>
-                                            <p className="text-2xl font-bold text-blue-900">{filteredTools.length + visiblePendingCount}</p>
+                                            <p className="text-2xl font-bold text-blue-900">{filteredTools.length}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -328,7 +319,9 @@ export default function DashboardPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-purple-900">Total Downloads</p>
-                                            <p className="text-2xl font-bold text-purple-900">{filteredTools.reduce((sum, tool) => sum + (tool.tool_analytics?.downloads || 0), 0).toLocaleString()}</p>
+                                            <p className="text-2xl font-bold text-purple-900">
+                                                {publishedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.downloads || 0), 0).toLocaleString()}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -344,7 +337,7 @@ export default function DashboardPage() {
                                             <p className="text-sm font-medium text-amber-900">Average Rating</p>
                                             <p className="text-2xl font-bold text-amber-900">
                                                 {(() => {
-                                                    const ratedTools = filteredTools.filter((tool) => (tool.tool_analytics?.rating || 0) > 0);
+                                                    const ratedTools = publishedTools.filter((tool) => (tool.tool_analytics?.rating || 0) > 0);
                                                     return ratedTools.length > 0
                                                         ? (ratedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.rating || 0), 0) / ratedTools.length).toFixed(1)
                                                         : "--";
@@ -481,37 +474,37 @@ export default function DashboardPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-slate-200">
-                                                {viewMode === "my" &&
-                                                    pendingSubmissions.map((submission) => {
-                                                        const badge = INTAKE_STATUS_BADGES[submission.status] || {
-                                                            label: submission.status,
+                                                {sortedTools.map((tool) => {
+                                                    if (tool.isIntake) {
+                                                        const badge = INTAKE_STATUS_BADGES[tool.status || ""] || {
+                                                            label: tool.status,
                                                             className: "text-slate-700 bg-slate-100",
                                                         };
                                                         return (
-                                                            <tr key={`intake-${submission.id}`} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                                            <tr key={`intake-${tool.id}`} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
                                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                                     <div className="flex items-center gap-3">
                                                                         <Image
-                                                                            src={submission.icon && submission.icon.startsWith("http") ? submission.icon : PLACEHOLDER_ICON_PATH}
-                                                                            alt={submission.display_name}
+                                                                            src={tool.icon && tool.icon.startsWith("http") ? tool.icon : PLACEHOLDER_ICON_PATH}
+                                                                            alt={tool.name}
                                                                             width={32}
                                                                             height={32}
                                                                             className="rounded"
                                                                         />
                                                                         <div>
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className="text-sm font-medium text-slate-900">{submission.display_name}</span>
+                                                                                <span className="text-sm font-medium text-slate-900">{tool.name}</span>
                                                                             </div>
                                                                             <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
-                                                                                {submission.description}
+                                                                                {tool.description}
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                                     <div className="flex flex-wrap gap-1">
-                                                                        {submission.categories && submission.categories.length > 0 ? (
-                                                                            submission.categories.map((cat) => (
+                                                                        {tool.categories && tool.categories.length > 0 ? (
+                                                                            tool.categories.map((cat) => (
                                                                                 <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
                                                                                     {cat.name}
                                                                                 </span>
@@ -522,14 +515,14 @@ export default function DashboardPage() {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                    {submission.version ? (
-                                                                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{submission.version}</span>
+                                                                    {tool.version ? (
+                                                                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
                                                                     ) : (
                                                                         <span className="text-slate-400">--</span>
                                                                     )}
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.className}`} title={submission.reviewer_notes || undefined}>
+                                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.className}`} title={tool.reviewer_notes || undefined}>
                                                                         {badge.label}
                                                                     </span>
                                                                 </td>
@@ -537,7 +530,7 @@ export default function DashboardPage() {
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                    {submission.status === "needs_changes" ? (
+                                                                    {tool.status === "needs_changes" ? (
                                                                         <Link href="/submit-tool" className="text-blue-600 hover:text-purple-600 font-medium">
                                                                             Resubmit
                                                                         </Link>
@@ -547,8 +540,8 @@ export default function DashboardPage() {
                                                                 </td>
                                                             </tr>
                                                         );
-                                                    })}
-                                                {sortedTools.map((tool) => {
+                                                    }
+
                                                     const analytics = tool.tool_analytics;
                                                     const toolHasFailedUpdate = viewMode === "my" && !!tool.packagename && failedUpdatePackageNames.has(tool.packagename);
                                                     return (
@@ -650,7 +643,7 @@ export default function DashboardPage() {
                                                                                 {openMoreMenuForToolId === tool.id && (
                                                                                     <>
                                                                                         <div
-                                                                                            className="fixed inset-0 z-[9998]"
+                                                                                            className="fixed inset-0 z-9998"
                                                                                             onClick={() => {
                                                                                                 setOpenMoreMenuForToolId(null);
                                                                                                 moreMenuAnchorRef.current = null;
@@ -666,7 +659,7 @@ export default function DashboardPage() {
                                                                                             role="menu"
                                                                                             tabIndex={-1}
                                                                                             autoFocus
-                                                                                            className="fixed z-[9999] w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                            className="fixed z-9999 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
                                                                                             style={
                                                                                                 moreMenuAnchorRef.current
                                                                                                     ? {
