@@ -109,9 +109,62 @@ export async function GET(request: NextRequest) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             toolsData?.map((tool: any) => ({
                 ...tool,
+                isIntake: false,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
             })) || [];
+
+        // Merge the authenticated user's intakes into the same tools array
+        // so the client can render one list.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let intakeTools: any[] = [];
+        if (user) {
+            const { data: intakesData, error: intakesError } = await supabase
+                .from("tool_intakes")
+                .select(
+                    `
+                    id,
+                    package_name,
+                    version,
+                    display_name,
+                    description,
+                    icon,
+                    status,
+                    reviewer_notes,
+                    created_at,
+                    submitted_by,
+                    categories:tool_intake_categories (
+                        categories (id, name)
+                    )
+                `,
+                )
+                .eq("submitted_by", user.id)
+                .in("status", ["pending_review", "needs_changes", "approved", "rejected"])
+                .order("created_at", { ascending: false });
+
+            if (intakesError) {
+                throw intakesError;
+            }
+
+            intakeTools =
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                intakesData?.map((intake: any) => ({
+                    id: intake.id,
+                    name: intake.display_name,
+                    description: intake.description,
+                    icon: intake.icon,
+                    packagename: intake.package_name,
+                    version: intake.version,
+                    user_id: intake.submitted_by,
+                    status: intake.status,
+                    reviewer_notes: intake.reviewer_notes,
+                    created_at: intake.created_at,
+                    isIntake: true,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    categories: intake.categories?.map((c: any) => c.categories).filter(Boolean) || [],
+                    tool_analytics: null,
+                })) || [];
+        }
 
         // Fetch failed tool updates for the authenticated user's tools
         let failedToolUpdates: Array<{ id: string; package_name: string; version: string; validation_warnings: string[] | null }> = [];
@@ -122,11 +175,15 @@ export async function GET(request: NextRequest) {
             const userToolPackageNames = userTools.map((t: any) => t.packagename);
 
             if (userToolPackageNames.length > 0) {
-                const { data: failedUpdates } = await supabase
+                const { data: failedUpdates, error: failedUpdatesError } = await supabase
                     .from("tool_updates")
                     .select("id, package_name, version, validation_warnings")
                     .in("package_name", userToolPackageNames)
                     .eq("status", "validation_failed");
+
+                if (failedUpdatesError) {
+                    throw failedUpdatesError;
+                }
 
                 if (failedUpdates) {
                     // Only surface failed updates whose version is >= the tool's current published version
@@ -143,7 +200,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             user,
             isAdmin,
-            tools: transformedTools,
+            tools: [...intakeTools, ...transformedTools],
             failedToolUpdates,
         });
     } catch (error) {
