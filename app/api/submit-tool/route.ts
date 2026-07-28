@@ -23,6 +23,50 @@ interface SubmitToolRequest {
     categoryIds: number[];
 }
 
+// Helper function to assert the package structure is valid
+async function assertPackageStructure(packageName: string): Promise<NextResponse | null> {
+    const structureResult = await validatePackageStructure(packageName);
+
+    // If the package structure validation fails, return a structured error response
+    if (!structureResult.success) {
+        return NextResponse.json(
+            {
+                error: "Failed to validate package structure",
+                step: "structure_check",
+                details: { error: structureResult.error },
+            },
+            { status: 500 },
+        );
+    }
+
+    // If the package structure validation succeeds, check the package structure and return a structured error response if any of the following are missing:
+    const { hasNpmShrinkwrap, hasDistFolder, hasDistIndexHtml } = structureResult.data;
+    const errors: string[] = [];
+
+    if (!hasNpmShrinkwrap) {
+        errors.push("npm-shrinkwrap.json is required but not found in the package");
+    }
+    if (!hasDistFolder) {
+        errors.push("dist folder is required but not found in the package");
+    }
+    if (!hasDistIndexHtml) {
+        errors.push("dist/index.html is required but not found in the package");
+    }
+
+    if (errors.length > 0) {
+        return NextResponse.json(
+            {
+                error: "Package validation failed",
+                step: "structure_validation",
+                details: { errors, warnings: [] },
+            },
+            { status: 400 },
+        );
+    }
+
+    return null;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
@@ -121,65 +165,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Step 2.5: Validate package structure (npm-shrinkwrap and dist)
-        const structureResult = await validatePackageStructure(cleanPackageName);
-
-        if (!structureResult.success) {
-            return NextResponse.json(
-                {
-                    error: "Failed to validate package structure",
-                    step: "structure_check",
-                    details: {
-                        error: structureResult.error,
-                    },
-                },
-                { status: 500 },
-            );
-        }
-
-        // Check if npm-shrinkwrap.json exists
-        if (!structureResult.data.hasNpmShrinkwrap) {
-            return NextResponse.json(
-                {
-                    error: "Package validation failed",
-                    step: "structure_validation",
-                    details: {
-                        errors: ["npm-shrinkwrap.json is required but not found in the package"],
-                        warnings: [],
-                    },
-                },
-                { status: 400 },
-            );
-        }
-
-        // Check if dist folder exists
-        if (!structureResult.data.hasDistFolder) {
-            return NextResponse.json(
-                {
-                    error: "Package validation failed",
-                    step: "structure_validation",
-                    details: {
-                        errors: ["dist folder is required but not found in the package"],
-                        warnings: [],
-                    },
-                },
-                { status: 400 },
-            );
-        }
-
-        // Check if dist/index.html exists
-        if (!structureResult.data.hasDistIndexHtml) {
-            return NextResponse.json(
-                {
-                    error: "Package validation failed",
-                    step: "structure_validation",
-                    details: {
-                        errors: ["dist/index.html is required but not found in the package"],
-                        warnings: [],
-                    },
-                },
-                { status: 400 },
-            );
-        }
+        const structureError = await assertPackageStructure(cleanPackageName);
+        if (structureError) return structureError;
 
         // Step 3: Extract version information (minAPI and maxAPI) — best-effort, null if unavailable
         const versionInfoResult = await extractVersionInfo(cleanPackageName);
