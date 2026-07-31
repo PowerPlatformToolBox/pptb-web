@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
+import { MOCK_AUTH_TOKEN, MOCK_USER } from "@/lib/mock-auth";
 import { useSupabase } from "@/lib/useSupabase";
 import Image from "next/image";
 
@@ -43,32 +44,37 @@ export default function RateToolPage() {
     const [authToken, setAuthToken] = useState<string>("");
 
     useEffect(() => {
-        if (!supabase) return;
+        if (!toolId) {
+            router.push("/tools");
+            return;
+        }
+
         (async () => {
             try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession();
-                if (!session) {
-                    router.push("/auth/signin");
-                    return;
+                if (supabase) {
+                    const {
+                        data: { session },
+                    } = await supabase.auth.getSession();
+                    if (!session) {
+                        router.push("/auth/signin");
+                        return;
+                    }
+
+                    if (session.access_token) {
+                        setAuthToken(session.access_token);
+                        sessionStorage.setItem("supabaseToken", session.access_token);
+                    }
+
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser();
+                    if (user) setUser(user);
+                } else {
+                    setUser(MOCK_USER);
+                    setAuthToken(MOCK_AUTH_TOKEN);
+                    sessionStorage.setItem("supabaseToken", MOCK_AUTH_TOKEN);
                 }
 
-                if (session.access_token) {
-                    setAuthToken(session.access_token);
-                    sessionStorage.setItem("supabaseToken", session.access_token);
-                }
-
-                const {
-                    data: { user },
-                } = await supabase.auth.getUser();
-                if (user) setUser(user);
-                if (!toolId) {
-                    router.push("/tools");
-                    return;
-                }
-
-                // Fetch tool using API
                 const response = await fetch(`/api/tools/${toolId}`);
                 if (response.ok) {
                     const toolData = await response.json();
@@ -79,18 +85,19 @@ export default function RateToolPage() {
                             description: toolData.description,
                             icon: toolData.icon,
                         });
-                    } else if (toolId && mockTools[toolId]) {
+                    } else if (mockTools[toolId]) {
                         setTool(mockTools[toolId]);
                     } else {
                         router.push("/tools");
                     }
+                } else if (mockTools[toolId]) {
+                    setTool(mockTools[toolId]);
                 } else {
-                    if (toolId && mockTools[toolId]) setTool(mockTools[toolId]);
-                    else router.push("/tools");
+                    router.push("/tools");
                 }
             } catch (err) {
                 console.error("Error loading data:", err);
-                if (toolId && mockTools[toolId]) setTool(mockTools[toolId]);
+                if (mockTools[toolId]) setTool(mockTools[toolId]);
                 else router.push("/tools");
             } finally {
                 setLoading(false);

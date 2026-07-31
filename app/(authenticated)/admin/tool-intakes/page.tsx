@@ -85,7 +85,12 @@ export default function AdminToolIntakesPage() {
     };
 
     useEffect(() => {
-        if (!supabase) return; // wait for client init
+        if (!supabase) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setIsAdmin(false);
+            setLoading(false);
+            return;
+        }
 
         async function initPage() {
             try {

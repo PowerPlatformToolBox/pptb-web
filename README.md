@@ -47,7 +47,7 @@ If you are testing from a fork and do not have Supabase credentials, you can sti
 
 - Leave `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` unset.
 - Public tool endpoints automatically return built-in mock data.
-- Protected pages still require authentication, so use public pages like `/tools` for local UI and flow testing.
+- Protected pages now enter a local mock-auth mode automatically, so pages like `/dashboard`, `/submit-tool`, and `/rate-tool` can be exercised without Supabase credentials.
 
 ## Available Scripts
 

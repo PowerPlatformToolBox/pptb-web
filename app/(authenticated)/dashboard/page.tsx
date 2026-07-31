@@ -71,32 +71,30 @@ export default function DashboardPage() {
     useEffect(() => {
         // Get auth token from sessionStorage (set by layout)
         const token = sessionStorage.getItem("supabaseToken");
-        if (!token) {
-            // If no token, auth check will be done in layout
-            return;
+        if (token) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setAuthToken(token);
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setAuthToken(token);
 
         // Fetch dashboard data
         (async () => {
             try {
                 const response = await fetch("/api/dashboard", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: token
+                        ? {
+                              Authorization: `Bearer ${token}`
+                          }
+                        : undefined,
                 });
 
                 if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
                 const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates } = await response.json();
 
-                if (dashUser) {
-                    setUser(dashUser);
-                    setIsAdmin(admin);
-                    setTools(dashTools);
-                    setFailedToolUpdates(failedUpdates || []);
-                }
+                setUser(dashUser || null);
+                setIsAdmin(Boolean(admin));
+                setTools(dashTools || []);
+                setFailedToolUpdates(failedUpdates || []);
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
                 setTools([]);
