@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { mockTools, toToolSummaryApiRecord } from "@/lib/mock-tools";
+
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -19,7 +21,8 @@ export async function GET(request: NextRequest) {
 
         const supabase = getSupabaseClient();
         if (!supabase) {
-            return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
+            const mockResponse = mockTools.map(toToolSummaryApiRecord).sort((a, b) => a.name.localeCompare(b.name));
+            return NextResponse.json(mockResponse);
         }
 
         const { data, error } = await supabase

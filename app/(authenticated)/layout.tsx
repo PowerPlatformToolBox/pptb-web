@@ -5,14 +5,22 @@ import { useEffect, useState } from "react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { MOCK_AUTH_TOKEN } from "@/lib/mock-auth";
 import { useSupabase } from "@/lib/useSupabase";
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
-    const { supabase } = useSupabase();
+    const { supabase, error } = useSupabase();
 
     useEffect(() => {
+        if (error) {
+            sessionStorage.setItem("supabaseToken", MOCK_AUTH_TOKEN);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setLoading(false);
+            return;
+        }
+
         if (!supabase) return; // wait for client
         (async () => {
             try {
@@ -36,7 +44,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
                 router.push("/auth/signin");
             }
         })();
-    }, [router, supabase]);
+    }, [error, router, supabase]);
 
     if (loading) {
         return (

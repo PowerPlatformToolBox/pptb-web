@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { MOCK_AUTH_TOKEN } from "@/lib/mock-auth";
+
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -15,23 +17,28 @@ function getSupabaseClient() {
 
 export async function POST(request: NextRequest) {
     try {
+        // Get authorization token from headers
+        const authHeader = request.headers.get("authorization");
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+
         const supabase = getSupabaseClient();
         if (!supabase) {
+            if (token === MOCK_AUTH_TOKEN) {
+                return NextResponse.json({ success: true, mock: true });
+            }
             return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
         }
 
-        // Get authorization token from headers
-        const authHeader = request.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const token = authHeader.substring(7);
+        const verifiedToken = authHeader.substring(7);
 
         // Verify the JWT token
         const {
             data: { user },
-        } = await supabase.auth.getUser(token);
+        } = await supabase.auth.getUser(verifiedToken);
 
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

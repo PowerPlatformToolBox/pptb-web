@@ -41,6 +41,14 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the website.
 
+### Running a Fork Without Supabase
+
+If you are testing from a fork and do not have Supabase credentials, you can still run the app locally:
+
+- Leave `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` unset.
+- Public tool endpoints automatically return built-in mock data.
+- Protected pages now enter a local mock-auth mode automatically, so pages like `/dashboard`, `/submit-tool`, and `/rate-tool` can be exercised without Supabase credentials.
+
 ## Available Scripts
 
 - `npm run dev` - Start the development server

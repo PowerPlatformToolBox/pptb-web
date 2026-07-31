@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { MOCK_AUTH_TOKEN, MOCK_USER, MOCK_USER_ID } from "@/lib/mock-auth";
+import { mockTools, toToolSummaryApiRecord } from "@/lib/mock-tools";
+
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -45,13 +48,28 @@ function compareSemver(a: string, b: string): number {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-            return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
-        }
-
         // Get authorization token from headers
         const authHeader = request.headers.get("authorization");
+        const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            const tools = mockTools.map((tool) => ({
+                ...toToolSummaryApiRecord(tool),
+                user_id: MOCK_USER_ID,
+                packagename: `mock.${tool.id}`,
+                version: tool.version,
+                categories: tool.categories.map((name, index) => ({ id: index + 1, name })),
+            }));
+            const isMockAuthRequest = bearerToken === MOCK_AUTH_TOKEN;
+
+            return NextResponse.json({
+                user: isMockAuthRequest ? MOCK_USER : null,
+                isAdmin: isMockAuthRequest,
+                tools,
+                failedToolUpdates: [],
+            });
+        }
         let user = null;
         let isAdmin = false;
 
