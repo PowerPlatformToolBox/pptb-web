@@ -1,6 +1,6 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { sendEmail } from "@/lib/resend";
-import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
+import { CspExceptions, Features, fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
 import { validatePackageJson } from "@pptb/validate";
 import { createClient } from "@supabase/supabase-js";
@@ -21,6 +21,33 @@ function getSupabaseClient() {
 interface UpdateToolRequest {
     toolUpdateId: string;
     packageName: string;
+    cspExceptions?: CspExceptions | string;
+    features?: Features | string;
+}
+
+function parseOptionalJsonObject<T>(value: unknown): T | undefined {
+    if (value == null) {
+        return undefined;
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return undefined;
+        }
+
+        try {
+            return JSON.parse(trimmed) as T;
+        } catch {
+            return undefined;
+        }
+    }
+
+    if (typeof value === "object") {
+        return value as T;
+    }
+
+    return undefined;
 }
 
 export async function POST(request: NextRequest) {
@@ -57,7 +84,7 @@ export async function POST(request: NextRequest) {
 
         // Parse request body
         const body = (await request.json()) as UpdateToolRequest;
-        const { toolUpdateId, packageName } = body;
+        const { toolUpdateId, packageName, cspExceptions: requestCspExceptions, features: requestFeatures } = body;
 
         if (!toolUpdateId || typeof toolUpdateId !== "string") {
             return NextResponse.json({ error: "toolUpdateId is required" }, { status: 400 });
@@ -90,6 +117,13 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const parsedCspExceptions = parseOptionalJsonObject<CspExceptions>(requestCspExceptions);
+        const parsedFeatures = parseOptionalJsonObject<Features>(requestFeatures);
+
+        // Request payload has priority over npm metadata when provided.
+        const effectiveCspExceptions = parsedCspExceptions ?? npmResult.data.cspExceptions;
+        const effectiveFeatures = parsedFeatures ?? npmResult.data.features;
+
         // Step 2: Validate package.json structure
         const packageJson: ToolPackageJson = {
             name: npmResult.data.name,
@@ -97,11 +131,11 @@ export async function POST(request: NextRequest) {
             displayName: npmResult.data.displayName,
             description: npmResult.data.description,
             contributors: npmResult.data.contributors,
-            cspExceptions: npmResult.data.cspExceptions,
+            cspExceptions: effectiveCspExceptions,
             license: npmResult.data.license,
             icon: npmResult.data.icon,
             configurations: npmResult.data.configurations,
-            features: npmResult.data.features,
+            features: effectiveFeatures,
         };
 
         const validationResult = await validatePackageJson(packageJson);
@@ -238,17 +272,21 @@ export async function POST(request: NextRequest) {
         const repoOwner = "PowerPlatformToolBox";
         const repoName = "tool-management";
 
+        const workflowInputs = {
+            tool_id: packageJson.name,
+            version: packageJson.version,
+            authors: (packageJson.contributors || []).map((c) => (typeof c === "string" ? c : c.name)).join(", "),
+            repository: packageJson.configurations?.repository || "",
+            website: packageJson.configurations?.website || "",
+            csp_exceptions: effectiveCspExceptions ? JSON.stringify(effectiveCspExceptions) : "",
+            features: effectiveFeatures ? JSON.stringify(effectiveFeatures) : "",
+        };
+
         const conclusion = await runUpdateToolWorkflow({
             owner: repoOwner,
             repo: repoName,
             token: ghToken,
-            inputs: {
-                tool_id: packageJson.name,
-                version: packageJson.version,
-                authors: (packageJson.contributors || []).map((c) => (typeof c === "string" ? c : c.name)).join(", "),
-                repository: packageJson.configurations?.repository || "",
-                website: packageJson.configurations?.website || "",
-            },
+            inputs: workflowInputs,
             ref: "main",
             timeoutMs: 180000,
             pollIntervalMs: 30000,
