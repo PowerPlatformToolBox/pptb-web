@@ -37,9 +37,12 @@ interface SubmitSuccessResponse {
 export default function SubmitToolPage() {
     const { supabase } = useSupabase();
     const [packageName, setPackageName] = useState("");
+    const [linkedinProfileUrl, setLinkedinProfileUrl] = useState("");
+    const [discordHandle, setDiscordHandle] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+    const [loadingProfile, setLoadingProfile] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ValidationError | null>(null);
     const [success, setSuccess] = useState<SubmitSuccessResponse["data"] | null>(null);
@@ -62,6 +65,34 @@ export default function SubmitToolPage() {
         fetchCategories();
     }, []);
 
+    useEffect(() => {
+        if (!supabase) return;
+
+        async function fetchDeveloperProfile() {
+            try {
+                const {
+                    data: { session },
+                } = await supabase!.auth.getSession();
+                if (!session?.access_token) return;
+
+                const response = await fetch("/api/submit-tool", {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+                if (!response.ok) throw new Error("Failed to load developer profile");
+
+                const data = (await response.json()) as { linkedinProfileUrl?: string; discordHandle?: string };
+                setLinkedinProfileUrl(data.linkedinProfileUrl || "");
+                setDiscordHandle(data.discordHandle || "");
+            } catch (err) {
+                console.error("Error loading developer profile:", err);
+            } finally {
+                setLoadingProfile(false);
+            }
+        }
+
+        fetchDeveloperProfile();
+    }, [supabase]);
+
     const handleCategoryToggle = (categoryId: number) => {
         setSelectedCategories((prev) => {
             if (prev.includes(categoryId)) {
@@ -81,6 +112,11 @@ export default function SubmitToolPage() {
 
         if (!packageName.trim()) {
             setError({ error: "Please enter a package name" });
+            return;
+        }
+
+        if (!linkedinProfileUrl.trim()) {
+            setError({ error: "Please enter your LinkedIn profile URL" });
             return;
         }
 
@@ -117,6 +153,8 @@ export default function SubmitToolPage() {
                 body: JSON.stringify({
                     packageName: packageName.trim(),
                     categoryIds: selectedCategories,
+                    linkedinProfileUrl: linkedinProfileUrl.trim(),
+                    discordHandle: discordHandle.trim(),
                 }),
             });
 
@@ -230,6 +268,45 @@ export default function SubmitToolPage() {
                                 </div>
 
                                 <div className="mb-6">
+                                    <label htmlFor="linkedinProfileUrl" className="block text-sm font-medium text-slate-700 mb-2">
+                                        LinkedIn Profile <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="linkedinProfileUrl"
+                                        type="url"
+                                        value={linkedinProfileUrl}
+                                        onChange={(e) => setLinkedinProfileUrl(e.target.value)}
+                                        placeholder="https://www.linkedin.com/in/your-profile"
+                                        required
+                                        disabled={loading || loadingProfile}
+                                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                                    />
+                                </div>
+
+                                <div className="mb-6">
+                                    <label htmlFor="discordHandle" className="block text-sm font-medium text-slate-700 mb-2">
+                                        Discord Handle <span className="font-normal text-slate-500">(optional, recommended)</span>
+                                    </label>
+                                    <input
+                                        id="discordHandle"
+                                        type="text"
+                                        value={discordHandle}
+                                        onChange={(e) => setDiscordHandle(e.target.value)}
+                                        placeholder="your Discord username"
+                                        maxLength={100}
+                                        disabled={loading || loadingProfile}
+                                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                                    />
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        We recommend joining the{" "}
+                                        <a href="https://discord.gg/efwAu9sXyJ" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:text-blue-700 underline">
+                                            PPTB community on Discord
+                                        </a>{" "}
+                                        to connect with other developers and get support.
+                                    </p>
+                                </div>
+
+                                <div className="mb-6">
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                         Categories <span className="text-red-500">*</span>
                                     </label>
@@ -275,7 +352,7 @@ export default function SubmitToolPage() {
                                 <div className="flex gap-4">
                                     <button
                                         type="submit"
-                                        disabled={loading || !packageName.trim() || selectedCategories.length === 0 || loadingCategories}
+                                        disabled={loading || loadingProfile || !packageName.trim() || !linkedinProfileUrl.trim() || selectedCategories.length === 0 || loadingCategories}
                                         className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {loading ? (
@@ -375,7 +452,19 @@ export default function SubmitToolPage() {
                         {/* Example Package.json */}
                         <SlideIn direction="up" delay={0.5}>
                             <div className="mt-8 card p-6">
-                                <h2 className="text-lg font-semibold text-slate-900 mb-4">Example package.json</h2>
+                                <h2 className="text-lg font-semibold text-slate-900">Example package.json</h2>
+                                <p className="mt-2 mb-4 text-sm text-slate-600">
+                                    See the{" "}
+                                    <a
+                                        href="https://docs.powerplatformtoolbox.com/tool-development/manifest"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-medium text-blue-600 underline hover:text-blue-700"
+                                    >
+                                        tool manifest documentation
+                                    </a>{" "}
+                                    for the complete schema and guidance.
+                                </p>
                                 <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-xs">
                                     {`{
   "name": "pptb-sample-tool",

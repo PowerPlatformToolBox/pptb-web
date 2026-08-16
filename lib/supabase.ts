@@ -43,6 +43,9 @@ export interface UserProfile {
     email: string;
     name?: string;
     avatar_url?: string;
+    linkedin_profile_url?: string;
+    discord_handle?: string;
+    is_tool_developer: boolean;
     created_at: string;
     updated_at?: string;
 }

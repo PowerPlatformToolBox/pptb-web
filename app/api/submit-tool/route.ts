@@ -3,7 +3,7 @@ import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
 import { validatePackageJson } from "@pptb/validate";
 import { validatePackageStructure } from "@pptb/validate/npm";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, User } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create Supabase client with service role for server-side operations
@@ -21,6 +21,42 @@ function getSupabaseClient() {
 interface SubmitToolRequest {
     packageName: string;
     categoryIds: number[];
+    linkedinProfileUrl: string;
+    discordHandle?: string;
+}
+
+const linkedInProfileRegex = /^https:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9_%~-]+\/?(?:\?.*)?$/i;
+
+async function getAuthenticatedUser(request: NextRequest, supabase: NonNullable<ReturnType<typeof getSupabaseClient>>): Promise<User | null> {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) return null;
+
+    const token = authHeader.slice(7);
+    const {
+        data: { user },
+        error,
+    } = await supabase.auth.getUser(token);
+
+    return error ? null : user;
+}
+
+export async function GET(request: NextRequest) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return NextResponse.json({ error: "Database connection not configured" }, { status: 500 });
+
+    const user = await getAuthenticatedUser(request, supabase);
+    if (!user) return NextResponse.json({ error: "Unauthorized. Valid user token required." }, { status: 401 });
+
+    const { data, error } = await supabase.from("user_profiles").select("linkedin_profile_url, discord_handle").eq("id", user.id).maybeSingle();
+    if (error) {
+        console.error("Error loading developer profile:", error);
+        return NextResponse.json({ error: "Failed to load developer profile" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+        linkedinProfileUrl: data?.linkedin_profile_url || "",
+        discordHandle: data?.discord_handle || "",
+    });
 }
 
 // Helper function to assert the package structure is valid
@@ -82,26 +118,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify authorization and identify user
-        const authHeader = request.headers.get("authorization");
-        let userId: string | null = null;
-
-        if (authHeader?.startsWith("Bearer ")) {
-            const token = authHeader.slice(7);
-            const {
-                data: { user },
-                error: authError,
-            } = await supabase.auth.getUser(token);
-
-            if (!authError && user) {
-                userId = user.id;
-            } else {
-                return NextResponse.json({ error: "Unauthorized. Valid user token required." }, { status: 401 });
-            }
-        }
+        const user = await getAuthenticatedUser(request, supabase);
+        if (!user) return NextResponse.json({ error: "Unauthorized. Valid user token required." }, { status: 401 });
 
         // Parse request body
         const body = (await request.json()) as SubmitToolRequest;
-        const { packageName, categoryIds } = body;
+        const { packageName, categoryIds, linkedinProfileUrl, discordHandle } = body;
 
         if (!packageName || typeof packageName !== "string") {
             return NextResponse.json({ error: "Package name is required" }, { status: 400 });
@@ -109,6 +131,16 @@ export async function POST(request: NextRequest) {
 
         if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
             return NextResponse.json({ error: "At least one category is required" }, { status: 400 });
+        }
+
+        const cleanLinkedInProfileUrl = linkedinProfileUrl?.trim();
+        const cleanDiscordHandle = discordHandle?.trim() || null;
+        if (!cleanLinkedInProfileUrl || !linkedInProfileRegex.test(cleanLinkedInProfileUrl)) {
+            return NextResponse.json({ error: "A valid LinkedIn profile URL is required" }, { status: 400 });
+        }
+
+        if (cleanDiscordHandle && cleanDiscordHandle.length > 100) {
+            return NextResponse.json({ error: "Discord handle must be 100 characters or fewer" }, { status: 400 });
         }
 
         // Clean up package name
@@ -202,6 +234,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const { error: profileError } = await supabase.from("user_profiles").upsert(
+            {
+                id: user.id,
+                email: user.email || "",
+                linkedin_profile_url: cleanLinkedInProfileUrl,
+                discord_handle: cleanDiscordHandle,
+                updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" },
+        );
+
+        if (profileError) {
+            console.error("Error updating developer profile:", profileError);
+            return NextResponse.json({ error: "Failed to update developer profile", step: "profile_update" }, { status: 500 });
+        }
+
         // Extract packageInfo for cleaner access (validated to exist at this point)
         const packageInfo: ToolPackageJson = validationResult.packageInfo as ToolPackageJson;
         if (!packageInfo) {
@@ -226,7 +274,7 @@ export async function POST(request: NextRequest) {
                 icon: packageInfo.icon || null,
                 csp_exceptions: packageInfo.cspExceptions || null,
                 configurations: packageInfo.configurations,
-                submitted_by: userId,
+                submitted_by: user.id,
                 status: "pending_review",
                 validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
                 features: packageInfo.features || null,
@@ -307,6 +355,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const { error: developerFlagError } = await supabase.from("user_profiles").update({ is_tool_developer: true }).eq("id", user.id);
+
+        if (developerFlagError) {
+            console.error("Error setting tool developer flag:", developerFlagError);
+        }
+
         // Normalize contributors: insert into contributors table & link
         if (packageInfo.contributors && packageInfo.contributors.length > 0) {
             for (const contrib of packageInfo.contributors) {
@@ -347,7 +401,7 @@ export async function POST(request: NextRequest) {
         console.log(`Display Name: ${packageInfo.displayName}`);
         console.log(`Version: ${packageInfo.version}`);
         console.log(`Description: ${packageInfo.description}`);
-        console.log(`Submitted By: ${userId || "Anonymous"}`);
+        console.log(`Submitted By: ${user.id}`);
         console.log("Review at: /admin/tool-intakes");
         console.log("================================");
 
