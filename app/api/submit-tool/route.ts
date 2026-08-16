@@ -247,6 +247,46 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Helper to rollback the intake insert; logs a warning if the delete itself fails
+        const rollbackIntake = async () => {
+            const { error: deleteError } = await supabase.from("tool_intakes").delete().eq("id", intakeData.id);
+            if (deleteError) {
+                console.warn(`[submit-tool] Failed to rollback intake ${intakeData.id}:`, deleteError);
+            }
+        };
+
+        // Validate that all provided category IDs exist
+        const { data: existingCategories, error: categoriesLookupError } = await supabase
+            .from("categories")
+            .select("id")
+            .in("id", categoryIds);
+
+        if (categoriesLookupError || !existingCategories) {
+            await rollbackIntake();
+            console.error("Error validating categories:", categoriesLookupError);
+            return NextResponse.json(
+                {
+                    error: "Failed to validate categories. Please resubmit.",
+                    step: "category_validation",
+                },
+                { status: 500 },
+            );
+        }
+
+        const validCategoryIds = new Set(existingCategories.map((c) => c.id));
+        const invalidCount = categoryIds.filter((id) => !validCategoryIds.has(id)).length;
+
+        if (invalidCount > 0) {
+            await rollbackIntake();
+            return NextResponse.json(
+                {
+                    error: `${invalidCount} selected ${invalidCount === 1 ? "category is" : "categories are"} invalid. Please resubmit with valid categories.`,
+                    step: "category_validation",
+                },
+                { status: 400 },
+            );
+        }
+
         // Insert category relationships
         const categoryRelations = categoryIds.map((categoryId) => ({
             tool_intake_id: intakeData.id,
@@ -256,9 +296,15 @@ export async function POST(request: NextRequest) {
         const { error: categoryError } = await supabase.from("tool_intake_categories").insert(categoryRelations);
 
         if (categoryError) {
+            await rollbackIntake();
             console.error("Error inserting tool intake categories:", categoryError);
-            // Note: We don't fail the request here since the main intake was saved
-            // The admin can manually fix categories if needed
+            return NextResponse.json(
+                {
+                    error: "Failed to save tool categories. Please resubmit.",
+                    step: "category_insert",
+                },
+                { status: 500 },
+            );
         }
 
         // Normalize contributors: insert into contributors table & link
