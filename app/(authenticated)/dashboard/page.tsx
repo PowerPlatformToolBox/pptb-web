@@ -76,6 +76,11 @@ export default function DashboardPage() {
         errors: string[];
         warnings: string[];
     } | null>(null);
+    const [categoryOptions, setCategoryOptions] = useState<Array<{ id: number; name: string }>>([]);
+    const [categoryModal, setCategoryModal] = useState<{ toolId: string; toolName: string } | null>(null);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+    const [savingCategories, setSavingCategories] = useState(false);
+    const [categoryError, setCategoryError] = useState<string | null>(null);
 
     useEffect(() => {
         // Get auth token from sessionStorage (set by layout)
@@ -109,6 +114,20 @@ export default function DashboardPage() {
                 setTools([]);
             } finally {
                 setLoading(false);
+            }
+        })();
+    }, []);
+
+    // Fetch category options once for the "Assign categories" modal
+    useEffect(() => {
+        (async () => {
+            try {
+                const response = await fetch("/api/categories");
+                if (!response.ok) throw new Error("Failed to fetch categories");
+                const data = await response.json();
+                setCategoryOptions(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error("Error fetching categories:", error);
             }
         })();
     }, []);
@@ -201,6 +220,61 @@ export default function DashboardPage() {
             alert(`Failed to trigger update: ${error instanceof Error ? error.message : "Please try again."}`);
         } finally {
             setTriggeringUpdateForToolId(null);
+        }
+    };
+
+    const openCategoryModal = (toolId: string, toolName: string) => {
+        setCategoryModal({ toolId, toolName });
+        setSelectedCategoryIds([]);
+        setCategoryError(null);
+    };
+
+    const handleCategoryToggle = (categoryId: number) => {
+        setSelectedCategoryIds((prev) => {
+            if (prev.includes(categoryId)) {
+                return prev.filter((id) => id !== categoryId);
+            } else if (prev.length < 3) {
+                return [...prev, categoryId];
+            }
+            return prev;
+        });
+    };
+
+    const handleAssignCategories = async () => {
+        if (!categoryModal || !authToken) return;
+
+        if (selectedCategoryIds.length === 0) {
+            setCategoryError("Please select at least one category");
+            return;
+        }
+
+        setSavingCategories(true);
+        setCategoryError(null);
+        try {
+            const response = await fetch("/api/tools/update-categories", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({ toolId: categoryModal.toolId, categoryIds: selectedCategoryIds }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to assign categories");
+            }
+
+            const assigned: Array<{ id: number; name: string }> = data.categories || [];
+            setTools((prevTools) => prevTools.map((tool) => (tool.id === categoryModal.toolId ? { ...tool, categories: assigned } : tool)));
+            setCategoryModal(null);
+            setSelectedCategoryIds([]);
+        } catch (error) {
+            console.error("Error assigning categories:", error);
+            setCategoryError(error instanceof Error ? error.message : "Failed to assign categories. Please try again.");
+        } finally {
+            setSavingCategories(false);
         }
     };
 
@@ -673,6 +747,27 @@ export default function DashboardPage() {
                                                                                                 }
                                                                                             }}
                                                                                         >
+                                                                                            {(!tool.categories || tool.categories.length === 0) && (
+                                                                                                <button
+                                                                                                    role="menuitem"
+                                                                                                    onClick={() => {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                        openCategoryModal(tool.id, tool.name);
+                                                                                                    }}
+                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                                                                                                >
+                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                        <path
+                                                                                                            strokeLinecap="round"
+                                                                                                            strokeLinejoin="round"
+                                                                                                            strokeWidth={2}
+                                                                                                            d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
+                                                                                                        />
+                                                                                                    </svg>
+                                                                                                    Assign categories
+                                                                                                </button>
+                                                                                            )}
                                                                                             <button
                                                                                                 role="menuitem"
                                                                                                 onClick={() => {
@@ -845,6 +940,92 @@ export default function DashboardPage() {
                         <div className="flex justify-end border-t border-slate-200 px-6 py-4">
                             <button onClick={() => setValidationModal(null)} className="btn-primary">
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Assign Categories Modal */}
+            {categoryModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="category-modal-title"
+                    tabIndex={-1}
+                    autoFocus
+                    onKeyDown={(e) => e.key === "Escape" && !savingCategories && setCategoryModal(null)}
+                >
+                    <div className="absolute inset-0 bg-black/50" onClick={() => !savingCategories && setCategoryModal(null)} />
+                    <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
+                        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+                            <div>
+                                <h2 id="category-modal-title" className="text-lg font-semibold text-slate-900">
+                                    Assign categories
+                                </h2>
+                                <p className="text-sm text-slate-500">
+                                    <span className="font-medium text-slate-700">{categoryModal.toolName}</span>
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => !savingCategories && setCategoryModal(null)}
+                                className="ml-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            >
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto px-6 py-4">
+                            {categoryError && (
+                                <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800">{categoryError}</div>
+                            )}
+                            {categoryOptions.length === 0 ? (
+                                <p className="text-sm text-red-600">No categories available. Please contact an administrator.</p>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {categoryOptions.map((category) => {
+                                            const isSelected = selectedCategoryIds.includes(category.id);
+                                            const isDisabled = savingCategories || (selectedCategoryIds.length >= 3 && !isSelected);
+                                            return (
+                                                <label
+                                                    key={category.id}
+                                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                                                        isSelected ? "bg-blue-50 border-blue-500 text-blue-900" : "bg-white border-slate-300 text-slate-700 hover:border-blue-300"
+                                                    } ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => handleCategoryToggle(category.id)}
+                                                        disabled={isDisabled}
+                                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                    />
+                                                    <span className="text-sm font-medium">{category.name}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="mt-2 text-xs text-slate-500">Select up to 3 categories that best describe your tool ({selectedCategoryIds.length}/3 selected)</p>
+                                </>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                            <button
+                                onClick={() => setCategoryModal(null)}
+                                disabled={savingCategories}
+                                className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAssignCategories}
+                                disabled={savingCategories || selectedCategoryIds.length === 0 || categoryOptions.length === 0}
+                                className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {savingCategories ? "Saving..." : "Save categories"}
                             </button>
                         </div>
                     </div>
