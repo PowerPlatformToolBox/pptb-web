@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
 
         // Validate package name format using npm's naming rules
         // https://github.com/npm/validate-npm-package-name
-        const npmPackageNameRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+        const npmPackageNameRegex = /^(@[a-z0-9-~_][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
         if (!npmPackageNameRegex.test(cleanPackageName)) {
             return NextResponse.json({ error: "Invalid npm package name format" }, { status: 400 });
         }
