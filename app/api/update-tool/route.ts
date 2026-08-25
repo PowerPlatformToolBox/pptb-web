@@ -1,4 +1,5 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
+import { cancelActiveVerificationRequest } from "@/lib/maturity";
 import { sendEmail } from "@/lib/resend";
 import { CspExceptions, Features, fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
         const maxAPI = versionInfoResult.success ? versionInfoResult.data.maxAPI : null;
 
         // Update tool table entry with latest validated package info
-        await supabase
+        const { data: updatedTool, error: toolUpdateError } = await supabase
             .from("tools")
             .update({
                 name: packageJson.displayName,
@@ -246,7 +247,18 @@ export async function POST(request: NextRequest) {
                 min_api: minAPI,
                 max_api: maxAPI,
             })
-            .eq("packagename", packageJson.name);
+            .eq("packagename", packageJson.name)
+            .select("id, name")
+            .maybeSingle();
+
+        if (toolUpdateError) {
+            throw new Error(`Failed to update tool: ${toolUpdateError.message}`);
+        }
+        if (!updatedTool) {
+            return NextResponse.json({ error: "Published tool not found" }, { status: 404 });
+        }
+
+        await cancelActiveVerificationRequest(supabase, updatedTool);
 
         // Update tool update record as validated
         await supabase

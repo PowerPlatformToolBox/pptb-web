@@ -36,6 +36,15 @@ interface ToolConversionSuccessPayload {
     toolLink: string;
 }
 
+interface VerificationDeveloperPayload {
+    developerId: string;
+    toolName: string;
+}
+
+interface VerificationRejectedPayload extends VerificationDeveloperPayload {
+    failedCriteria: string[];
+}
+
 type SendEmailOptions =
     | {
           type: "tool-submission-admin";
@@ -58,6 +67,16 @@ type SendEmailOptions =
     | {
           type: "tool-conversion-success";
           data: ToolConversionSuccessPayload;
+          supabase: SupabaseClient;
+      }
+    | {
+          type: "verification-request-submitted" | "verification-request-cancelled" | "verification-approved";
+          data: VerificationDeveloperPayload;
+          supabase: SupabaseClient;
+      }
+    | {
+          type: "verification-rejected";
+          data: VerificationRejectedPayload;
           supabase: SupabaseClient;
       };
 
@@ -99,6 +118,14 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
             return sendToolReviewChangeRequestEmail(options.supabase, options.data);
         case "tool-conversion-success":
             return sendToolConversionSuccessEmail(options.supabase, options.data);
+        case "verification-request-submitted":
+            return sendVerificationRequestSubmittedEmail(options.supabase, options.data);
+        case "verification-request-cancelled":
+            return sendVerificationRequestCancelledEmail(options.supabase, options.data);
+        case "verification-approved":
+            return sendVerificationApprovedEmail(options.supabase, options.data);
+        case "verification-rejected":
+            return sendVerificationRejectedEmail(options.supabase, options.data);
         default:
             return { success: false, error: "Unsupported email type" };
     }
@@ -213,6 +240,48 @@ async function sendToolConversionSuccessEmail(supabase: SupabaseClient, data: To
     });
 }
 
+async function sendVerificationRequestSubmittedEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
+    return deliverDeveloperEmail(supabase, data.developerId, {
+        subject: `Verification requested: ${data.toolName}`,
+        html: `<p>Your verification request for <strong>${escapeHtml(data.toolName)}</strong> is in the review queue.</p><p>Reviews normally take 1–2 weeks. Publishing an update while the request is queued or in review will automatically cancel it so the review is not performed against an outdated version. You can submit a new request after the update is published.</p>`,
+    });
+}
+
+async function sendVerificationRequestCancelledEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
+    return deliverDeveloperEmail(supabase, data.developerId, {
+        subject: `Verification cancelled: ${data.toolName} was updated`,
+        html: `<p>The active verification request for <strong>${escapeHtml(data.toolName)}</strong> was automatically cancelled because the tool was updated while queued or in review.</p><p>You can submit a new verification request from My Tools. The new request will go through the full review.</p>`,
+    });
+}
+
+async function sendVerificationApprovedEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
+    return deliverDeveloperEmail(supabase, data.developerId, {
+        subject: `Verification approved: ${data.toolName}`,
+        html: `<p><strong>${escapeHtml(data.toolName)}</strong> passed every required verification criterion and is now Verified.</p><p>The Verified badge is now visible in the marketplace.</p>`,
+    });
+}
+
+async function sendVerificationRejectedEmail(supabase: SupabaseClient, data: VerificationRejectedPayload): Promise<EmailResult> {
+    const failedCriteria = data.failedCriteria.map((criterion) => `<li>${escapeHtml(criterion)}</li>`).join("");
+    return deliverDeveloperEmail(supabase, data.developerId, {
+        subject: `Verification not approved: ${data.toolName}`,
+        html: `<p><strong>${escapeHtml(data.toolName)}</strong> did not pass verification.</p><p>The required criteria that did not pass were:</p><ul>${failedCriteria}</ul><p>After addressing these items, you can submit a new request for a full review.</p>`,
+    });
+}
+
+async function deliverDeveloperEmail(supabase: SupabaseClient, developerId: string, message: { subject: string; html: string }): Promise<EmailResult> {
+    const recipientEmail = await getSubmitterEmail(supabase, developerId);
+    if (!recipientEmail) {
+        return { success: false, error: "Developer email not found" };
+    }
+
+    return deliverEmail({ ...message, to: [recipientEmail] });
+}
+
+function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] || character);
+}
+
 function formatValidationErrors(errors: string[]): string {
     if (!errors || errors.length === 0) {
         return "";
@@ -221,7 +290,19 @@ function formatValidationErrors(errors: string[]): string {
     return errors.join("\n");
 }
 
-async function deliverEmail({ subject, templateId, variables = {}, to }: { subject: string; templateId: string; variables?: TemplateVariables; to?: string[] }): Promise<EmailResult> {
+async function deliverEmail({
+    subject,
+    templateId,
+    variables = {},
+    html,
+    to,
+}: {
+    subject: string;
+    templateId?: string;
+    variables?: TemplateVariables;
+    html?: string;
+    to?: string[];
+}): Promise<EmailResult> {
     if (!resendClient) {
         return { success: false, error: "Resend API key not configured" };
     }
@@ -236,8 +317,8 @@ async function deliverEmail({ subject, templateId, variables = {}, to }: { subje
         return { success: false, error: "RESEND_ADMIN_RECIPIENTS is not configured" };
     }
 
-    if (!templateId) {
-        return { success: false, error: "Template id is required" };
+    if (!templateId && !html) {
+        return { success: false, error: "Template id or HTML content is required" };
     }
 
     try {
@@ -245,10 +326,7 @@ async function deliverEmail({ subject, templateId, variables = {}, to }: { subje
             from: defaultFromAddress,
             to: recipients,
             subject,
-            template: {
-                id: templateId,
-                variables,
-            },
+            ...(templateId ? { template: { id: templateId, variables } } : { html }),
         } as Record<string, unknown>;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -303,11 +381,21 @@ async function getSubmitterEmail(supabase: SupabaseClient, submitterId: string):
         const { data: profile, error: profileError } = await supabase.from("user_profiles").select("email").eq("id", submitterId).maybeSingle();
         if (profileError) {
             console.warn("[supabase] Failed to fetch submitter email", profileError.message);
-            return null;
         }
 
         const email = profile?.email;
-        return typeof email === "string" && email.includes("@") ? email : null;
+        if (typeof email === "string" && email.includes("@")) {
+            return email;
+        }
+
+        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(submitterId);
+        if (authError) {
+            console.warn("[supabase] Failed to fetch submitter auth email", authError.message);
+            return null;
+        }
+
+        const authEmail = authUser.user?.email;
+        return typeof authEmail === "string" && authEmail.includes("@") ? authEmail : null;
     } catch (error) {
         console.error("[supabase] Unexpected error fetching submitter email", error);
         return null;
