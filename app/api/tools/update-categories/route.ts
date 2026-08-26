@@ -77,21 +77,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "You do not have permission to update this tool" }, { status: 403 });
         }
 
-        // Empty-only: refuse to change categories on a tool that already has some
-        const { data: existingRelations, error: existingError } = await supabase
-            .from("tool_categories")
-            .select("category_id")
-            .eq("tool_id", toolId);
-
-        if (existingError) {
-            console.error("Error checking existing tool categories:", existingError);
-            return NextResponse.json({ error: "Failed to load current categories. Please try again." }, { status: 500 });
-        }
-
-        if (existingRelations && existingRelations.length > 0) {
-            return NextResponse.json({ error: "This tool already has categories assigned." }, { status: 409 });
-        }
-
         // Validate that all provided category IDs exist
         const { data: existingCategories, error: categoriesLookupError } = await supabase
             .from("categories")
@@ -115,7 +100,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Insert category relationships
+        // Replace existing category relationships so owners can add/remove freely
+        const { error: deleteError } = await supabase.from("tool_categories").delete().eq("tool_id", toolId);
+
+        if (deleteError) {
+            console.error("Error clearing tool categories:", deleteError);
+            return NextResponse.json({ error: "Failed to update tool categories. Please try again." }, { status: 500 });
+        }
+
         const categoryRelations = uniqueCategoryIds.map((categoryId) => ({
             tool_id: toolId,
             category_id: categoryId,
@@ -128,10 +120,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Failed to save tool categories. Please try again." }, { status: 500 });
         }
 
+        const categoryById = new Map(existingCategories.map((c) => [c.id, c]));
+        const categories = uniqueCategoryIds
+            .map((id) => categoryById.get(id))
+            .filter((c): c is { id: number; name: string } => Boolean(c))
+            .map((c) => ({ id: c.id, name: c.name }));
+
         return NextResponse.json({
             success: true,
-            message: "Categories assigned successfully",
-            categories: existingCategories.map((c) => ({ id: c.id, name: c.name })),
+            message: "Categories updated successfully",
+            categories,
         });
     } catch (error) {
         console.error("Error updating tool categories:", error);

@@ -118,7 +118,7 @@ export default function DashboardPage() {
         })();
     }, []);
 
-    // Fetch category options once for the "Assign categories" modal
+    // Fetch category options once for the "Edit categories" modal
     useEffect(() => {
         (async () => {
             try {
@@ -223,9 +223,9 @@ export default function DashboardPage() {
         }
     };
 
-    const openCategoryModal = (toolId: string, toolName: string) => {
-        setCategoryModal({ toolId, toolName });
-        setSelectedCategoryIds([]);
+    const openCategoryModal = (tool: Tool) => {
+        setCategoryModal({ toolId: tool.id, toolName: tool.name });
+        setSelectedCategoryIds(tool.categories?.map((cat) => cat.id) || []);
         setCategoryError(null);
     };
 
@@ -263,7 +263,7 @@ export default function DashboardPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Failed to assign categories");
+                throw new Error(data.error || "Failed to update categories");
             }
 
             const assigned: Array<{ id: number; name: string }> = data.categories || [];
@@ -271,8 +271,8 @@ export default function DashboardPage() {
             setCategoryModal(null);
             setSelectedCategoryIds([]);
         } catch (error) {
-            console.error("Error assigning categories:", error);
-            setCategoryError(error instanceof Error ? error.message : "Failed to assign categories. Please try again.");
+            console.error("Error updating categories:", error);
+            setCategoryError(error instanceof Error ? error.message : "Failed to update categories. Please try again.");
         } finally {
             setSavingCategories(false);
         }
@@ -715,7 +715,7 @@ export default function DashboardPage() {
                                                                                 {openMoreMenuForToolId === tool.id && (
                                                                                     <>
                                                                                         <div
-                                                                                            className="fixed inset-0 z-[9998]"
+                                                                                            className="fixed inset-0 z-9998"
                                                                                             onClick={() => {
                                                                                                 setOpenMoreMenuForToolId(null);
                                                                                                 moreMenuAnchorRef.current = null;
@@ -731,7 +731,7 @@ export default function DashboardPage() {
                                                                                             role="menu"
                                                                                             tabIndex={-1}
                                                                                             autoFocus
-                                                                                            className="fixed z-[9999] w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                            className="fixed z-9999 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
                                                                                             style={
                                                                                                 moreMenuAnchorRef.current
                                                                                                     ? {
@@ -747,27 +747,26 @@ export default function DashboardPage() {
                                                                                                 }
                                                                                             }}
                                                                                         >
-                                                                                            {(!tool.categories || tool.categories.length === 0) && (
-                                                                                                <button
-                                                                                                    role="menuitem"
-                                                                                                    onClick={() => {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                        openCategoryModal(tool.id, tool.name);
-                                                                                                    }}
-                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
-                                                                                                >
-                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                        <path
-                                                                                                            strokeLinecap="round"
-                                                                                                            strokeLinejoin="round"
-                                                                                                            strokeWidth={2}
-                                                                                                            d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
-                                                                                                        />
-                                                                                                    </svg>
-                                                                                                    Assign categories
-                                                                                                </button>
-                                                                                            )}
+                                                                                            <button
+                                                                                                role="menuitem"
+                                                                                                onClick={() => {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                    openCategoryModal(tool);
+                                                                                                }}
+                                                                                                disabled={tool.status === TOOL_STATUSES.DELETED}
+                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                            >
+                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                    <path
+                                                                                                        strokeLinecap="round"
+                                                                                                        strokeLinejoin="round"
+                                                                                                        strokeWidth={2}
+                                                                                                        d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
+                                                                                                    />
+                                                                                                </svg>
+                                                                                                Edit categories
+                                                                                            </button>
                                                                                             <button
                                                                                                 role="menuitem"
                                                                                                 onClick={() => {
@@ -946,7 +945,7 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Assign Categories Modal */}
+            {/* Edit Categories Modal */}
             {categoryModal && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -962,7 +961,7 @@ export default function DashboardPage() {
                         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
                             <div>
                                 <h2 id="category-modal-title" className="text-lg font-semibold text-slate-900">
-                                    Assign categories
+                                    Edit categories
                                 </h2>
                                 <p className="text-sm text-slate-500">
                                     <span className="font-medium text-slate-700">{categoryModal.toolName}</span>
