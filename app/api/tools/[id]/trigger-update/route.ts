@@ -134,6 +134,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                     .join(", "),
                 repository: packageJson.configurations?.repository || "",
                 website: packageJson.configurations?.website || "",
+                csp_exceptions: packageJson.cspExceptions ? JSON.stringify(packageJson.cspExceptions) : "",
+                features: packageJson.features ? JSON.stringify(packageJson.features) : "",
             },
             ref: "main",
             timeoutMs: 180000,

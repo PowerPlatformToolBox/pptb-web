@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs */
 "use client";
 
 import Image from "next/image";
@@ -52,6 +51,11 @@ interface FailedToolUpdate {
     validation_warnings: string[] | null;
 }
 
+type ToolUpdateState = {
+    status: "updating" | "success" | "error";
+    message: string;
+};
+
 const INTAKE_STATUS_BADGES: Record<string, { label: string; className: string }> = {
     pending_review: { label: "Under Review", className: "text-yellow-700 bg-yellow-100" },
     needs_changes: { label: "Needs Changes", className: "text-orange-700 bg-orange-100" },
@@ -68,7 +72,7 @@ export default function DashboardPage() {
     const [viewMode, setViewMode] = useState<"all" | "my">("all");
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
-    const [triggeringUpdateForToolId, setTriggeringUpdateForToolId] = useState<string | null>(null);
+    const [toolUpdateStates, setToolUpdateStates] = useState<Record<string, ToolUpdateState>>({});
     const [openMoreMenuForToolId, setOpenMoreMenuForToolId] = useState<string | null>(null);
     const moreMenuAnchorRef = useRef<DOMRect | null>(null);
     const [validationModal, setValidationModal] = useState<{
@@ -86,7 +90,6 @@ export default function DashboardPage() {
         // Get auth token from sessionStorage (set by layout)
         const token = sessionStorage.getItem("supabaseToken");
         if (token) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setAuthToken(token);
         }
 
@@ -96,7 +99,7 @@ export default function DashboardPage() {
                 const response = await fetch("/api/dashboard", {
                     headers: token
                         ? {
-                              Authorization: `Bearer ${token}`
+                              Authorization: `Bearer ${token}`,
                           }
                         : undefined,
                 });
@@ -190,7 +193,10 @@ export default function DashboardPage() {
 
         if (!confirm("Are you sure you want to trigger an update for this tool? This will run the update workflow.")) return;
 
-        setTriggeringUpdateForToolId(toolId);
+        setToolUpdateStates((current) => ({
+            ...current,
+            [toolId]: { status: "updating", message: "Updating..." },
+        }));
         try {
             const response = await fetch(`/api/tools/${toolId}/trigger-update`, {
                 method: "POST",
@@ -208,18 +214,29 @@ export default function DashboardPage() {
                         errors: errorData.details.errors || [],
                         warnings: errorData.details.warnings || [],
                     });
+                    setToolUpdateStates((current) => ({
+                        ...current,
+                        [toolId]: { status: "error", message: "Validation failed" },
+                    }));
                 } else {
                     throw new Error(errorData.error || "Failed to trigger update");
                 }
                 return;
             }
 
-            alert("Update workflow triggered successfully!");
+            setToolUpdateStates((current) => ({
+                ...current,
+                [toolId]: { status: "success", message: "Update triggered" },
+            }));
         } catch (error) {
             console.error("Error triggering tool update:", error);
-            alert(`Failed to trigger update: ${error instanceof Error ? error.message : "Please try again."}`);
-        } finally {
-            setTriggeringUpdateForToolId(null);
+            setToolUpdateStates((current) => ({
+                ...current,
+                [toolId]: {
+                    status: "error",
+                    message: error instanceof Error ? error.message : "Update failed",
+                },
+            }));
         }
     };
 
@@ -616,6 +633,7 @@ export default function DashboardPage() {
 
                                                     const analytics = tool.tool_analytics;
                                                     const toolHasFailedUpdate = viewMode === "my" && !!tool.packagename && failedUpdatePackageNames.has(tool.packagename);
+                                                    const updateState = toolUpdateStates[tool.id];
                                                     return (
                                                         <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -689,161 +707,189 @@ export default function DashboardPage() {
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "--"}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                <div className="flex items-center gap-2">
-                                                                    {viewMode === "my" ? (
-                                                                        <>
-                                                                            <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                View
-                                                                            </Link>
-                                                                            <span className="text-slate-300">|</span>
-                                                                            <div className="relative">
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        const newId = openMoreMenuForToolId === tool.id ? null : tool.id;
-                                                                                        moreMenuAnchorRef.current = newId ? e.currentTarget.getBoundingClientRect() : null;
-                                                                                        setOpenMoreMenuForToolId(newId);
-                                                                                    }}
-                                                                                    aria-haspopup="true"
-                                                                                    aria-expanded={openMoreMenuForToolId === tool.id}
-                                                                                    className="flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium"
-                                                                                >
-                                                                                    More
-                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                                                    </svg>
-                                                                                </button>
-                                                                                {openMoreMenuForToolId === tool.id && (
-                                                                                    <>
-                                                                                        <div
-                                                                                            className="fixed inset-0 z-9998"
-                                                                                            onClick={() => {
-                                                                                                setOpenMoreMenuForToolId(null);
-                                                                                                moreMenuAnchorRef.current = null;
-                                                                                            }}
-                                                                                            onKeyDown={(e) => {
-                                                                                                if (e.key === "Escape") {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
-                                                                                                }
-                                                                                            }}
-                                                                                        />
-                                                                                        <div
-                                                                                            role="menu"
-                                                                                            tabIndex={-1}
-                                                                                            autoFocus
-                                                                                            className="fixed z-9999 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-                                                                                            style={
-                                                                                                moreMenuAnchorRef.current
-                                                                                                    ? {
-                                                                                                          top: moreMenuAnchorRef.current.bottom + 4,
-                                                                                                          left: moreMenuAnchorRef.current.right - 192,
-                                                                                                      }
-                                                                                                    : undefined
-                                                                                            }
-                                                                                            onKeyDown={(e) => {
-                                                                                                if (e.key === "Escape") {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
-                                                                                                }
-                                                                                            }}
-                                                                                        >
-                                                                                            <button
-                                                                                                role="menuitem"
-                                                                                                onClick={() => {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
-                                                                                                    openCategoryModal(tool);
-                                                                                                }}
-                                                                                                disabled={tool.status === TOOL_STATUSES.DELETED}
-                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                            >
-                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path
-                                                                                                        strokeLinecap="round"
-                                                                                                        strokeLinejoin="round"
-                                                                                                        strokeWidth={2}
-                                                                                                        d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
-                                                                                                    />
-                                                                                                </svg>
-                                                                                                Edit categories
-                                                                                            </button>
-                                                                                            <button
-                                                                                                role="menuitem"
-                                                                                                onClick={() => {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
-                                                                                                    handleTriggerUpdate(tool.id);
-                                                                                                }}
-                                                                                                disabled={triggeringUpdateForToolId !== null || tool.status === TOOL_STATUSES.DELETED}
-                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                            >
-                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path
-                                                                                                        strokeLinecap="round"
-                                                                                                        strokeLinejoin="round"
-                                                                                                        strokeWidth={2}
-                                                                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                                                                    />
-                                                                                                </svg>
-                                                                                                {triggeringUpdateForToolId === tool.id ? "Updating..." : "Trigger Update"}
-                                                                                            </button>
-                                                                                            <button
-                                                                                                role="menuitem"
-                                                                                                onClick={() => {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
-                                                                                                    handleToolAction(tool.id, "deprecate");
-                                                                                                }}
-                                                                                                disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
-                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                            >
-                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path
-                                                                                                        strokeLinecap="round"
-                                                                                                        strokeLinejoin="round"
-                                                                                                        strokeWidth={2}
-                                                                                                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                                                                                                    />
-                                                                                                </svg>
-                                                                                                {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
-                                                                                            </button>
-                                                                                            <div className="my-1 border-t border-slate-100" />
-                                                                                            <button
-                                                                                                role="menuitem"
-                                                                                                onClick={() => {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
-                                                                                                    handleToolAction(tool.id, "delete");
-                                                                                                }}
-                                                                                                disabled={tool.status === TOOL_STATUSES.DELETED}
-                                                                                                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                            >
-                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                    <path
-                                                                                                        strokeLinecap="round"
-                                                                                                        strokeLinejoin="round"
-                                                                                                        strokeWidth={2}
-                                                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                                                    />
-                                                                                                </svg>
-                                                                                                {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </>
-                                                                                )}
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                View
-                                                                            </Link>
-                                                                            <span className="text-slate-300">|</span>
-                                                                            <Link href={`/rate-tool?toolId=${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                Rate
-                                                                            </Link>
-                                                                        </>
+                                                                <div className="flex min-w-32 flex-col items-start gap-1.5">
+                                                                    {viewMode === "my" && updateState && (
+                                                                        <span
+                                                                            role="status"
+                                                                            title={updateState.message}
+                                                                            className={`inline-flex h-5 items-center gap-1.5 rounded px-2 text-xs font-medium ${
+                                                                                updateState.status === "updating"
+                                                                                    ? "bg-blue-50 text-blue-700"
+                                                                                    : updateState.status === "success"
+                                                                                      ? "bg-green-50 text-green-700"
+                                                                                      : "bg-red-50 text-red-700"
+                                                                            }`}
+                                                                        >
+                                                                            {updateState.status === "updating" ? (
+                                                                                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+                                                                            ) : updateState.status === "success" ? (
+                                                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                                                </svg>
+                                                                            ) : (
+                                                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v3m0 4h.01" />
+                                                                                </svg>
+                                                                            )}
+                                                                            {updateState.status === "updating" ? "Updating" : updateState.status === "success" ? "Triggered" : "Failed"}
+                                                                        </span>
                                                                     )}
+                                                                    <div className="flex items-center gap-2">
+                                                                        {viewMode === "my" ? (
+                                                                            <>
+                                                                                <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                    View
+                                                                                </Link>
+                                                                                <span className="text-slate-300">|</span>
+                                                                                <div className="relative">
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            const newId = openMoreMenuForToolId === tool.id ? null : tool.id;
+                                                                                            moreMenuAnchorRef.current = newId ? e.currentTarget.getBoundingClientRect() : null;
+                                                                                            setOpenMoreMenuForToolId(newId);
+                                                                                        }}
+                                                                                        aria-haspopup="true"
+                                                                                        aria-expanded={openMoreMenuForToolId === tool.id}
+                                                                                        className="flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium"
+                                                                                    >
+                                                                                        More
+                                                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                    {openMoreMenuForToolId === tool.id && (
+                                                                                        <>
+                                                                                            <div
+                                                                                                className="fixed inset-0 z-10"
+                                                                                                onClick={() => {
+                                                                                                    setOpenMoreMenuForToolId(null);
+                                                                                                    moreMenuAnchorRef.current = null;
+                                                                                                }}
+                                                                                                onKeyDown={(e) => {
+                                                                                                    if (e.key === "Escape") {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                    }
+                                                                                                }}
+                                                                                            />
+                                                                                            <div
+                                                                                                role="menu"
+                                                                                                tabIndex={-1}
+                                                                                                autoFocus
+                                                                                                className="fixed z-20 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                                style={
+                                                                                                    moreMenuAnchorRef.current
+                                                                                                        ? {
+                                                                                                              top: moreMenuAnchorRef.current.bottom + 4,
+                                                                                                              left: moreMenuAnchorRef.current.right - 192,
+                                                                                                          }
+                                                                                                        : undefined
+                                                                                                }
+                                                                                                onKeyDown={(e) => {
+                                                                                                    if (e.key === "Escape") {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                    }
+                                                                                                }}
+                                                                                            >
+                                                                                                <button
+                                                                                                    role="menuitem"
+                                                                                                    onClick={() => {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                        openCategoryModal(tool);
+                                                                                                    }}
+                                                                                                    disabled={tool.status === TOOL_STATUSES.DELETED}
+                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                >
+                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                        <path
+                                                                                                            strokeLinecap="round"
+                                                                                                            strokeLinejoin="round"
+                                                                                                            strokeWidth={2}
+                                                                                                            d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
+                                                                                                        />
+                                                                                                    </svg>
+                                                                                                    Edit categories
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    role="menuitem"
+                                                                                                    onClick={() => {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                        handleTriggerUpdate(tool.id);
+                                                                                                    }}
+                                                                                                    disabled={updateState?.status === "updating" || tool.status === TOOL_STATUSES.DELETED}
+                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                >
+                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                        <path
+                                                                                                            strokeLinecap="round"
+                                                                                                            strokeLinejoin="round"
+                                                                                                            strokeWidth={2}
+                                                                                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                                                                                        />
+                                                                                                    </svg>
+                                                                                                    {updateState?.status === "updating" ? "Updating..." : "Trigger Update"}
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    role="menuitem"
+                                                                                                    onClick={() => {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                        handleToolAction(tool.id, "deprecate");
+                                                                                                    }}
+                                                                                                    disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
+                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                >
+                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                        <path
+                                                                                                            strokeLinecap="round"
+                                                                                                            strokeLinejoin="round"
+                                                                                                            strokeWidth={2}
+                                                                                                            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                                                                                                        />
+                                                                                                    </svg>
+                                                                                                    {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
+                                                                                                </button>
+                                                                                                <div className="my-1 border-t border-slate-100" />
+                                                                                                <button
+                                                                                                    role="menuitem"
+                                                                                                    onClick={() => {
+                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                        handleToolAction(tool.id, "delete");
+                                                                                                    }}
+                                                                                                    disabled={tool.status === TOOL_STATUSES.DELETED}
+                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                >
+                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                        <path
+                                                                                                            strokeLinecap="round"
+                                                                                                            strokeLinejoin="round"
+                                                                                                            strokeWidth={2}
+                                                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                                        />
+                                                                                                    </svg>
+                                                                                                    {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                    View
+                                                                                </Link>
+                                                                                <span className="text-slate-300">|</span>
+                                                                                <Link href={`/rate-tool?toolId=${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                    Rate
+                                                                                </Link>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                         </tr>
