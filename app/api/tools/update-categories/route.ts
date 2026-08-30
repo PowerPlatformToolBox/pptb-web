@@ -49,7 +49,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse request body
-        const body = (await request.json()) as UpdateCategoriesRequest;
+        let body: UpdateCategoriesRequest;
+        try {
+            body = (await request.json()) as UpdateCategoriesRequest;
+        } catch {
+            return NextResponse.json({ error: "Invalid request body. Expected JSON." }, { status: 400 });
+        }
+
         const { toolId, categoryIds } = body;
 
         if (!toolId) {
