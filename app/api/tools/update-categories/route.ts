@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "At least one category is required" }, { status: 400 });
         }
 
+        if (!categoryIds.every((id) => typeof id === "number" && Number.isInteger(id))) {
+            return NextResponse.json({ error: "categoryIds must be an array of integer IDs" }, { status: 400 });
+        }
+
         const uniqueCategoryIds = Array.from(new Set(categoryIds));
 
         if (uniqueCategoryIds.length > 3) {
