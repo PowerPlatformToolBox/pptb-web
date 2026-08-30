@@ -81,7 +81,7 @@ export default function DashboardPage() {
         warnings: string[];
     } | null>(null);
     const [categoryOptions, setCategoryOptions] = useState<Array<{ id: number; name: string }>>([]);
-    const [categoryModal, setCategoryModal] = useState<{ toolId: string; toolName: string } | null>(null);
+    const [categoryModal, setCategoryModal] = useState<{ toolId: string; toolName: string; existingCategoryIds: number[] } | null>(null);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [savingCategories, setSavingCategories] = useState(false);
     const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -241,14 +241,18 @@ export default function DashboardPage() {
     };
 
     const openCategoryModal = (tool: Tool) => {
-        setCategoryModal({ toolId: tool.id, toolName: tool.name });
-        setSelectedCategoryIds(tool.categories?.map((cat) => cat.id) || []);
+        const existingCategoryIds = tool.categories?.map((cat) => cat.id) || [];
+        setCategoryModal({ toolId: tool.id, toolName: tool.name, existingCategoryIds });
+        setSelectedCategoryIds(existingCategoryIds);
         setCategoryError(null);
     };
 
-    const handleCategoryToggle = (categoryId: number) => {
+    const handleCategoryToggle = (categoryId: number, lockedCategoryIds: number[]) => {
         setSelectedCategoryIds((prev) => {
             if (prev.includes(categoryId)) {
+                if (lockedCategoryIds.includes(categoryId)) {
+                    return prev;
+                }
                 return prev.filter((id) => id !== categoryId);
             } else if (prev.length < 3) {
                 return [...prev, categoryId];
@@ -810,7 +814,7 @@ export default function DashboardPage() {
                                                                                                             d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
                                                                                                         />
                                                                                                     </svg>
-                                                                                                    Edit categories
+                                                                                                    {(tool.categories?.length ?? 0) > 0 ? "Update categories" : "Assign categories"}
                                                                                                 </button>
                                                                                                 <button
                                                                                                     role="menuitem"
@@ -992,90 +996,90 @@ export default function DashboardPage() {
             )}
 
             {/* Edit Categories Modal */}
-            {categoryModal && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="category-modal-title"
-                    tabIndex={-1}
-                    autoFocus
-                    onKeyDown={(e) => e.key === "Escape" && !savingCategories && setCategoryModal(null)}
-                >
-                    <div className="absolute inset-0 bg-black/50" onClick={() => !savingCategories && setCategoryModal(null)} />
-                    <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
-                        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
-                            <div>
-                                <h2 id="category-modal-title" className="text-lg font-semibold text-slate-900">
-                                    Edit categories
-                                </h2>
-                                <p className="text-sm text-slate-500">
-                                    <span className="font-medium text-slate-700">{categoryModal.toolName}</span>
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => !savingCategories && setCategoryModal(null)}
-                                className="ml-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="max-h-96 overflow-y-auto px-6 py-4">
-                            {categoryError && (
-                                <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800">{categoryError}</div>
-                            )}
-                            {categoryOptions.length === 0 ? (
-                                <p className="text-sm text-red-600">No categories available. Please contact an administrator.</p>
-                            ) : (
-                                <>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {categoryOptions.map((category) => {
-                                            const isSelected = selectedCategoryIds.includes(category.id);
-                                            const isDisabled = savingCategories || (selectedCategoryIds.length >= 3 && !isSelected);
-                                            return (
-                                                <label
-                                                    key={category.id}
-                                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
-                                                        isSelected ? "bg-blue-50 border-blue-500 text-blue-900" : "bg-white border-slate-300 text-slate-700 hover:border-blue-300"
-                                                    } ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isSelected}
-                                                        onChange={() => handleCategoryToggle(category.id)}
-                                                        disabled={isDisabled}
-                                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                                    />
-                                                    <span className="text-sm font-medium">{category.name}</span>
-                                                </label>
-                                            );
-                                        })}
+            {categoryModal &&
+                (() => {
+                    const lockedCategoryIds = categoryModal.existingCategoryIds;
+                    const isInitialAssign = lockedCategoryIds.length === 0;
+                    const hasNewCategories = selectedCategoryIds.some((id) => !lockedCategoryIds.includes(id));
+                    const canSaveCategories = !savingCategories && categoryOptions.length > 0 && (isInitialAssign ? selectedCategoryIds.length > 0 : hasNewCategories);
+
+                    return (
+                        <div
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="category-modal-title"
+                            tabIndex={-1}
+                            autoFocus
+                            onKeyDown={(e) => e.key === "Escape" && !savingCategories && setCategoryModal(null)}
+                        >
+                            <div className="absolute inset-0 bg-black/50" onClick={() => !savingCategories && setCategoryModal(null)} />
+                            <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
+                                <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+                                    <div>
+                                        <h2 id="category-modal-title" className="text-lg font-semibold text-slate-900">
+                                            {isInitialAssign ? "Assign categories" : "Update categories"}
+                                        </h2>
+                                        <p className="text-sm text-slate-500">
+                                            <span className="font-medium text-slate-700">{categoryModal.toolName}</span>
+                                        </p>
                                     </div>
-                                    <p className="mt-2 text-xs text-slate-500">Select up to 3 categories that best describe your tool ({selectedCategoryIds.length}/3 selected)</p>
-                                </>
-                            )}
+                                    <button onClick={() => !savingCategories && setCategoryModal(null)} className="ml-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="max-h-96 overflow-y-auto px-6 py-4">
+                                    {categoryError && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800">{categoryError}</div>}
+                                    {categoryOptions.length === 0 ? (
+                                        <p className="text-sm text-red-600">No categories available. Please contact an administrator.</p>
+                                    ) : (
+                                        <>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                {categoryOptions.map((category) => {
+                                                    const isSelected = selectedCategoryIds.includes(category.id);
+                                                    const isLocked = lockedCategoryIds.includes(category.id);
+                                                    const isDisabled = savingCategories || isLocked || (selectedCategoryIds.length >= 3 && !isSelected);
+                                                    return (
+                                                        <label
+                                                            key={category.id}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                                                                isSelected ? "bg-blue-50 border-blue-500 text-blue-900" : "bg-white border-slate-300 text-slate-700 hover:border-blue-300"
+                                                            } ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => handleCategoryToggle(category.id, lockedCategoryIds)}
+                                                                disabled={isDisabled}
+                                                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-sm font-medium">{category.name}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                {isInitialAssign
+                                                    ? `Select up to 3 categories that best describe your tool (${selectedCategoryIds.length}/3 selected)`
+                                                    : `You can add up to 3 categories total (${selectedCategoryIds.length}/3 selected). To remove a category, contact an administrator.`}
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                                    <button onClick={() => setCategoryModal(null)} disabled={savingCategories} className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50">
+                                        Cancel
+                                    </button>
+                                    <button onClick={handleAssignCategories} disabled={!canSaveCategories} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+                                        {savingCategories ? "Saving..." : isInitialAssign ? "Save categories" : "Update categories"}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
-                            <button
-                                onClick={() => setCategoryModal(null)}
-                                disabled={savingCategories}
-                                className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAssignCategories}
-                                disabled={savingCategories || selectedCategoryIds.length === 0 || categoryOptions.length === 0}
-                                className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {savingCategories ? "Saving..." : "Save categories"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    );
+                })()}
         </main>
     );
 }

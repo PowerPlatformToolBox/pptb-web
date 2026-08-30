@@ -100,15 +100,35 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Replace existing category relationships so owners can add/remove freely
-        const { error: deleteError } = await supabase.from("tool_categories").delete().eq("tool_id", toolId);
+        const { data: currentRelations, error: currentRelationsError } = await supabase
+            .from("tool_categories")
+            .select("category_id")
+            .eq("tool_id", toolId);
 
-        if (deleteError) {
-            console.error("Error clearing tool categories:", deleteError);
-            return NextResponse.json({ error: "Failed to update tool categories. Please try again." }, { status: 500 });
+        if (currentRelationsError) {
+            console.error("Error fetching current tool categories:", currentRelationsError);
+            return NextResponse.json({ error: "Failed to load current categories. Please try again." }, { status: 500 });
         }
 
-        const categoryRelations = uniqueCategoryIds.map((categoryId) => ({
+        const currentCategoryIds = (currentRelations ?? []).map((relation) => relation.category_id);
+        const removedCategoryIds = currentCategoryIds.filter((id) => !uniqueCategoryIds.includes(id));
+
+        if (removedCategoryIds.length > 0) {
+            return NextResponse.json(
+                {
+                    error: "Removing categories is not allowed. Please contact an administrator if you need to remove a category.",
+                },
+                { status: 400 },
+            );
+        }
+
+        const categoriesToAdd = uniqueCategoryIds.filter((id) => !currentCategoryIds.includes(id));
+
+        if (categoriesToAdd.length === 0) {
+            return NextResponse.json({ error: "No new categories to add." }, { status: 400 });
+        }
+
+        const categoryRelations = categoriesToAdd.map((categoryId) => ({
             tool_id: toolId,
             category_id: categoryId,
         }));
@@ -120,15 +140,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Failed to save tool categories. Please try again." }, { status: 500 });
         }
 
-        const categoryById = new Map(existingCategories.map((c) => [c.id, c]));
-        const categories = uniqueCategoryIds
-            .map((id) => categoryById.get(id))
-            .filter((c): c is { id: number; name: string } => Boolean(c))
-            .map((c) => ({ id: c.id, name: c.name }));
+        const finalCategoryIds = [...currentCategoryIds, ...categoriesToAdd];
+        const { data: finalCategories, error: finalCategoriesError } = await supabase
+            .from("categories")
+            .select("id, name")
+            .in("id", finalCategoryIds);
+
+        if (finalCategoriesError || !finalCategories) {
+            console.error("Error fetching updated tool categories:", finalCategoriesError);
+            return NextResponse.json({ error: "Categories were saved but could not be loaded. Please refresh the page." }, { status: 500 });
+        }
+
+        const categories = finalCategories.map((category) => ({ id: category.id, name: category.name }));
 
         return NextResponse.json({
             success: true,
-            message: "Categories updated successfully",
+            message: categoriesToAdd.length === uniqueCategoryIds.length ? "Categories assigned successfully" : "Categories added successfully",
             categories,
         });
     } catch (error) {
