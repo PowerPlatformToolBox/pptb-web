@@ -9,6 +9,7 @@ import {
     VerificationRejectedEmail,
     VerificationRequestCancelledEmail,
     VerificationRequestSubmittedEmail,
+    VerificationRevokedEmail,
 } from "@/components/emails/PPTBEmails";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createElement, type ReactElement } from "react";
@@ -65,6 +66,15 @@ interface VerificationRejectedPayload extends VerificationDeveloperPayload {
     failedCriteria: string[];
 }
 
+interface VerificationRevokedPayload extends VerificationDeveloperPayload {
+    variant: "revoked" | "grace";
+    reason: string;
+    deadlineAt?: string;
+    threshold?: string;
+    openBugCount?: number;
+    longestResponseDays?: number;
+}
+
 type SendEmailOptions =
     | {
           type: "tool-submission-admin";
@@ -102,6 +112,11 @@ type SendEmailOptions =
     | {
           type: "verification-rejected";
           data: VerificationRejectedPayload;
+          supabase: SupabaseClient;
+      }
+    | {
+          type: "verification-revoked";
+          data: VerificationRevokedPayload;
           supabase: SupabaseClient;
       };
 
@@ -148,6 +163,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
             return sendVerificationApprovedEmail(options.supabase, options.data);
         case "verification-rejected":
             return sendVerificationRejectedEmail(options.supabase, options.data);
+        case "verification-revoked":
+            return sendVerificationRevokedEmail(options.supabase, options.data);
         default:
             return { success: false, error: "Unsupported email type" };
     }
@@ -245,6 +262,21 @@ async function sendVerificationRejectedEmail(supabase: SupabaseClient, data: Ver
     return deliverDeveloperEmail(supabase, data.developerId, {
         subject: `Verification not approved: ${data.toolName}`,
         react: createElement(VerificationRejectedEmail, { toolName: data.toolName, failedCriteria: data.failedCriteria }),
+    });
+}
+
+async function sendVerificationRevokedEmail(supabase: SupabaseClient, data: VerificationRevokedPayload): Promise<EmailResult> {
+    return deliverDeveloperEmail(supabase, data.developerId, {
+        subject: data.variant === "grace" ? `Action needed: ${data.toolName} verification is at risk` : `Verification revoked: ${data.toolName}`,
+        react: createElement(VerificationRevokedEmail, {
+            toolName: data.toolName,
+            variant: data.variant,
+            reason: data.reason,
+            deadlineAt: data.deadlineAt,
+            threshold: data.threshold,
+            openBugCount: data.openBugCount,
+            longestResponseDays: data.longestResponseDays,
+        }),
     });
 }
 

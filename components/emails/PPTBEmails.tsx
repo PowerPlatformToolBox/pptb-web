@@ -225,3 +225,59 @@ export function VerificationRejectedEmail({ toolName, failedCriteria }: { toolNa
         </EmailLayout>
     );
 }
+
+export function VerificationRevokedEmail({
+    toolName,
+    variant,
+    reason,
+    deadlineAt,
+    threshold,
+    openBugCount,
+    longestResponseDays,
+}: {
+    toolName: string;
+    variant: "revoked" | "grace";
+    reason: string;
+    deadlineAt?: string;
+    threshold?: string;
+    openBugCount?: number;
+    longestResponseDays?: number;
+}) {
+    const isGrace = variant === "grace";
+    const hasDetails = deadlineAt !== undefined || threshold !== undefined || openBugCount !== undefined || longestResponseDays !== undefined;
+
+    return (
+        <EmailLayout
+            preview={isGrace ? `Action needed: ${toolName} verification is at risk` : `${toolName} is no longer verified`}
+            eyebrow="Verification"
+            title={isGrace ? "Your verification is at risk" : "Verification revoked"}
+        >
+            <Text style={styles.text}>
+                {isGrace ? (
+                    <>
+                        <strong>{toolName}</strong> no longer meets the verification requirements. The Verified badge stays in place until the grace period below expires.
+                    </>
+                ) : (
+                    <>
+                        The Verified badge for <strong>{toolName}</strong> has been removed.
+                    </>
+                )}
+            </Text>
+            <Text style={styles.text}>{reason}</Text>
+            {hasDetails && (
+                <Section style={styles.detail}>
+                    {deadlineAt !== undefined && <Detail label="Grace period ends">{deadlineAt}</Detail>}
+                    {threshold !== undefined && <Detail label="Threshold breached">{threshold}</Detail>}
+                    {openBugCount !== undefined && <Detail label="Open bugs">{openBugCount}</Detail>}
+                    {longestResponseDays !== undefined && <Detail label="Longest response time">{`${longestResponseDays} days`}</Detail>}
+                </Section>
+            )}
+            <Text style={styles.text}>
+                {isGrace ? "Resolve these items before the deadline to keep the Verified badge." : "Once the issues above are resolved, you can submit a new verification request from My Tools."}
+            </Text>
+            <Button href={`${siteUrl}/dashboard`} style={styles.button}>
+                Go to My Tools
+            </Button>
+        </EmailLayout>
+    );
+}
