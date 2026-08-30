@@ -31,8 +31,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         const { id: toolId } = await params;
         const [{ data: tool, error: toolError }, { data: profile, error: profileError }] = await Promise.all([
-            supabase.from("tools").select("id, name, user_id, status").eq("id", toolId).maybeSingle(),
-            supabase.from("user_profiles").select("is_tool_developer").eq("id", user.id).maybeSingle(),
+            supabase.from("tools").select("id, name, description, user_id, status").eq("id", toolId).maybeSingle(),
+            supabase.from("user_profiles").select("name, email, is_tool_developer").eq("id", user.id).maybeSingle(),
         ]);
 
         if (toolError || !tool) {
@@ -90,11 +90,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             data: { developerId: user.id, toolName: tool.name },
         });
 
+        const adminEmailResult = await sendEmail({
+            type: "verification-request-admin",
+            data: {
+                toolName: tool.name,
+                description: tool.description || "No description provided.",
+                submittedOn: verificationRequest.submitted_at,
+                submittedBy: profile?.name && profile.email ? `${profile.name} (${profile.email})` : profile?.name || profile?.email || user.email || user.id,
+            },
+        });
+
         if (!emailResult.success) {
             console.warn(`[maturity] Verification confirmation email was not sent for request ${verificationRequest.id}: ${emailResult.error}`);
         }
+        if (!adminEmailResult.success) {
+            console.warn(`[maturity] Verification admin email was not sent for request ${verificationRequest.id}: ${adminEmailResult.error}`);
+        }
 
-        return NextResponse.json({ success: true, request: verificationRequest, notificationSent: emailResult.success }, { status: 201 });
+        return NextResponse.json({ success: true, request: verificationRequest, notificationSent: emailResult.success && adminEmailResult.success }, { status: 201 });
     } catch (error) {
         console.error("[maturity] Failed to submit verification request", error);
         return NextResponse.json({ error: "Failed to submit verification request" }, { status: 500 });

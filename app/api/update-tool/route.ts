@@ -164,7 +164,9 @@ export async function POST(request: NextRequest) {
             if (!notificationAlreadySent) {
                 await sendEmail({
                     type: "tool-update-admin",
+                    supabase,
                     data: {
+                        packageName: packageJson.name,
                         toolName,
                         version: packageJson.version,
                         validationErrors,

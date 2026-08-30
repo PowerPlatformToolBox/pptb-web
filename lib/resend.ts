@@ -1,15 +1,28 @@
+import {
+    ToolConversionSuccessEmail,
+    ToolReviewChangeRequestEmail,
+    ToolSubmissionAdminEmail,
+    ToolUpdateAdminEmail,
+    ToolUpdateDeveloperEmail,
+    VerificationApprovedEmail,
+    VerificationRequestAdminEmail,
+    VerificationRejectedEmail,
+    VerificationRequestCancelledEmail,
+    VerificationRequestSubmittedEmail,
+} from "@/components/emails/PPTBEmails";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createElement, type ReactElement } from "react";
 import { Resend } from "resend";
-
-type TemplateVariables = Record<string, unknown>;
 
 interface ToolSubmissionAdminPayload {
     toolName: string;
     description: string;
     submissionDate: string;
+    submittedBy: string;
 }
 
 interface ToolUpdateAdminPayload {
+    packageName: string;
     toolName: string;
     version: string;
     validationErrors: string[];
@@ -41,6 +54,13 @@ interface VerificationDeveloperPayload {
     toolName: string;
 }
 
+interface VerificationRequestAdminPayload {
+    toolName: string;
+    description: string;
+    submittedOn: string;
+    submittedBy: string;
+}
+
 interface VerificationRejectedPayload extends VerificationDeveloperPayload {
     failedCriteria: string[];
 }
@@ -53,6 +73,7 @@ type SendEmailOptions =
     | {
           type: "tool-update-admin";
           data: ToolUpdateAdminPayload;
+          supabase: SupabaseClient;
       }
     | {
           type: "tool-update-developer";
@@ -75,6 +96,10 @@ type SendEmailOptions =
           supabase: SupabaseClient;
       }
     | {
+          type: "verification-request-admin";
+          data: VerificationRequestAdminPayload;
+      }
+    | {
           type: "verification-rejected";
           data: VerificationRejectedPayload;
           supabase: SupabaseClient;
@@ -89,11 +114,6 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
 const defaultFromAddress = process.env.RESEND_FROM_EMAIL;
 const defaultRecipients = process.env.RESEND_ADMIN_RECIPIENTS;
-const submissionTemplateId = process.env.RESEND_TOOL_SUBMISSION_TEMPLATE_ID;
-const updateTemplateId = process.env.RESEND_TOOL_UPDATE_TEMPLATE_ID;
-const developerTemplateId = process.env.RESEND_TOOL_UPDATE_DEV_TEMPLATE_ID;
-const reviewChangesTemplateId = process.env.RESEND_TOOL_REVIEW_CHANGES_TEMPLATE_ID;
-const conversionSuccessTemplateId = process.env.RESEND_TOOL_CONVERSION_SUCCESS_TEMPLATE_ID;
 
 function parseRecipients(recipients?: string): string[] {
     if (!recipients) {
@@ -111,7 +131,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
         case "tool-submission-admin":
             return sendToolSubmissionEmail(options.data);
         case "tool-update-admin":
-            return sendToolUpdateAdminEmail(options.data);
+            return sendToolUpdateAdminEmail(options.supabase, options.data);
         case "tool-update-developer":
             return sendToolUpdateDeveloperEmail(options.supabase, options.data);
         case "tool-review-change-request":
@@ -120,6 +140,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
             return sendToolConversionSuccessEmail(options.supabase, options.data);
         case "verification-request-submitted":
             return sendVerificationRequestSubmittedEmail(options.supabase, options.data);
+        case "verification-request-admin":
+            return sendVerificationRequestAdminEmail(options.data);
         case "verification-request-cancelled":
             return sendVerificationRequestCancelledEmail(options.supabase, options.data);
         case "verification-approved":
@@ -132,45 +154,21 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
 }
 
 async function sendToolSubmissionEmail(data: ToolSubmissionAdminPayload): Promise<EmailResult> {
-    if (!submissionTemplateId) {
-        console.warn("[resend] RESEND_TOOL_SUBMISSION_TEMPLATE_ID is not configured; skipping email notification.");
-        return { success: false, error: "Submission template missing" };
-    }
-
     return deliverEmail({
         subject: `New Tool Intake: ${data.toolName}`,
-        templateId: submissionTemplateId,
-        variables: {
-            ToolName: data.toolName,
-            ToolDescription: data.description,
-            SubmissionDate: data.submissionDate,
-        },
+        react: createElement(ToolSubmissionAdminEmail, data),
     });
 }
 
-async function sendToolUpdateAdminEmail(data: ToolUpdateAdminPayload): Promise<EmailResult> {
-    if (!updateTemplateId) {
-        console.warn("[resend] RESEND_TOOL_UPDATE_TEMPLATE_ID is not configured; skipping tool update email.");
-        return { success: false, error: "Update template missing" };
-    }
-
+async function sendToolUpdateAdminEmail(supabase: SupabaseClient, data: ToolUpdateAdminPayload): Promise<EmailResult> {
+    const submittedBy = await getToolOwnerIdentity(supabase, data.packageName);
     return deliverEmail({
         subject: `Tool Update Validation Failed: ${data.toolName}@${data.version}`,
-        templateId: updateTemplateId,
-        variables: {
-            ToolName: data.toolName,
-            Version: data.version,
-            ValidationErrors: formatValidationErrors(data.validationErrors),
-        },
+        react: createElement(ToolUpdateAdminEmail, { ...data, submittedBy }),
     });
 }
 
 async function sendToolUpdateDeveloperEmail(supabase: SupabaseClient, data: ToolUpdateDeveloperPayload): Promise<EmailResult> {
-    if (!developerTemplateId) {
-        console.warn("[resend] RESEND_TOOL_UPDATE_DEV_TEMPLATE_ID is not configured; skipping developer notification.");
-        return { success: false, error: "Developer template missing" };
-    }
-
     const developerEmail = await getToolOwnerEmail(supabase, data.packageName);
 
     if (!developerEmail) {
@@ -180,22 +178,12 @@ async function sendToolUpdateDeveloperEmail(supabase: SupabaseClient, data: Tool
 
     return deliverEmail({
         subject: `Action needed: ${data.toolName} update failed validation`,
-        templateId: developerTemplateId,
-        variables: {
-            ToolName: data.toolName,
-            Version: data.version,
-            ValidationErrors: formatValidationErrors(data.validationErrors),
-        },
+        react: createElement(ToolUpdateDeveloperEmail, { toolName: data.toolName, version: data.version, validationErrors: data.validationErrors }),
         to: [developerEmail],
     });
 }
 
 async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: ToolReviewChangeRequestPayload): Promise<EmailResult> {
-    if (!reviewChangesTemplateId) {
-        console.warn("[resend] RESEND_TOOL_REVIEW_CHANGES_TEMPLATE_ID is not configured; skipping review change notification.");
-        return { success: false, error: "Review change template missing" };
-    }
-
     const recipientEmail = await getSubmitterEmail(supabase, data.submitterId);
 
     if (!recipientEmail) {
@@ -205,22 +193,12 @@ async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: 
 
     return deliverEmail({
         subject: `Changes requested: ${data.toolName}`,
-        templateId: reviewChangesTemplateId,
-        variables: {
-            ToolName: data.toolName,
-            SubmittedDate: data.submittedOn,
-            ReviewComments: data.reviewComments,
-        },
+        react: createElement(ToolReviewChangeRequestEmail, { toolName: data.toolName, submittedOn: data.submittedOn, reviewComments: data.reviewComments }),
         to: [recipientEmail],
     });
 }
 
 async function sendToolConversionSuccessEmail(supabase: SupabaseClient, data: ToolConversionSuccessPayload): Promise<EmailResult> {
-    if (!conversionSuccessTemplateId) {
-        console.warn("[resend] RESEND_TOOL_CONVERSION_SUCCESS_TEMPLATE_ID is not configured; skipping tool conversion success notification.");
-        return { success: false, error: "Conversion success template missing" };
-    }
-
     const recipientEmail = await getSubmitterEmail(supabase, data.submitterId);
 
     if (!recipientEmail) {
@@ -229,13 +207,8 @@ async function sendToolConversionSuccessEmail(supabase: SupabaseClient, data: To
     }
 
     return deliverEmail({
-        subject: `🎉 Your tool "${data.toolName}" is now live on PPTB Marketplace!`,
-        templateId: conversionSuccessTemplateId,
-        variables: {
-            ToolName: data.toolName,
-            PackageName: data.packageName,
-            ToolLink: data.toolLink,
-        },
+        subject: `Your tool "${data.toolName}" is now live on PPTB Marketplace!`,
+        react: createElement(ToolConversionSuccessEmail, { toolName: data.toolName, packageName: data.packageName, toolLink: data.toolLink }),
         to: [recipientEmail],
     });
 }
@@ -243,33 +216,39 @@ async function sendToolConversionSuccessEmail(supabase: SupabaseClient, data: To
 async function sendVerificationRequestSubmittedEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
     return deliverDeveloperEmail(supabase, data.developerId, {
         subject: `Verification requested: ${data.toolName}`,
-        html: `<p>Your verification request for <strong>${escapeHtml(data.toolName)}</strong> is in the review queue.</p><p>Reviews normally take 1–2 weeks. Publishing an update while the request is queued or in review will automatically cancel it so the review is not performed against an outdated version. You can submit a new request after the update is published.</p>`,
+        react: createElement(VerificationRequestSubmittedEmail, { toolName: data.toolName }),
+    });
+}
+
+async function sendVerificationRequestAdminEmail(data: VerificationRequestAdminPayload): Promise<EmailResult> {
+    return deliverEmail({
+        subject: `Verification requested: ${data.toolName}`,
+        react: createElement(VerificationRequestAdminEmail, data),
     });
 }
 
 async function sendVerificationRequestCancelledEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
     return deliverDeveloperEmail(supabase, data.developerId, {
         subject: `Verification cancelled: ${data.toolName} was updated`,
-        html: `<p>The active verification request for <strong>${escapeHtml(data.toolName)}</strong> was automatically cancelled because the tool was updated while queued or in review.</p><p>You can submit a new verification request from My Tools. The new request will go through the full review.</p>`,
+        react: createElement(VerificationRequestCancelledEmail, { toolName: data.toolName }),
     });
 }
 
 async function sendVerificationApprovedEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
     return deliverDeveloperEmail(supabase, data.developerId, {
         subject: `Verification approved: ${data.toolName}`,
-        html: `<p><strong>${escapeHtml(data.toolName)}</strong> passed every required verification criterion and is now Verified.</p><p>The Verified badge is now visible in the marketplace.</p>`,
+        react: createElement(VerificationApprovedEmail, { toolName: data.toolName }),
     });
 }
 
 async function sendVerificationRejectedEmail(supabase: SupabaseClient, data: VerificationRejectedPayload): Promise<EmailResult> {
-    const failedCriteria = data.failedCriteria.map((criterion) => `<li>${escapeHtml(criterion)}</li>`).join("");
     return deliverDeveloperEmail(supabase, data.developerId, {
         subject: `Verification not approved: ${data.toolName}`,
-        html: `<p><strong>${escapeHtml(data.toolName)}</strong> did not pass verification.</p><p>The required criteria that did not pass were:</p><ul>${failedCriteria}</ul><p>After addressing these items, you can submit a new request for a full review.</p>`,
+        react: createElement(VerificationRejectedEmail, { toolName: data.toolName, failedCriteria: data.failedCriteria }),
     });
 }
 
-async function deliverDeveloperEmail(supabase: SupabaseClient, developerId: string, message: { subject: string; html: string }): Promise<EmailResult> {
+async function deliverDeveloperEmail(supabase: SupabaseClient, developerId: string, message: { subject: string; react: ReactElement }): Promise<EmailResult> {
     const recipientEmail = await getSubmitterEmail(supabase, developerId);
     if (!recipientEmail) {
         return { success: false, error: "Developer email not found" };
@@ -278,31 +257,7 @@ async function deliverDeveloperEmail(supabase: SupabaseClient, developerId: stri
     return deliverEmail({ ...message, to: [recipientEmail] });
 }
 
-function escapeHtml(value: string): string {
-    return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] || character);
-}
-
-function formatValidationErrors(errors: string[]): string {
-    if (!errors || errors.length === 0) {
-        return "";
-    }
-
-    return errors.join("\n");
-}
-
-async function deliverEmail({
-    subject,
-    templateId,
-    variables = {},
-    html,
-    to,
-}: {
-    subject: string;
-    templateId?: string;
-    variables?: TemplateVariables;
-    html?: string;
-    to?: string[];
-}): Promise<EmailResult> {
+async function deliverEmail({ subject, react, to }: { subject: string; react: ReactElement; to?: string[] }): Promise<EmailResult> {
     if (!resendClient) {
         return { success: false, error: "Resend API key not configured" };
     }
@@ -317,16 +272,12 @@ async function deliverEmail({
         return { success: false, error: "RESEND_ADMIN_RECIPIENTS is not configured" };
     }
 
-    if (!templateId && !html) {
-        return { success: false, error: "Template id or HTML content is required" };
-    }
-
     try {
         const payload = {
             from: defaultFromAddress,
             to: recipients,
             subject,
-            ...(templateId ? { template: { id: templateId, variables } } : { html }),
+            react,
         } as Record<string, unknown>;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -369,6 +320,15 @@ async function getToolOwnerEmail(supabase: SupabaseClient, packageName: string):
         console.error("[supabase] Unexpected error fetching tool owner", error);
         return null;
     }
+}
+
+async function getToolOwnerIdentity(supabase: SupabaseClient, packageName: string): Promise<string> {
+    const { data, error } = await supabase.from("tools").select("user_id").eq("packagename", packageName).maybeSingle();
+    if (error || !data?.user_id) return "Unknown developer";
+
+    const { data: profile } = await supabase.from("user_profiles").select("name, email").eq("id", data.user_id).maybeSingle();
+    if (profile?.name && profile.email) return `${profile.name} (${profile.email})`;
+    return profile?.name || profile?.email || "Unknown developer";
 }
 
 async function getSubmitterEmail(supabase: SupabaseClient, submitterId: string): Promise<string | null> {
