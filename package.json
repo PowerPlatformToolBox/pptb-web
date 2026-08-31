@@ -6,11 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "email:dev": "npx react-email dev --dir components/emails --port 3001",
+    "email:export": "npx react-email export --dir components/emails --outDir .email-build"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.6",
     "@pptb/validate": "^0.0.7",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@supabase/supabase-js": "^2.78.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@vercel/analytics": "^1.5.0",
@@ -32,6 +36,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
+    "@react-email/ui": "^6.9.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

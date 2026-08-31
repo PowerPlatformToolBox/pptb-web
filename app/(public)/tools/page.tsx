@@ -1,6 +1,7 @@
 "use client";
 
 import { Container } from "@/components/Container";
+import { VerifiedCheckmark } from "@/components/VerifiedCheckmark";
 import { FadeIn, SlideIn } from "@/components/animations";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +17,7 @@ interface Tool {
     rating: number;
     contributors: string[];
     mau?: number;
+    tool_maturity?: { status: "unverified" | "verified" };
 }
 
 // Mock data for tools (fallback if API fails)
@@ -110,6 +112,7 @@ export default function ToolsPage() {
                         tool_analytics?: unknown;
                         tool_categories?: Array<{ categories: unknown }>;
                         tool_contributors?: Array<{ contributors: unknown }>;
+                        tool_maturity?: { status: "unverified" | "verified" };
                     }) => ({
                         id: tool.id,
                         name: tool.name,
@@ -120,6 +123,7 @@ export default function ToolsPage() {
                         downloads: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.downloads || 0,
                         rating: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.rating || 0,
                         mau: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.mau || 0,
+                        tool_maturity: tool.tool_maturity || { status: "unverified" },
                     }),
                 );
                 setTools(transformed);
@@ -266,9 +270,12 @@ export default function ToolsPage() {
                                                         )}
                                                     </div>
                                                     <div className="flex-1 flex flex-col justify-between">
-                                                        <p className="text-lg font-semibold text-slate-900 group-hover:text-gradient transition-colors line-clamp-2" title={tool.name}>
-                                                            {tool.name}
-                                                        </p>
+                                                        <div className="flex items-start gap-1.5">
+                                                            <p className="text-lg font-semibold text-slate-900 group-hover:text-gradient transition-colors line-clamp-2" title={tool.name}>
+                                                                {tool.name}
+                                                            </p>
+                                                            {tool.tool_maturity?.status === "verified" && <VerifiedCheckmark className="mt-1 h-4 w-4" />}
+                                                        </div>
                                                         <p className="text-xs text-slate-600">
                                                             by {tool.contributors.slice(0, 2).join(", ")}
                                                             {tool.contributors.length > 2 && ` +${tool.contributors.length - 2}`}

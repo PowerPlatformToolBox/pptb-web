@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { mockTools, toToolSummaryApiRecord } from "@/lib/mock-tools";
 
@@ -15,10 +15,8 @@ function getSupabaseClient() {
     return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
-        console.log(request);
-
         const supabase = getSupabaseClient();
         if (!supabase) {
             const mockResponse = mockTools.map(toToolSummaryApiRecord).sort((a, b) => a.name.localeCompare(b.name));
@@ -40,7 +38,22 @@ export async function GET(request: NextRequest) {
             throw error;
         }
 
-        return NextResponse.json(data);
+        const toolIds = (data || []).map((tool) => tool.id);
+        const maturityByToolId = new Map<string, string>();
+        if (toolIds.length > 0) {
+            const { data: maturityRows, error: maturityError } = await supabase.from("tool_maturity").select("tool_id, status").in("tool_id", toolIds);
+            if (maturityError) throw maturityError;
+            maturityRows?.forEach((row) => maturityByToolId.set(row.tool_id, row.status));
+        }
+
+        const tools = (data || [])
+            .map((tool) => ({ ...tool, tool_maturity: { status: maturityByToolId.get(tool.id) || "unverified" } }))
+            .sort((first, second) => {
+                const maturityOrder = Number(second.tool_maturity.status === "verified") - Number(first.tool_maturity.status === "verified");
+                return maturityOrder || first.name.localeCompare(second.name);
+            });
+
+        return NextResponse.json(tools);
     } catch (error) {
         console.error("Error fetching tools:", error);
         return NextResponse.json({ error: "Failed to fetch tools" }, { status: 500 });

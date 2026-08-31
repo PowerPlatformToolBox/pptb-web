@@ -115,6 +115,7 @@ export function toToolSummaryApiRecord(tool: MockTool) {
         },
         tool_categories: tool.categories.map((name) => ({ categories: { name } })),
         tool_contributors: tool.contributors.map((name) => ({ contributors: { name } })),
+        tool_maturity: { status: tool.id === "1" ? "verified" : "unverified" },
     };
 }
 

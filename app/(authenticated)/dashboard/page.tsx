@@ -42,6 +42,13 @@ interface Tool {
         rating: number;
         mau?: number; // Monthly Active Users
     } | null;
+    tool_maturity?: { status: "unverified" | "verified" } | null;
+    tool_verification_request?: {
+        id: string;
+        status: "queued" | "in_review" | "approved" | "rejected" | "cancelled";
+        submitted_at: string;
+        cancelled_reason: string | null;
+    } | null;
 }
 
 interface FailedToolUpdate {
@@ -53,6 +60,11 @@ interface FailedToolUpdate {
 
 type ToolUpdateState = {
     status: "updating" | "success" | "error";
+    message: string;
+};
+
+type VerificationRequestState = {
+    status: "submitting" | "success" | "error";
     message: string;
 };
 
@@ -73,6 +85,7 @@ export default function DashboardPage() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
     const [toolUpdateStates, setToolUpdateStates] = useState<Record<string, ToolUpdateState>>({});
+    const [verificationRequestStates, setVerificationRequestStates] = useState<Record<string, VerificationRequestState>>({});
     const [openMoreMenuForToolId, setOpenMoreMenuForToolId] = useState<string | null>(null);
     const moreMenuAnchorRef = useRef<DOMRect | null>(null);
     const [validationModal, setValidationModal] = useState<{
@@ -299,6 +312,42 @@ export default function DashboardPage() {
         }
     };
 
+    const handleRequestVerification = async (toolId: string) => {
+        if (!user || !authToken) return;
+
+        setVerificationRequestStates((current) => ({ ...current, [toolId]: { status: "submitting", message: "Submitting..." } }));
+        try {
+            const response = await fetch(`/api/tools/${toolId}/request-verification`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Failed to submit verification request");
+            }
+
+            setTools((current) =>
+                current.map((tool) =>
+                    tool.id === toolId
+                        ? {
+                              ...tool,
+                              tool_verification_request: { ...result.request, cancelled_reason: null },
+                          }
+                        : tool,
+                ),
+            );
+            setVerificationRequestStates((current) => ({
+                ...current,
+                [toolId]: { status: "success", message: result.notificationSent ? "Request submitted" : "Request submitted; email delivery is pending" },
+            }));
+        } catch (error) {
+            setVerificationRequestStates((current) => ({
+                ...current,
+                [toolId]: { status: "error", message: error instanceof Error ? error.message : "Request failed" },
+            }));
+        }
+    };
+
     // Filter tools based on view mode. Intakes only appear in "My Tools".
     const filteredTools =
         viewMode === "my"
@@ -359,17 +408,14 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="flex gap-3">
                                     {isAdmin && (
-                                        <Link href="/admin/tool-intakes" className="btn-secondary flex items-center gap-2">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                                                />
-                                            </svg>
-                                            Review Intakes
-                                        </Link>
+                                        <>
+                                            <Link href="/admin/verification-requests" className="btn-secondary">
+                                                Verification Queue
+                                            </Link>
+                                            <Link href="/admin/tool-intakes" className="btn-secondary">
+                                                Review Intakes
+                                            </Link>
+                                        </>
                                     )}
                                     <Link href="/submit-tool" className="btn-primary flex items-center gap-2">
                                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -560,10 +606,13 @@ export default function DashboardPage() {
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
                                                     {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Version</th>}
                                                     {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>}
+                                                    {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Verified Status</th>}
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Downloads</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rating</th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">MAU</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                                    <th className="sticky right-0 z-10 min-w-40 bg-slate-50 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-1px_0_0_0_rgb(226_232_240)]">
+                                                        Actions
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-slate-200">
@@ -607,7 +656,7 @@ export default function DashboardPage() {
                                                                         )}
                                                                     </div>
                                                                 </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                <td className="sticky right-0 z-10 bg-slate-50 px-6 py-4 whitespace-nowrap text-sm shadow-[-1px_0_0_0_rgb(226_232_240)]">
                                                                     {tool.version ? (
                                                                         <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
                                                                     ) : (
@@ -619,6 +668,7 @@ export default function DashboardPage() {
                                                                         {badge.label}
                                                                     </span>
                                                                 </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
@@ -700,6 +750,31 @@ export default function DashboardPage() {
                                                                     )}
                                                                 </td>
                                                             )}
+                                                            {viewMode === "my" && (
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="flex flex-col items-start gap-2">
+                                                                        {tool.tool_verification_request?.status === "queued" ? (
+                                                                            <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Verification queued</span>
+                                                                        ) : tool.tool_verification_request?.status === "in_review" ? (
+                                                                            <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">Verification in review</span>
+                                                                        ) : tool.tool_maturity?.status === "verified" ? (
+                                                                            <span className="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-100 rounded-full">Verified</span>
+                                                                        ) : tool.tool_verification_request?.status === "rejected" ? (
+                                                                            <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Rejected</span>
+                                                                        ) : (
+                                                                            <span className="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded-full">Unverified</span>
+                                                                        )}
+                                                                        {verificationRequestStates[tool.id] && (
+                                                                            <span
+                                                                                role="status"
+                                                                                className={`max-w-48 whitespace-normal text-xs ${verificationRequestStates[tool.id].status === "error" ? "text-red-600" : "text-slate-600"}`}
+                                                                            >
+                                                                                {verificationRequestStates[tool.id].message}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            )}
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(analytics?.downloads || 0).toLocaleString()}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="flex items-center gap-1">
@@ -710,7 +785,11 @@ export default function DashboardPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "--"}</td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            <td
+                                                                className={`sticky right-0 bg-white px-6 py-4 whitespace-nowrap text-sm shadow-[-1px_0_0_0_rgb(226_232_240)] ${
+                                                                    openMoreMenuForToolId === tool.id ? "z-30" : "z-10"
+                                                                }`}
+                                                            >
                                                                 <div className="flex min-w-32 flex-col items-start gap-1.5">
                                                                     {viewMode === "my" && updateState && (
                                                                         <span
@@ -796,6 +875,33 @@ export default function DashboardPage() {
                                                                                                     }
                                                                                                 }}
                                                                                             >
+                                                                                                {tool.status === TOOL_STATUSES.ACTIVE &&
+                                                                                                    tool.tool_maturity?.status !== "verified" &&
+                                                                                                    !["queued", "in_review"].includes(tool.tool_verification_request?.status || "") && (
+                                                                                                        <button
+                                                                                                            role="menuitem"
+                                                                                                            onClick={() => {
+                                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                                moreMenuAnchorRef.current = null;
+                                                                                                                handleRequestVerification(tool.id);
+                                                                                                            }}
+                                                                                                            disabled={verificationRequestStates[tool.id]?.status === "submitting"}
+                                                                                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                        >
+                                                                                                            <svg
+                                                                                                                className="h-4 w-4"
+                                                                                                                fill="none"
+                                                                                                                viewBox="0 0 24 24"
+                                                                                                                stroke="currentColor"
+                                                                                                                aria-hidden="true"
+                                                                                                            >
+                                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                                                            </svg>
+                                                                                                            {verificationRequestStates[tool.id]?.status === "submitting"
+                                                                                                                ? "Submitting..."
+                                                                                                                : "Get Verified"}
+                                                                                                        </button>
+                                                                                                    )}
                                                                                                 <button
                                                                                                     role="menuitem"
                                                                                                     onClick={() => {

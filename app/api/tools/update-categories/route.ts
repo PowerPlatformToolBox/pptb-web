@@ -88,13 +88,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate that all provided category IDs exist
-        const { data: existingCategories, error: categoriesLookupError } = await supabase
-            .from("categories")
-            .select("id, name")
-            .in("id", uniqueCategoryIds);
+        const { data: existingCategories, error: categoriesLookupError } = await supabase.from("categories").select("id, name").in("id", uniqueCategoryIds);
 
         if (categoriesLookupError || !existingCategories) {
-            console.error("Error validating categories:", categoriesLookupError);
             return NextResponse.json({ error: "Failed to validate categories. Please try again." }, { status: 500 });
         }
 
@@ -110,13 +106,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { data: currentRelations, error: currentRelationsError } = await supabase
-            .from("tool_categories")
-            .select("category_id")
-            .eq("tool_id", toolId);
+        const { data: currentRelations, error: currentRelationsError } = await supabase.from("tool_categories").select("category_id").eq("tool_id", toolId);
 
         if (currentRelationsError) {
-            console.error("Error fetching current tool categories:", currentRelationsError);
             return NextResponse.json({ error: "Failed to load current categories. Please try again." }, { status: 500 });
         }
 
@@ -146,18 +138,13 @@ export async function POST(request: NextRequest) {
         const { error: insertError } = await supabase.from("tool_categories").insert(categoryRelations);
 
         if (insertError) {
-            console.error("Error inserting tool categories:", insertError);
             return NextResponse.json({ error: "Failed to save tool categories. Please try again." }, { status: 500 });
         }
 
         const finalCategoryIds = [...currentCategoryIds, ...categoriesToAdd];
-        const { data: finalCategories, error: finalCategoriesError } = await supabase
-            .from("categories")
-            .select("id, name")
-            .in("id", finalCategoryIds);
+        const { data: finalCategories, error: finalCategoriesError } = await supabase.from("categories").select("id, name").in("id", finalCategoryIds);
 
         if (finalCategoriesError || !finalCategories) {
-            console.error("Error fetching updated tool categories:", finalCategoriesError);
             return NextResponse.json({ error: "Categories were saved but could not be loaded. Please refresh the page." }, { status: 500 });
         }
 
@@ -169,7 +156,6 @@ export async function POST(request: NextRequest) {
             categories,
         });
     } catch (error) {
-        console.error("Error updating tool categories:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

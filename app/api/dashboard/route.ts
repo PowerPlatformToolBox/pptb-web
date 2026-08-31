@@ -60,6 +60,8 @@ export async function GET(request: NextRequest) {
                 packagename: `mock.${tool.id}`,
                 version: tool.version,
                 categories: tool.categories.map((name, index) => ({ id: index + 1, name })),
+                tool_maturity: { status: "unverified" },
+                tool_verification_request: null,
             }));
             const isMockAuthRequest = bearerToken === MOCK_AUTH_TOKEN;
 
@@ -122,12 +124,46 @@ export async function GET(request: NextRequest) {
             throw error;
         }
 
+        const toolIds = (toolsData || []).map((tool) => tool.id);
+        const maturityByToolId = new Map<string, { status: string }>();
+        const latestRequestByToolId = new Map<string, { id: string; status: string; submitted_at: string; cancelled_reason: string | null }>();
+
+        if (toolIds.length > 0) {
+            const { data: maturityRows, error: maturityError } = await supabase.from("tool_maturity").select("tool_id, status").in("tool_id", toolIds);
+            if (maturityError) {
+                throw maturityError;
+            }
+            maturityRows?.forEach((row) => maturityByToolId.set(row.tool_id, { status: row.status }));
+
+            if (user) {
+                const userToolIds = (toolsData || []).filter((tool) => tool.user_id === user.id).map((tool) => tool.id);
+                if (userToolIds.length > 0) {
+                    const { data: requestRows, error: requestsError } = await supabase
+                        .from("tool_verification_requests")
+                        .select("id, tool_id, status, submitted_at, cancelled_reason")
+                        .in("tool_id", userToolIds)
+                        .eq("developer_id", user.id)
+                        .order("submitted_at", { ascending: false });
+                    if (requestsError) {
+                        throw requestsError;
+                    }
+                    requestRows?.forEach((row) => {
+                        if (!latestRequestByToolId.has(row.tool_id)) {
+                            latestRequestByToolId.set(row.tool_id, row);
+                        }
+                    });
+                }
+            }
+        }
+
         // Transform tool_categories for easier rendering
         const transformedTools =
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             toolsData?.map((tool: any) => ({
                 ...tool,
                 isIntake: false,
+                tool_maturity: maturityByToolId.get(tool.id) || { status: "unverified" },
+                tool_verification_request: latestRequestByToolId.get(tool.id) || null,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 categories: tool.tool_categories?.map((tc: any) => tc.categories).filter(Boolean) || [],
             })) || [];

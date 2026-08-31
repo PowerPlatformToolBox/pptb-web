@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `packagename, name, description, version, license, readmeurl, website, repository, min_api, max_api, published_at, created_at,
+                `id, packagename, name, description, version, license, readmeurl, website, repository, min_api, max_api, published_at, created_at,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,
@@ -41,32 +41,46 @@ export async function GET(request: NextRequest) {
             throw error;
         }
 
+        const toolIds = (data || []).map((tool) => tool.id);
+        const maturityByToolId = new Map<string, string>();
+        if (toolIds.length > 0) {
+            const { data: maturityRows, error: maturityError } = await supabase.from("tool_maturity").select("tool_id, status").in("tool_id", toolIds);
+            if (maturityError) throw maturityError;
+            maturityRows?.forEach((row) => maturityByToolId.set(row.tool_id, row.status));
+        }
+
         const baseUrl = new URL(request.url);
         const contextUrl = `${baseUrl.protocol}//${baseUrl.host}/api/odata/$metadata#Tools`;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tools = (data as any[])?.map((tool) => ({
-            PackageName: tool.packagename as string,
-            Name: tool.name as string,
-            Description: tool.description as string,
-            Version: (tool.version as string | null) ?? null,
-            License: (tool.license as string | null) ?? null,
-            ReadmeUrl: (tool.readmeurl as string | null) ?? null,
-            Website: (tool.website as string | null) ?? null,
-            Repository: (tool.repository as string | null) ?? null,
-            MinAPI: (tool.min_api as string | null) ?? null,
-            MaxAPI: (tool.max_api as string | null) ?? null,
-            CreatedOn: (tool.created_at as string | null) ?? null,
-            LastPublishedOn: (tool.published_at as string | null) ?? null,
-            Downloads: (tool.tool_analytics?.downloads as number) ?? 0,
-            Rating: (tool.tool_analytics?.rating as number) ?? 0,
-            MAU: (tool.tool_analytics?.mau as number) ?? 0,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            Categories: (tool.tool_categories as any[])?.map((toolCategory: any) => toolCategory.categories?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
-            Contributors:
+        const tools = (data as any[])
+            ?.map((tool) => ({
+                PackageName: tool.packagename as string,
+                Name: tool.name as string,
+                Description: tool.description as string,
+                Version: (tool.version as string | null) ?? null,
+                License: (tool.license as string | null) ?? null,
+                ReadmeUrl: (tool.readmeurl as string | null) ?? null,
+                Website: (tool.website as string | null) ?? null,
+                Repository: (tool.repository as string | null) ?? null,
+                MinAPI: (tool.min_api as string | null) ?? null,
+                MaxAPI: (tool.max_api as string | null) ?? null,
+                CreatedOn: (tool.created_at as string | null) ?? null,
+                LastPublishedOn: (tool.published_at as string | null) ?? null,
+                Downloads: (tool.tool_analytics?.downloads as number) ?? 0,
+                Rating: (tool.tool_analytics?.rating as number) ?? 0,
+                MAU: (tool.tool_analytics?.mau as number) ?? 0,
+                tool_maturity: { status: maturityByToolId.get(tool.id) || "unverified" },
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tool.tool_contributors as any[])?.map((toolContributor: any) => toolContributor.contributors?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
-        }));
+                Categories: (tool.tool_categories as any[])?.map((toolCategory: any) => toolCategory.categories?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
+                Contributors:
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (tool.tool_contributors as any[])?.map((toolContributor: any) => toolContributor.contributors?.name as string).filter((name: string | undefined): name is string => !!name) ?? [],
+            }))
+            .sort((first, second) => {
+                const maturityOrder = Number(second.tool_maturity.status === "verified") - Number(first.tool_maturity.status === "verified");
+                return maturityOrder || first.Name.localeCompare(second.Name);
+            });
 
         return new NextResponse(
             JSON.stringify({

@@ -5,6 +5,9 @@ export async function GET() {
 <edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
   <edmx:DataServices>
     <Schema Namespace="PPTB" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <ComplexType Name="ToolMaturity">
+        <Property Name="status" Type="Edm.String" Nullable="false" />
+      </ComplexType>
       <EntityType Name="Tool">
         <Key>
           <PropertyRef Name="PackageName" />
@@ -25,6 +28,7 @@ export async function GET() {
         <Property Name="MAU" Type="Edm.Int32" />
         <Property Name="Categories" Type="Collection(Edm.String)" />
         <Property Name="Contributors" Type="Collection(Edm.String)" />
+        <Property Name="tool_maturity" Type="PPTB.ToolMaturity" Nullable="false" />
       </EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="Tools" EntityType="PPTB.Tool" />
