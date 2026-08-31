@@ -21,7 +21,7 @@ export const mockTools: MockTool[] = [
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
         icon: "📦",
         contributors: ["Power Platform ToolBox"],
-        categories: ["Solutions"],
+        categories: [],
         downloads: 1250,
         rating: 4.8,
         mau: 320,
