@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { Body, Button, Column, Container, Head, Heading, Hr, Html, Img, Link, Preview, Row, Section, Text } from "@react-email/components";
+import type { ReactNode } from "react";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://www.powerplatformtoolbox.com";
 
@@ -24,8 +24,9 @@ const styles = {
     nextText: { color: "#475569", fontSize: "14px", lineHeight: "22px", margin: 0 },
     footer: { color: "#64748b", fontSize: "12px", lineHeight: "18px", margin: 0, padding: "0 40px 14px", textAlign: "center" as const },
     socialRow: { margin: "0 auto 28px", width: "132px" },
-    socialLink: { backgroundColor: "#0f172a", borderRadius: "50%", display: "block", height: "32px", lineHeight: "32px", textAlign: "center" as const, width: "32px" },
-    socialIcon: { display: "block", height: "16px", margin: "8px", width: "16px" },
+    socialCell: { padding: "0 6px", verticalAlign: "middle" },
+    socialLink: { backgroundColor: "#0f172a", borderRadius: "50%", display: "block", height: "16px", margin: "0 auto", padding: "8px", width: "16px" },
+    socialIcon: { display: "block", height: "16px", width: "16px" },
     hr: { borderColor: "#e2e8f0", margin: "0 40px 20px" },
 };
 
@@ -48,29 +49,32 @@ function EmailLayout({ preview, eyebrow, title, children }: { preview: string; e
                         </Heading>
                         {children}
                         <Section style={styles.next}>
-                            <Heading as="h2" style={styles.nextHeading}>What&apos;s Next?</Heading>
+                            <Heading as="h2" style={styles.nextHeading}>
+                                What&apos;s Next?
+                            </Heading>
                             <Text style={styles.nextText}>Explore marketplace tools, follow product updates, and connect with the Power Platform ToolBox community.</Text>
                         </Section>
                     </Section>
                     <Hr style={styles.hr} />
                     <Text style={styles.footer}>
-                        Power Platform ToolBox ·{" "}
-                        <Link href={siteUrl} style={{ color: "#0078d4" }}>
-                            Visit the marketplace
-                        </Link>
+                        Need Help? Join our community on{" "}
+                        <Link href="https://discord.gg/efwAu9sXyJ" style={{ color: "#0078d4" }}>
+                            Discord
+                        </Link>{" "}
+                        for support.
                     </Text>
                     <Row style={styles.socialRow}>
-                        <Column align="center">
+                        <Column align="center" width="44" style={styles.socialCell}>
                             <Link href="https://www.linkedin.com/company/power-platform-toolbox" style={styles.socialLink} aria-label="Power Platform ToolBox on LinkedIn">
                                 <Img src={`${siteUrl}/images/social-linkedin.svg`} width="16" height="16" alt="LinkedIn" style={styles.socialIcon} />
                             </Link>
                         </Column>
-                        <Column align="center">
+                        <Column align="center" width="44" style={styles.socialCell}>
                             <Link href="https://github.com/PowerPlatformToolBox" style={styles.socialLink} aria-label="Power Platform ToolBox on GitHub">
                                 <Img src={`${siteUrl}/images/social-github.svg`} width="16" height="16" alt="GitHub" style={styles.socialIcon} />
                             </Link>
                         </Column>
-                        <Column align="center">
+                        <Column align="center" width="44" style={styles.socialCell}>
                             <Link href="https://discord.gg/efwAu9sXyJ" style={styles.socialLink} aria-label="Power Platform ToolBox on Discord">
                                 <Img src={`${siteUrl}/images/social-discord.svg`} width="16" height="16" alt="Discord" style={styles.socialIcon} />
                             </Link>
