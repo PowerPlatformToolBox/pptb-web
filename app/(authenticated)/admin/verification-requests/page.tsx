@@ -20,9 +20,17 @@ interface VerificationRequest {
     status: "queued" | "in_review";
     submitted_at: string;
     reviewed_by: string | null;
+    reviewer_ids: string[];
     tool: { id: string; name: string; version: string | null; repository: string | null } | null;
     usageMetrics: { mau: number; downloads: number; qualifyingReviews: number };
     usageMetricsMet: number;
+}
+
+interface ChecklistResultRow {
+    criterion_key: string;
+    passed: boolean;
+    waived: boolean;
+    comment: string | null;
 }
 
 interface ReviewResult {
@@ -31,11 +39,39 @@ interface ReviewResult {
     comment: string;
 }
 
+interface AdminIdentity {
+    name: string | null;
+    email: string | null;
+}
+
+type AdminIdentityMap = Record<string, AdminIdentity>;
+
+function adminDisplayName(id: string, adminNames: AdminIdentityMap): string {
+    const identity = adminNames[id];
+    return identity?.name?.trim() || identity?.email?.trim() || `Admin ${id.slice(0, 8)}`;
+}
+
+function ReviewerBadge({ reviewerIds, adminNames, className }: { reviewerIds: string[]; adminNames: AdminIdentityMap; className?: string }) {
+    if (!reviewerIds || reviewerIds.length === 0) return null;
+    const names = reviewerIds.map((id) => adminDisplayName(id, adminNames));
+    return (
+        <span className={`group relative inline-block ${className || ""}`}>
+            <span className="cursor-default underline decoration-dotted">
+                Reviewed by {reviewerIds.length} admin{reviewerIds.length === 1 ? "" : "s"}
+            </span>
+            <span className="pointer-events-none absolute left-0 top-full z-10 mt-1 hidden w-max max-w-xs rounded border border-slate-300 bg-white p-2 text-xs text-slate-700 shadow-lg group-hover:block">
+                {names.join(", ")}
+            </span>
+        </span>
+    );
+}
+
 export default function VerificationRequestsPage() {
     const [requests, setRequests] = useState<VerificationRequest[]>([]);
     const [criteria, setCriteria] = useState<Criterion[]>([]);
     const [selected, setSelected] = useState<VerificationRequest | null>(null);
     const [results, setResults] = useState<Record<string, ReviewResult>>({});
+    const [adminNames, setAdminNames] = useState<AdminIdentityMap>({});
     const [token] = useState(() => (typeof window === "undefined" ? "" : sessionStorage.getItem("supabaseToken") || ""));
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -51,6 +87,7 @@ export default function VerificationRequestsPage() {
                 if (!response.ok) throw new Error(data.error || "Failed to load verification queue");
                 setRequests(data.requests || []);
                 setCriteria(data.criteria || []);
+                setAdminNames(data.admins || {});
             } catch (loadError) {
                 setError(loadError instanceof Error ? loadError.message : "Failed to load verification queue");
             } finally {
@@ -63,20 +100,67 @@ export default function VerificationRequestsPage() {
     async function openRequest(item: VerificationRequest) {
         try {
             setError(null);
+            setNotice(null);
             const response = await fetch("/api/admin/verification-requests", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "claim", requestId: item.id }),
+                body: JSON.stringify({ action: "open", requestId: item.id }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "Failed to open verification request");
 
-            const claimed = { ...item, status: "in_review" as const, reviewed_by: data.request.reviewed_by };
-            setRequests((current) => current.map((request) => (request.id === item.id ? claimed : request)));
-            setSelected(claimed);
-            setResults(Object.fromEntries(criteria.map((criterion) => [criterion.key, { passed: undefined, waived: false, comment: "" }])));
+            const opened = { ...item, status: "in_review" as const, reviewed_by: data.request.reviewed_by, reviewer_ids: data.request.reviewer_ids };
+            setRequests((current) => current.map((request) => (request.id === item.id ? opened : request)));
+            setSelected(opened);
+            setAdminNames((current) => ({ ...current, ...(data.admins || {}) }));
+
+            const savedByKey = new Map((data.checklistResults as ChecklistResultRow[]).map((row) => [row.criterion_key, row]));
+            setResults(
+                Object.fromEntries(
+                    criteria.map((criterion) => {
+                        const saved = savedByKey.get(criterion.key);
+                        return [criterion.key, { passed: saved?.passed, waived: saved?.waived ?? false, comment: saved?.comment ?? "" }];
+                    }),
+                ),
+            );
         } catch (openError) {
             setError(openError instanceof Error ? openError.message : "Failed to open verification request");
+        }
+    }
+
+    async function saveDraft() {
+        if (!selected) return;
+        setSubmitting(true);
+        setError(null);
+        setNotice(null);
+        try {
+            const answered = criteria.filter((criterion) => typeof results[criterion.key]?.passed === "boolean");
+            const response = await fetch("/api/admin/verification-requests", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "save-draft",
+                    requestId: selected.id,
+                    results: answered.map((criterion) => ({
+                        criterionKey: criterion.key,
+                        passed: results[criterion.key].passed,
+                        waived: results[criterion.key].waived,
+                        comment: results[criterion.key].comment,
+                    })),
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to save draft");
+
+            const saved = { ...selected, status: "in_review" as const, reviewed_by: data.request.reviewed_by, reviewer_ids: data.request.reviewer_ids };
+            setRequests((current) => current.map((request) => (request.id === selected.id ? saved : request)));
+            setSelected(saved);
+            setAdminNames((current) => ({ ...current, ...(data.admins || {}) }));
+            setNotice({ kind: "success", message: "Draft saved. Any admin can pick up this request and continue the review." });
+        } catch (draftError) {
+            setError(draftError instanceof Error ? draftError.message : "Failed to save draft");
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -137,7 +221,7 @@ export default function VerificationRequestsPage() {
                         <div>
                             <p className="text-sm font-semibold text-emerald-700">Administration</p>
                             <h1 className="mt-1 text-3xl font-bold text-slate-900">Verification Queue</h1>
-                            <p className="mt-2 text-slate-600">Oldest submissions appear first. Opening a queued request claims it.</p>
+                            <p className="mt-2 text-slate-600">Oldest submissions appear first. Any admin can open, continue, or finalize an in-review request.</p>
                         </div>
                         <Link href="/dashboard" className="btn-secondary">
                             Dashboard
@@ -181,6 +265,7 @@ export default function VerificationRequestsPage() {
                                             </div>
                                             <p className="mt-2 font-semibold text-slate-900">{item.tool?.name || "Unknown tool"}</p>
                                             <p className="mt-1 text-xs text-slate-500">Submitted {new Date(item.submitted_at).toLocaleString()}</p>
+                                            <ReviewerBadge reviewerIds={item.reviewer_ids} adminNames={adminNames} className="mt-1 text-xs text-slate-500" />
                                         </button>
                                     ))}
                                 </div>
@@ -196,6 +281,7 @@ export default function VerificationRequestsPage() {
                                                 <div>
                                                     <h2 className="text-2xl font-bold text-slate-900">{selected.tool?.name}</h2>
                                                     <p className="mt-1 text-sm text-slate-600">Version {selected.tool?.version || "unknown"}</p>
+                                                    <ReviewerBadge reviewerIds={selected.reviewer_ids} adminNames={adminNames} className="mt-1 text-sm text-slate-600" />
                                                 </div>
                                                 {selected.tool?.repository && (
                                                     <a href={selected.tool.repository} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-700 hover:underline">
@@ -294,6 +380,14 @@ export default function VerificationRequestsPage() {
                                                       : `${failedRequired.length} required criterion/criteria did not pass.`}
                                             </p>
                                             <div className="flex gap-3">
+                                                <button
+                                                    type="button"
+                                                    disabled={submitting}
+                                                    onClick={() => void saveDraft()}
+                                                    className="border border-slate-400 px-4 py-2 font-semibold text-slate-700 disabled:border-slate-200 disabled:text-slate-400"
+                                                >
+                                                    Save Draft
+                                                </button>
                                                 <button
                                                     type="button"
                                                     disabled={submitting || decision !== "reject"}

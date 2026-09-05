@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "email:dev": "npx react-email dev --dir components/emails --port 3001",
-    "email:export": "npx react-email export --dir components/emails --outDir .email-build"
+    "email:dev": "npx react-email dev --dir components/emails --port 3001"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.6",

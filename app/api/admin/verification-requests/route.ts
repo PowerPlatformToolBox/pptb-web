@@ -23,6 +23,33 @@ async function authenticateAdmin(request: NextRequest, supabase: SupabaseClient)
     return role ? user : null;
 }
 
+// Appends adminId to the reviewer history without duplicating existing entries.
+function withReviewer(existingIds: string[] | null | undefined, adminId: string): string[] {
+    return Array.from(new Set([...(existingIds || []), adminId]));
+}
+
+// Resolves admin user IDs to a display name/email, falling back to Supabase Auth when user_profiles has no row.
+async function getAdminIdentities(supabase: SupabaseClient, adminIds: string[]): Promise<Record<string, { name: string | null; email: string | null }>> {
+    const uniqueIds = Array.from(new Set(adminIds)).filter(Boolean);
+    const identities: Record<string, { name: string | null; email: string | null }> = {};
+    if (uniqueIds.length === 0) return identities;
+
+    const { data: profiles } = await supabase.from("user_profiles").select("id, name, email").in("id", uniqueIds);
+    profiles?.forEach((profile) => {
+        identities[profile.id] = { name: profile.name || null, email: profile.email || null };
+    });
+
+    const missingIds = uniqueIds.filter((id) => !identities[id]);
+    await Promise.all(
+        missingIds.map(async (id) => {
+            const { data } = await supabase.auth.admin.getUserById(id);
+            if (data?.user?.email) identities[id] = { name: null, email: data.user.email };
+        }),
+    );
+
+    return identities;
+}
+
 export async function GET(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
@@ -34,7 +61,7 @@ export async function GET(request: NextRequest) {
         const [{ data: requests, error: requestsError }, { data: criteria, error: criteriaError }] = await Promise.all([
             supabase
                 .from("tool_verification_requests")
-                .select("id, tool_id, developer_id, status, submitted_at, reviewed_by")
+                .select("id, tool_id, developer_id, status, submitted_at, reviewed_by, reviewer_ids, decided_by")
                 .in("status", ["queued", "in_review"])
                 .order("submitted_at", { ascending: true }),
             supabase.from("tool_verification_criteria").select("key, category, label, reviewer_guidance, required, sort_order").order("sort_order", { ascending: true }),
@@ -42,7 +69,7 @@ export async function GET(request: NextRequest) {
         if (requestsError || criteriaError) throw requestsError || criteriaError;
 
         const toolIds = [...new Set((requests || []).map((item) => item.tool_id))];
-        if (toolIds.length === 0) return NextResponse.json({ requests: [], criteria: criteria || [] });
+        if (toolIds.length === 0) return NextResponse.json({ requests: [], criteria: criteria || [], admins: {} });
 
         const [{ data: tools, error: toolsError }, { data: ratings, error: ratingsError }] = await Promise.all([
             supabase.from("tools").select("id, name, version, repository, csp_exceptions, tool_analytics(downloads, rating, mau)").in("id", toolIds),
@@ -70,7 +97,14 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        return NextResponse.json({ requests: enrichedRequests, criteria: criteria || [] });
+        const adminIds = new Set<string>();
+        (requests || []).forEach((item) => {
+            (item.reviewer_ids || []).forEach((id: string) => adminIds.add(id));
+            if (item.decided_by) adminIds.add(item.decided_by);
+        });
+        const admins = await getAdminIdentities(supabase, Array.from(adminIds));
+
+        return NextResponse.json({ requests: enrichedRequests, criteria: criteria || [], admins });
     } catch (error) {
         console.error("[maturity-admin] Failed to load verification queue", error);
         return NextResponse.json({ error: "Failed to load verification queue" }, { status: 500 });
@@ -93,43 +127,89 @@ export async function POST(request: NextRequest) {
         if (!admin) return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
 
         const body = await request.json();
-        if (!body.requestId || !["claim", "decide"].includes(body.action)) {
+        if (!body.requestId || !["open", "save-draft", "decide"].includes(body.action)) {
             return NextResponse.json({ error: "requestId and a valid action are required" }, { status: 400 });
         }
 
         const { data: verificationRequest, error: requestError } = await supabase
             .from("tool_verification_requests")
-            .select("id, tool_id, developer_id, status, reviewed_by")
+            .select("id, tool_id, developer_id, status, reviewed_by, reviewer_ids")
             .eq("id", body.requestId)
             .maybeSingle();
         if (requestError) throw requestError;
         if (!verificationRequest) return NextResponse.json({ error: "Verification request not found" }, { status: 404 });
 
-        if (body.action === "claim") {
-            if (verificationRequest.status === "in_review") {
-                if (verificationRequest.reviewed_by !== admin.id) {
-                    return NextResponse.json({ error: "This request is already being reviewed by another admin" }, { status: 409 });
-                }
-                return NextResponse.json({ success: true, request: verificationRequest });
-            }
-            if (verificationRequest.status !== "queued") {
-                return NextResponse.json({ error: "Only queued requests can be opened" }, { status: 409 });
+        if (body.action === "open") {
+            if (verificationRequest.status !== "queued" && verificationRequest.status !== "in_review") {
+                return NextResponse.json({ error: "Only queued or in-review requests can be opened" }, { status: 409 });
             }
 
-            const { data: claimed, error: claimError } = await supabase
+            const reviewerIds = withReviewer(verificationRequest.reviewer_ids, admin.id);
+            const { data: opened, error: openError } = await supabase
                 .from("tool_verification_requests")
-                .update({ status: "in_review", reviewed_by: admin.id, updated_at: new Date().toISOString() })
+                .update({ status: "in_review", reviewed_by: admin.id, reviewer_ids: reviewerIds, updated_at: new Date().toISOString() })
                 .eq("id", body.requestId)
-                .eq("status", "queued")
-                .select("id, tool_id, developer_id, status, reviewed_by")
+                .select("id, tool_id, developer_id, status, reviewed_by, reviewer_ids")
                 .maybeSingle();
-            if (claimError) throw claimError;
-            if (!claimed) return NextResponse.json({ error: "This request was claimed by another admin" }, { status: 409 });
-            return NextResponse.json({ success: true, request: claimed });
+            if (openError) throw openError;
+            if (!opened) return NextResponse.json({ error: "This request could not be opened" }, { status: 409 });
+
+            const { data: checklistResults, error: checklistFetchError } = await supabase
+                .from("tool_verification_checklist_results")
+                .select("criterion_key, passed, waived, comment")
+                .eq("request_id", body.requestId);
+            if (checklistFetchError) throw checklistFetchError;
+
+            const admins = await getAdminIdentities(supabase, reviewerIds);
+            return NextResponse.json({ success: true, request: opened, checklistResults: checklistResults || [], admins });
         }
 
-        if (verificationRequest.status !== "in_review" || verificationRequest.reviewed_by !== admin.id) {
-            return NextResponse.json({ error: "Open and claim this request before deciding it" }, { status: 409 });
+        if (body.action === "save-draft") {
+            if (verificationRequest.status !== "queued" && verificationRequest.status !== "in_review") {
+                return NextResponse.json({ error: "Only queued or in-review requests can be saved as a draft" }, { status: 409 });
+            }
+            if (!Array.isArray(body.results)) {
+                return NextResponse.json({ error: "Checklist results are required" }, { status: 400 });
+            }
+
+            const { data: criteria, error: criteriaError } = await supabase.from("tool_verification_criteria").select("key").order("sort_order", { ascending: true });
+            if (criteriaError) throw criteriaError;
+            const validKeys = new Set((criteria || []).map((criterion) => criterion.key));
+
+            const results = (body.results as ChecklistResultInput[]).filter((result) => validKeys.has(result.criterionKey) && typeof result.passed === "boolean");
+            if (results.some((result) => result.waived && result.criterionKey !== "usage_thresholds")) {
+                return NextResponse.json({ error: "Only the usage thresholds criterion can be waived" }, { status: 400 });
+            }
+
+            if (results.length > 0) {
+                const checklistRows = results.map((result) => ({
+                    request_id: verificationRequest.id,
+                    criterion_key: result.criterionKey,
+                    passed: result.passed,
+                    waived: result.criterionKey === "usage_thresholds" && Boolean(result.waived),
+                    comment: result.comment?.trim() || null,
+                    reviewed_by: admin.id,
+                    updated_at: new Date().toISOString(),
+                }));
+                const { error: checklistError } = await supabase.from("tool_verification_checklist_results").upsert(checklistRows, { onConflict: "request_id,criterion_key" });
+                if (checklistError) throw checklistError;
+            }
+
+            const reviewerIds = withReviewer(verificationRequest.reviewer_ids, admin.id);
+            const { data: saved, error: saveError } = await supabase
+                .from("tool_verification_requests")
+                .update({ status: "in_review", reviewed_by: admin.id, reviewer_ids: reviewerIds, updated_at: new Date().toISOString() })
+                .eq("id", verificationRequest.id)
+                .select("id, tool_id, developer_id, status, reviewed_by, reviewer_ids")
+                .maybeSingle();
+            if (saveError) throw saveError;
+
+            const admins = await getAdminIdentities(supabase, reviewerIds);
+            return NextResponse.json({ success: true, request: saved, savedCount: results.length, admins });
+        }
+
+        if (verificationRequest.status !== "in_review") {
+            return NextResponse.json({ error: "Open this request before deciding it" }, { status: 409 });
         }
         if (!["approve", "reject"].includes(body.decision) || !Array.isArray(body.results)) {
             return NextResponse.json({ error: "A valid decision and checklist results are required" }, { status: 400 });
@@ -215,13 +295,13 @@ export async function POST(request: NextRequest) {
         }
 
         const finalStatus = body.decision === "approve" ? "approved" : "rejected";
+        const reviewerIds = withReviewer(verificationRequest.reviewer_ids, admin.id);
         const { data: decidedRequest, error: decisionError } = await supabase
             .from("tool_verification_requests")
-            .update({ status: finalStatus, decided_at: decidedAt, updated_at: decidedAt })
+            .update({ status: finalStatus, reviewed_by: admin.id, reviewer_ids: reviewerIds, decided_by: admin.id, decided_at: decidedAt, updated_at: decidedAt })
             .eq("id", verificationRequest.id)
             .eq("status", "in_review")
-            .eq("reviewed_by", admin.id)
-            .select("id, status, decided_at")
+            .select("id, status, decided_at, decided_by, reviewer_ids")
             .maybeSingle();
         if (decisionError || !decidedRequest) {
             if (body.decision === "approve") {
@@ -244,10 +324,12 @@ export async function POST(request: NextRequest) {
                   });
         if (!emailResult.success) console.warn(`[maturity-admin] Decision email was not sent for ${verificationRequest.id}: ${emailResult.error}`);
 
+        const admins = await getAdminIdentities(supabase, reviewerIds);
         return NextResponse.json({
             success: true,
             decision: finalStatus,
             request: decidedRequest,
+            admins,
             notificationSent: emailResult.success,
             notificationError: emailResult.success ? null : "Decision saved, but the developer email could not be sent",
         });
