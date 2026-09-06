@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `id, packagename, name, description, version, license, readmeurl, website, repository, min_api, max_api, published_at, created_at,
+                `id, packagename, name, description, version, license, readmeurl, website, repository, min_api, published_at, created_at,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,
@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
                 Website: (tool.website as string | null) ?? null,
                 Repository: (tool.repository as string | null) ?? null,
                 MinAPI: (tool.min_api as string | null) ?? null,
-                MaxAPI: (tool.max_api as string | null) ?? null,
                 CreatedOn: (tool.created_at as string | null) ?? null,
                 LastPublishedOn: (tool.published_at as string | null) ?? null,
                 Downloads: (tool.tool_analytics?.downloads as number) ?? 0,

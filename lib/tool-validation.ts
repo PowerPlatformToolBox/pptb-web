@@ -106,7 +106,6 @@ export async function fetchNpmPackageInfo(packageName: string): Promise<{ succes
 }
 
 export interface PackageStructureCheck {
-    hasNpmShrinkwrap: boolean;
     hasDistFolder: boolean;
     hasDistIndexHtml: boolean;
 }

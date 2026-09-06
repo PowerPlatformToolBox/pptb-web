@@ -21,7 +21,6 @@ export async function GET() {
         <Property Name="Website" Type="Edm.String" />
         <Property Name="Repository" Type="Edm.String" />
         <Property Name="MinAPI" Type="Edm.String" />
-        <Property Name="MaxAPI" Type="Edm.String" />
         <Property Name="LastPublishedOn" Type="Edm.DateTimeOffset" />
         <Property Name="Downloads" Type="Edm.Int32" />
         <Property Name="Rating" Type="Edm.Decimal" />
