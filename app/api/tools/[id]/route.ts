@@ -48,7 +48,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "Tool not found" }, { status: 404 });
         }
 
-        return NextResponse.json(data);
+        const { data: maturity, error: maturityError } = await supabase.from("tool_maturity").select("status").eq("tool_id", id).maybeSingle();
+        if (maturityError) {
+            throw maturityError;
+        }
+
+        return NextResponse.json({ ...data, tool_maturity: maturity || { status: "unverified" } });
     } catch (error) {
         console.error("Error fetching tool:", error);
         return NextResponse.json({ error: "Failed to fetch tool" }, { status: 500 });

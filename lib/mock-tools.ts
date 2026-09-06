@@ -21,7 +21,7 @@ export const mockTools: MockTool[] = [
         description: "Manage your Power Platform solutions with ease. Export, import, and version control your solutions.",
         icon: "📦",
         contributors: ["Power Platform ToolBox"],
-        categories: ["Solutions"],
+        categories: [],
         downloads: 1250,
         rating: 4.8,
         mau: 320,
@@ -115,6 +115,7 @@ export function toToolSummaryApiRecord(tool: MockTool) {
         },
         tool_categories: tool.categories.map((name) => ({ categories: { name } })),
         tool_contributors: tool.contributors.map((name) => ({ contributors: { name } })),
+        tool_maturity: { status: tool.id === "1" ? "verified" : "unverified" },
     };
 }
 

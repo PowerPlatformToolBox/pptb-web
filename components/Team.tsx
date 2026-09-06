@@ -41,25 +41,11 @@ const supportingTeam = [
         linkedin: "https://www.linkedin.com/in/mohsin-mirza-94210615/",
     },
     {
-        name: "Oleksandr Olashyn",
-        alias: "dancingwithcrm",
-        title: "The UI Polisher 🎨",
-        blurb: "Refines the toolbox UI and elevates the overall experience.",
-        linkedin: "https://www.linkedin.com/in/dancingwithcrm/",
-    },
-    {
         name: "Oliver Flint",
         alias: "",
         title: "The Momentum Engine ⚡",
         blurb: "Generates ideas and relentlessly pushes the team forward.",
         linkedin: "https://www.linkedin.com/in/oliverflint/",
-    },
-    {
-        name: "Mike Ochs",
-        alias: "",
-        title: "The Idea Factory 💡",
-        blurb: "Constantly brainstorming new features and improvements.",
-        linkedin: "https://www.linkedin.com/in/mikefactorial/",
     },
     {
         name: "Christoph Schaffer",

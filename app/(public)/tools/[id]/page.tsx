@@ -6,11 +6,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import "github-markdown-css/github-markdown-light.css";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import "github-markdown-css/github-markdown-light.css";
 
 import { Container } from "@/components/Container";
+import { VerifiedCheckmark } from "@/components/VerifiedCheckmark";
 import { FadeIn } from "@/components/animations";
 
 interface Tool {
@@ -29,6 +30,7 @@ interface Tool {
     lastUpdated?: string;
     repository?: string;
     website?: string;
+    tool_maturity?: { status: "unverified" | "verified" };
 }
 
 // Mock data for a tool (will be replaced with Supabase data)
@@ -166,6 +168,7 @@ export default function ToolDetailsPage() {
                         mau: (toolData.tool_analytics as any)?.mau || 0,
                         repository: (toolData as any).repository,
                         website: (toolData as any).website,
+                        tool_maturity: toolData.tool_maturity || { status: "unverified" },
                     });
                 } else if (mockTools[toolId]) {
                     setTool(mockTools[toolId]);
@@ -245,7 +248,10 @@ export default function ToolDetailsPage() {
                                         <span className="text-4xl sm:text-5xl">{tool.icon || "📦"}</span>
                                     )}
                                 </div>
-                                <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{tool.name}</h1>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{tool.name}</h1>
+                                    {tool.tool_maturity?.status === "verified" && <VerifiedCheckmark className="h-6 w-6 sm:h-7 sm:w-7" />}
+                                </div>
                             </div>
                             <div className="flex flex-wrap gap-2 sm:gap-3">
                                 {tool.categories.map((category) => (

@@ -17,8 +17,6 @@ function getSupabaseClient() {
 
 export async function GET(request: NextRequest) {
     try {
-        console.log(request);
-
         const supabase = getSupabaseClient();
         if (!supabase) {
             const names = Array.from(new Set(mockTools.flatMap((tool) => tool.categories))).sort((a, b) => a.localeCompare(b));

@@ -299,10 +299,7 @@ export async function POST(request: NextRequest) {
         };
 
         // Validate that all provided category IDs exist
-        const { data: existingCategories, error: categoriesLookupError } = await supabase
-            .from("categories")
-            .select("id")
-            .in("id", categoryIds);
+        const { data: existingCategories, error: categoriesLookupError } = await supabase.from("categories").select("id").in("id", categoryIds);
 
         if (categoriesLookupError || !existingCategories) {
             await rollbackIntake();
@@ -406,6 +403,7 @@ export async function POST(request: NextRequest) {
                 toolName: packageInfo.displayName!,
                 description: packageInfo.description!,
                 submissionDate: new Date().toISOString(),
+                submittedBy: user.email || user.id,
             },
         });
 
