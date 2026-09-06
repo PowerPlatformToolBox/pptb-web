@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Extract version information (minAPI and maxAPI) — best-effort, null if unavailable
+        // Extract version information (minAPI) — best-effort, null if unavailable
         const versionInfoResult = await extractVersionInfo(cleanPackageName);
 
         if (!versionInfoResult.success) {
@@ -227,7 +227,6 @@ export async function POST(request: NextRequest) {
         }
 
         const minAPI = versionInfoResult.success ? versionInfoResult.data.minAPI : null;
-        const maxAPI = versionInfoResult.success ? versionInfoResult.data.maxAPI : null;
 
         // Update tool table entry with latest validated package info
         await supabase
@@ -244,7 +243,6 @@ export async function POST(request: NextRequest) {
                 repository: packageJson.configurations?.repository || null,
                 website: packageJson.configurations?.website || null,
                 min_api: minAPI,
-                max_api: maxAPI,
             })
             .eq("packagename", packageJson.name);
 
@@ -255,7 +253,6 @@ export async function POST(request: NextRequest) {
                 status: "validated",
                 validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
                 min_api: minAPI,
-                max_api: maxAPI,
             })
             .eq("id", toolUpdateId);
 

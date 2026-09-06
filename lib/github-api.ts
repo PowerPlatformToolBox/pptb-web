@@ -160,7 +160,6 @@ export interface ConvertWorkflowInputs {
     repository?: string;
     website?: string;
     minAPI?: string;
-    maxAPI?: string;
 }
 
 export interface UpdateWorkflowInputs {

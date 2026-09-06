@@ -120,7 +120,6 @@ export async function POST(request: NextRequest) {
                 repository: intake.configurations?.repository || "",
                 website: intake.configurations?.website || "",
                 minAPI: intake.configurations?.minApi || "",
-                maxAPI: intake.configurations?.maxApi || "",
             },
             ref: "main",
             timeoutMs: 180000,

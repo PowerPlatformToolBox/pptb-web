@@ -76,12 +76,9 @@ async function assertPackageStructure(packageName: string): Promise<NextResponse
     }
 
     // If the package structure validation succeeds, check the package structure and return a structured error response if any of the following are missing:
-    const { hasNpmShrinkwrap, hasDistFolder, hasDistIndexHtml } = structureResult.data;
+    const { hasDistFolder, hasDistIndexHtml } = structureResult.data;
     const errors: string[] = [];
 
-    if (!hasNpmShrinkwrap) {
-        errors.push("npm-shrinkwrap.json is required but not found in the package");
-    }
     if (!hasDistFolder) {
         errors.push("dist folder is required but not found in the package");
     }
@@ -196,11 +193,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Step 2.5: Validate package structure (npm-shrinkwrap and dist)
+        // Step 2.5: Validate package structure (dist)
         const structureError = await assertPackageStructure(cleanPackageName);
         if (structureError) return structureError;
 
-        // Step 3: Extract version information (minAPI and maxAPI) — best-effort, null if unavailable
+        // Step 3: Extract version information (minAPI) — best-effort, null if unavailable
         const versionInfoResult = await extractVersionInfo(cleanPackageName);
 
         if (!versionInfoResult.success) {
@@ -208,7 +205,6 @@ export async function POST(request: NextRequest) {
         }
 
         const minAPI = versionInfoResult.success ? versionInfoResult.data.minAPI : null;
-        const maxAPI = versionInfoResult.success ? versionInfoResult.data.maxAPI : null;
 
         // Step 4: Store the intake request
         if (!supabase) {
@@ -279,7 +275,6 @@ export async function POST(request: NextRequest) {
                 validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
                 features: packageInfo.features || null,
                 min_api: minAPI,
-                max_api: maxAPI,
             })
             .select()
             .single();

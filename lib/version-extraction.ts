@@ -1,5 +1,5 @@
 // Version extraction utilities for tool packages
-// Reads minAPI from package.json features and maxAPI from npm-shrinkwrap.json
+// Reads minAPI from package.json features
 
 import { fetchNpmPackageMetadata } from "@pptb/validate/npm";
 
@@ -7,7 +7,6 @@ const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?(\+[0-9a-
 
 export interface VersionInfo {
     minAPI: string | null;
-    maxAPI: string | null;
 }
 
 /**
@@ -18,11 +17,10 @@ export function isValidSemver(version: string): boolean {
 }
 
 /**
- * Extracts minAPI and maxAPI version information from an npm package tarball.
+ * Extracts minAPI version information from an npm package tarball.
  * - minAPI: from package.json → features.minAPI
- * - maxAPI: from npm-shrinkwrap.json → dependencies["@pptb/types"].version
  *
- * Either value may be null if not present or not a valid semver string.
+ * The value may be null if not present or not a valid semver string.
  */
 export async function extractVersionInfo(packageName: string): Promise<{ success: true; data: VersionInfo } | { success: false; error: string }> {
     try {
@@ -90,38 +88,10 @@ export async function extractVersionInfo(packageName: string): Promise<{ success
                 console.warn(`[version-extraction] package.json not found in ${packageName}; storing null for minAPI`);
             }
 
-            // Read npm-shrinkwrap.json → dependencies["@pptb/types"].version
-            const shrinkwrapPath = path.join(packageDir, "npm-shrinkwrap.json");
-            let maxAPI: string | null = null;
-            try {
-                const shrinkwrapContent = await fs.promises.readFile(shrinkwrapPath, "utf-8");
-
-                let parsedShrinkwrap: Record<string, unknown>;
-                try {
-                    parsedShrinkwrap = JSON.parse(shrinkwrapContent);
-                } catch {
-                    console.warn(`[version-extraction] Failed to parse npm-shrinkwrap.json in ${packageName}; storing null for maxAPI`);
-                    parsedShrinkwrap = {};
-                }
-
-                const dependencies = parsedShrinkwrap.dependencies as Record<string, unknown> | undefined;
-                const pptbTypesDep = dependencies?.["@pptb/types"];
-                const pptbTypesVersion = pptbTypesDep && typeof pptbTypesDep === "object" ? (pptbTypesDep as Record<string, unknown>).version : undefined;
-
-                if (pptbTypesVersion && typeof pptbTypesVersion === "string" && isValidSemver(pptbTypesVersion)) {
-                    maxAPI = pptbTypesVersion;
-                } else {
-                    console.warn(`[version-extraction] @pptb/types version is missing or invalid in ${packageName}; storing null for maxAPI`);
-                }
-            } catch {
-                console.warn(`[version-extraction] npm-shrinkwrap.json not found in ${packageName}; storing null for maxAPI`);
-            }
-
             return {
                 success: true,
                 data: {
                     minAPI,
-                    maxAPI,
                 },
             };
         } finally {
