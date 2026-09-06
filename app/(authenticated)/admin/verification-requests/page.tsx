@@ -72,6 +72,7 @@ export default function VerificationRequestsPage() {
     const [selected, setSelected] = useState<VerificationRequest | null>(null);
     const [results, setResults] = useState<Record<string, ReviewResult>>({});
     const [adminNames, setAdminNames] = useState<AdminIdentityMap>({});
+    const [isEditable, setIsEditable] = useState(false);
     const [token] = useState(() => (typeof window === "undefined" ? "" : sessionStorage.getItem("supabaseToken") || ""));
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -97,21 +98,22 @@ export default function VerificationRequestsPage() {
         void loadQueue();
     }, [token]);
 
-    async function openRequest(item: VerificationRequest) {
+    async function viewRequest(item: VerificationRequest) {
         try {
             setError(null);
             setNotice(null);
             const response = await fetch("/api/admin/verification-requests", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "open", requestId: item.id }),
+                body: JSON.stringify({ action: "view", requestId: item.id }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "Failed to open verification request");
 
-            const opened = { ...item, status: "in_review" as const, reviewed_by: data.request.reviewed_by, reviewer_ids: data.request.reviewer_ids };
-            setRequests((current) => current.map((request) => (request.id === item.id ? opened : request)));
-            setSelected(opened);
+            const viewed = { ...item, status: data.request.status, reviewed_by: data.request.reviewed_by, reviewer_ids: data.request.reviewer_ids };
+            setRequests((current) => current.map((request) => (request.id === item.id ? viewed : request)));
+            setSelected(viewed);
+            setIsEditable(false);
             setAdminNames((current) => ({ ...current, ...(data.admins || {}) }));
 
             const savedByKey = new Map((data.checklistResults as ChecklistResultRow[]).map((row) => [row.criterion_key, row]));
@@ -123,13 +125,39 @@ export default function VerificationRequestsPage() {
                     }),
                 ),
             );
-        } catch (openError) {
-            setError(openError instanceof Error ? openError.message : "Failed to open verification request");
+        } catch (viewError) {
+            setError(viewError instanceof Error ? viewError.message : "Failed to open verification request");
+        }
+    }
+
+    async function startReview() {
+        if (!selected) return;
+        setSubmitting(true);
+        setError(null);
+        setNotice(null);
+        try {
+            const response = await fetch("/api/admin/verification-requests", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "start-review", requestId: selected.id }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to start the review");
+
+            const started = { ...selected, status: "in_review" as const, reviewed_by: data.request.reviewed_by, reviewer_ids: data.request.reviewer_ids };
+            setRequests((current) => current.map((request) => (request.id === selected.id ? started : request)));
+            setSelected(started);
+            setIsEditable(true);
+            setAdminNames((current) => ({ ...current, ...(data.admins || {}) }));
+        } catch (startError) {
+            setError(startError instanceof Error ? startError.message : "Failed to start the review");
+        } finally {
+            setSubmitting(false);
         }
     }
 
     async function saveDraft() {
-        if (!selected) return;
+        if (!selected || !isEditable) return;
         setSubmitting(true);
         setError(null);
         setNotice(null);
@@ -169,7 +197,7 @@ export default function VerificationRequestsPage() {
     const decision = allEvaluated ? (failedRequired.length === 0 ? "approve" : "reject") : null;
 
     async function decide(requestDecision: "approve" | "reject") {
-        if (!selected || requestDecision !== decision) return;
+        if (!selected || !isEditable || requestDecision !== decision) return;
         setSubmitting(true);
         setError(null);
         setNotice(null);
@@ -202,6 +230,7 @@ export default function VerificationRequestsPage() {
             setRequests((current) => current.filter((request) => request.id !== selected.id));
             setSelected(null);
             setResults({});
+            setIsEditable(false);
         } catch (decisionError) {
             setError(decisionError instanceof Error ? decisionError.message : "Failed to complete review");
         } finally {
@@ -221,7 +250,7 @@ export default function VerificationRequestsPage() {
                         <div>
                             <p className="text-sm font-semibold text-emerald-700">Administration</p>
                             <h1 className="mt-1 text-3xl font-bold text-slate-900">Verification Queue</h1>
-                            <p className="mt-2 text-slate-600">Oldest submissions appear first. Any admin can open, continue, or finalize an in-review request.</p>
+                            <p className="mt-2 text-slate-600">Oldest submissions appear first. Opening a request is read-only until an admin clicks Start Review.</p>
                         </div>
                         <Link href="/dashboard" className="btn-secondary">
                             Dashboard
@@ -254,7 +283,7 @@ export default function VerificationRequestsPage() {
                                         <button
                                             key={item.id}
                                             type="button"
-                                            onClick={() => openRequest(item)}
+                                            onClick={() => viewRequest(item)}
                                             className={`w-full border p-4 text-left ${selected?.id === item.id ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-400"}`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
@@ -273,7 +302,7 @@ export default function VerificationRequestsPage() {
 
                             <section>
                                 {!selected ? (
-                                    <div className="border border-dashed border-slate-300 bg-slate-50 p-12 text-center text-slate-600">Open the oldest queued request to begin its review.</div>
+                                    <div className="border border-dashed border-slate-300 bg-slate-50 p-12 text-center text-slate-600">Open the oldest queued request to view its details.</div>
                                 ) : (
                                     <div>
                                         <div className="mb-6 border-b border-slate-200 pb-5">
@@ -283,19 +312,37 @@ export default function VerificationRequestsPage() {
                                                     <p className="mt-1 text-sm text-slate-600">Version {selected.tool?.version || "unknown"}</p>
                                                     <ReviewerBadge reviewerIds={selected.reviewer_ids} adminNames={adminNames} className="mt-1 text-sm text-slate-600" />
                                                 </div>
-                                                {selected.tool?.repository && (
-                                                    <a href={selected.tool.repository} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-700 hover:underline">
-                                                        Repository
-                                                    </a>
-                                                )}
+                                                <div className="flex items-start gap-3">
+                                                    {!isEditable && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={submitting}
+                                                            onClick={() => void startReview()}
+                                                            className="bg-emerald-700 px-4 py-2 font-semibold text-white disabled:bg-slate-300"
+                                                        >
+                                                            Start Review
+                                                        </button>
+                                                    )}
+                                                    {selected.tool?.repository && (
+                                                        <a href={selected.tool.repository} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-700 hover:underline">
+                                                            Repository
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
+
+                                        {!isEditable && (
+                                            <p className="mb-5 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                                                This request is read-only. Click Start Review to join the review and enable scoring.
+                                            </p>
+                                        )}
 
                                         <div className="space-y-5">
                                             {criteria.map((criterion) => {
                                                 const result = results[criterion.key] || { waived: false, comment: "" };
                                                 return (
-                                                    <fieldset key={criterion.key} className="border border-slate-200 bg-white p-5">
+                                                    <fieldset key={criterion.key} disabled={!isEditable} className="border border-slate-200 bg-white p-5 disabled:opacity-60">
                                                         <legend className="px-2 text-base font-semibold text-slate-900">
                                                             {criterion.sort_order}. {criterion.label}{" "}
                                                             <span className={criterion.required ? "text-red-600" : "text-slate-500"}>{criterion.required ? "Required" : "Optional"}</span>
@@ -382,7 +429,7 @@ export default function VerificationRequestsPage() {
                                             <div className="flex gap-3">
                                                 <button
                                                     type="button"
-                                                    disabled={submitting}
+                                                    disabled={submitting || !isEditable}
                                                     onClick={() => void saveDraft()}
                                                     className="border border-slate-400 px-4 py-2 font-semibold text-slate-700 disabled:border-slate-200 disabled:text-slate-400"
                                                 >
@@ -390,7 +437,7 @@ export default function VerificationRequestsPage() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    disabled={submitting || decision !== "reject"}
+                                                    disabled={submitting || !isEditable || decision !== "reject"}
                                                     onClick={() => decide("reject")}
                                                     className="border border-red-600 px-4 py-2 font-semibold text-red-700 disabled:border-slate-300 disabled:text-slate-400"
                                                 >
@@ -398,7 +445,7 @@ export default function VerificationRequestsPage() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    disabled={submitting || decision !== "approve"}
+                                                    disabled={submitting || !isEditable || decision !== "approve"}
                                                     onClick={() => decide("approve")}
                                                     className="bg-emerald-700 px-4 py-2 font-semibold text-white disabled:bg-slate-300"
                                                 >
