@@ -239,6 +239,16 @@ export default function SubmitToolPage() {
                                     <li>
                                         <strong>features.multiConnection</strong> - Set to &quot;required&quot; or &quot;optional&quot; if your tool supports multiple connections (optional)
                                     </li>
+                                    <li>
+                                        <strong>features.connectionRequirement</strong> - Set to &quot;optional&quot; if your tool can run without a Dataverse connection (optional)
+                                    </li>
+                                    <li>
+                                        <strong>features.minAPI</strong> - Minimum ToolBox API version your tool requires (optional)
+                                    </li>
+                                    <li>
+                                        <strong>features.enabledForPowerPlatformAPI</strong> - Set to <code className="bg-blue-100 px-1 rounded">true</code> if your tool uses{" "}
+                                        <code className="bg-blue-100 px-1 rounded">window.powerplatformAPI</code> (optional)
+                                    </li>
                                 </ul>
                                 <p className="text-sm text-blue-800 mt-3">
                                     <strong>Note:</strong> You&apos;ll select categories from the dropdown below instead of including them in package.json.
@@ -484,7 +494,10 @@ export default function SubmitToolPage() {
     "script-src": ["https://cdn.example.com"]
   },
   "features": {
-       "multiConnection": "required"/"optional"
+    "multiConnection": "required",
+    "connectionRequirement": "optional",
+    "enabledForPowerPlatformAPI": true,
+    "minAPI": "1.2.0"
   },
   "configurations": {
     "repository": "https://github.com/yourorg/your-tool",

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
+import type { Features } from "@/lib/tool-validation";
 import { useSupabase } from "@/lib/useSupabase";
 
 interface Contributor {
@@ -27,9 +28,7 @@ interface ToolIntake {
     icon: string | null;
     contributors: Contributor[];
     csp_exceptions: Record<string, string[]> | null;
-    features: {
-        multiConnection?: "required" | "optional" | "none";
-    } | null;
+    features: Features | null;
     configurations: {
         repository?: string;
         website?: string;
@@ -438,6 +437,21 @@ export default function AdminToolIntakesPage() {
                                                                 {intake.features.multiConnection && (
                                                                     <li>
                                                                         <span className="font-medium">Multi-Connection:</span> {intake.features.multiConnection}
+                                                                    </li>
+                                                                )}
+                                                                {intake.features.connectionRequirement && (
+                                                                    <li>
+                                                                        <span className="font-medium">Connection Requirement:</span> {intake.features.connectionRequirement}
+                                                                    </li>
+                                                                )}
+                                                                {intake.features.minAPI && (
+                                                                    <li>
+                                                                        <span className="font-medium">Min API:</span> {intake.features.minAPI}
+                                                                    </li>
+                                                                )}
+                                                                {intake.features.enabledForPowerPlatformAPI !== undefined && (
+                                                                    <li>
+                                                                        <span className="font-medium">Enabled For Power Platform API:</span> {intake.features.enabledForPowerPlatformAPI ? "Yes" : "No"}
                                                                     </li>
                                                                 )}
                                                             </ul>

@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
                 authors: authorString,
                 repository: intake.configurations?.repository || "",
                 website: intake.configurations?.website || "",
-                minAPI: intake.configurations?.minApi || "",
+                minAPI: intake.features?.minAPI || "",
             },
             ref: "main",
             timeoutMs: 180000,

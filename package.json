@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.6",
-    "@pptb/validate": "^0.0.7",
+    "@pptb/validate": "^1.0.2",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.1.0",
     "@supabase/supabase-js": "^2.78.0",
