@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 
 import appleLogo from "@/images/logos/apple.svg";
 import linuxLogo from "@/images/logos/linux.svg";
+import vscodeLogo from "@/images/logos/vscode.svg";
 import windowsLogo from "@/images/logos/windows.svg";
 import { fetchLatestRelease, findAssetForOS, formatFileSize, type GitHubAsset } from "@/lib/github-api";
 import { detectPlatform, getArchitectureDisplayName, getOSDisplayName, type PlatformInfo } from "@/lib/os-detection";
 
 const COMMAND = 'xattr -cr "/Applications/Power Platform ToolBox.app"';
+const VSCODE_MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=PowerPlatformToolBox.power-platform-toolbox";
 
 export default function DownloadButton() {
     const [platform, setPlatform] = useState<PlatformInfo | null>(null);
@@ -65,13 +67,26 @@ export default function DownloadButton() {
         </svg>
     );
 
+    // Render VS Code icon for the marketplace extension link
+    const renderVSCodeIcon = () => <Image src={vscodeLogo} alt="VS Code logo" className="h-5 w-5" />;
+
+    const vsCodeExtensionButton = (
+        <a href={VSCODE_MARKETPLACE_URL} target="_blank" rel="noopener noreferrer" className="btn-outline inline-flex items-center gap-3 text-lg">
+            {renderVSCodeIcon()}
+            VS Code Extension
+        </a>
+    );
+
     if (!asset || !platform || platform.os === "unknown") {
         return (
-            <div className="text-center">
-                <a href="/versions" className="btn-primary inline-flex items-center gap-3 text-lg">
-                    {renderGitHubIcon()}
-                    View All Versions
-                </a>
+            <div className="flex flex-col items-center gap-4 text-center">
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                    <a href="/versions" className="btn-primary inline-flex items-center gap-3 text-lg">
+                        {renderGitHubIcon()}
+                        View All Versions
+                    </a>
+                    {vsCodeExtensionButton}
+                </div>
             </div>
         );
     }
@@ -81,17 +96,20 @@ export default function DownloadButton() {
 
     return (
         <div className="flex flex-col items-center gap-6">
-            <a href={asset.browser_download_url} className="btn-primary inline-flex items-center gap-3 text-lg">
-                {renderOSIcon()}
-                Download for {getOSDisplayName(platform.os)}
-            </a>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+                <a href={asset.browser_download_url} className="btn-primary inline-flex items-center gap-3 text-lg">
+                    {renderOSIcon()}
+                    Download for {getOSDisplayName(platform.os)}
+                </a>
+                {vsCodeExtensionButton}
+            </div>
             <div className="text-xs text-light opacity-70">
                 Detected: {osDisplay} {archDisplay}
             </div>
             <div className="text-sm text-light">
                 {version && (
                     <span className="mr-4 font-medium">
-                        Version: <span className="text-dark">{version}</span>
+                        Desktop App Version: <span className="text-dark">{version}</span>
                     </span>
                 )}
                 {asset.size && (
@@ -124,10 +142,7 @@ export default function DownloadButton() {
                 </div>
             )}
             <div className="text-sm">
-                <a
-                    href="/versions"
-                    className="text-blue hover:text-purple font-medium transition-colors underline decoration-2 underline-offset-4"
-                >
+                <a href="/versions" className="text-blue hover:text-purple font-medium transition-colors underline decoration-2 underline-offset-4">
                     View all platforms and versions →
                 </a>
             </div>
