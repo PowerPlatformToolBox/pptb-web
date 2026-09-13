@@ -7,7 +7,7 @@ import { buildPageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = buildPageMetadata({
     title: "About Power Platform ToolBox",
-    description: "Learn how Power Platform ToolBox honors the legacy of XrmToolBox and continues the mission of building community-driven tooling.",
+    description: "Learn how Power Platform ToolBox was created to bring modern, cross-platform tooling to the community while honoring the legacy of XrmToolBox.",
     url: "/about",
 });
 
@@ -64,6 +64,24 @@ export default function AboutPage() {
                             </p>
                             <p className="leading-relaxed relative z-10">
                                 Beyond the code, Tanguy&apos;s welcoming, collaborative approach set the standard for how open-source projects should operate.
+                            </p>
+                        </div>
+                    </FadeIn>
+
+                    <FadeIn direction="up" delay={0.25}>
+                        <div className="card p-8 border-l-4 border-indigo-600 shadow-lg hover:shadow-xl transition-shadow">
+                            <h2 className="text-2xl font-semibold text-slate-900 mb-4">🚀 Why Power Platform ToolBox Was Started</h2>
+                            <p className="mb-4 leading-relaxed">
+                                As the Power Platform ecosystem evolved, so did the diversity of developer environments—with more makers and consultants using{" "}
+                                <strong>macOS, Linux, and web-first workflows</strong> alongside Windows.
+                            </p>
+                            <p className="mb-4 leading-relaxed">
+                                To address this gap, <strong>Danish Naglekar</strong> (Power Maverick) started building Power Platform ToolBox as an open-source project to give community members a
+                                modern, cross-platform foundation to build, discover, and run tools on any operating system.
+                            </p>
+                            <p className="leading-relaxed">
+                                What started as an effort to solve practical developer needs has grown into a collaborative community effort—driven by the same spirit of open-source sharing pioneered
+                                by XrmToolBox.
                             </p>
                         </div>
                     </FadeIn>

@@ -68,6 +68,6 @@ export const openRoles = [
     },
     {
         title: "Security Reviewer",
-        description: "Review tool submissions and verification requests for security risk, and help shape the ToolBox's secure-by-design practices.",
+        description: "Review ToolBox for security risk, and help shape the ToolBox's secure-by-design practices.",
     },
 ];

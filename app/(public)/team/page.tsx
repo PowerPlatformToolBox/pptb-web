@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Container } from "@/components/Container";
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { Team } from "@/components/Team";
 import { FadeIn } from "@/components/animations";
 import { alumni, discordInviteUrl, openRoles } from "@/lib/constants/team";
@@ -55,7 +56,10 @@ export default function TeamPage() {
                 <Container className="py-16 lg:py-24">
                     <FadeIn direction="up" delay={0.1}>
                         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-700">Join us</p>
-                        <h2 className="mt-5 font-display text-4xl font-medium tracking-tight text-slate-900 sm:text-5xl">Open Roles</h2>
+                        <div className="mt-5 flex flex-wrap items-center gap-4">
+                            <h2 className="font-display text-4xl font-medium tracking-tight text-slate-900 sm:text-5xl">Open Roles</h2>
+                            <CopyLinkButton sectionId="open-roles" />
+                        </div>
                         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-700">
                             We&apos;re a volunteer-run, community-first project and always looking for makers to join the core team.
                         </p>

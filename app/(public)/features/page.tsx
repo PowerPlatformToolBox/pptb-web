@@ -15,17 +15,17 @@ const features = [
     {
         icon: WrenchScrewdriverIcon,
         title: "Tool Management",
-        description: "Install and manage external tools built by 3rd parties via npm.",
+        description: "Install and manage library of tools available within the ToolBox.",
     },
     {
         icon: LockClosedIcon,
         title: "Secure Tool Host",
-        description: "VS Code Extension Host-inspired architecture for isolated tool execution.",
+        description: "Each installed tool runs in an isolated environment, ensuring security and stability.",
     },
     {
         icon: ShieldCheckIcon,
-        title: "Per-Tool CSP",
-        description: "Content Security Policy configuration with user consent for external resource access.",
+        title: "Consent Management",
+        description: "Tools must declare and request explicit user consent before reaching external resources beyond their sandboxed baseline.",
     },
     {
         icon: LinkIcon,
@@ -40,7 +40,7 @@ const features = [
     {
         icon: SparklesIcon,
         title: "Modern Interface",
-        description: "Built with Microsoft Fluent UI components for a consistent, accessible experience aligned with Power Platform.",
+        description: "Built with modern web components for a consistent, accessible experience aligned with Power Platform.",
     },
     {
         icon: BoltIcon,
