@@ -7,10 +7,12 @@ import { buildPageMetadata } from "@/lib/metadata";
 
 const CONTACT_EMAIL = "powermaverick.tools@outlook.com";
 const SECURITY_DOC_URL = "https://github.com/PowerPlatformToolBox/pptb-web/blob/main/artifacts/security";
+const DESKTOP_APP_REPO_URL = "https://github.com/PowerPlatformToolBox/desktop-app";
+const DESKTOP_APP_RELEASES_URL = "https://github.com/PowerPlatformToolBox/desktop-app/releases";
 
 export const metadata: Metadata = buildPageMetadata({
     title: "Security & Trust | Power Platform ToolBox",
-    description: "Review the security controls, architecture, and artifacts Power Platform ToolBox provides to enterprise reviewers and compliance teams.",
+    description: "Review the security controls, architecture, and artifacts of the Power Platform ToolBox desktop app so enterprise reviewers and compliance teams can evaluate risk with confidence.",
     url: "/security",
 });
 
@@ -25,13 +27,15 @@ export default function SecurityPage() {
                     </FadeIn>
                     <FadeIn direction="up" delay={0.25}>
                         <p className="mx-auto mt-6 max-w-3xl text-lg text-slate-700">
-                            Power Platform ToolBox ships with a pragmatic, transparent security posture so information security reviewers can quickly evaluate risk, understand data flows, and approve
-                            usage inside their organization.
+                            The Power Platform ToolBox <strong>desktop app</strong>—the Electron-based client makers install on Windows, macOS, and Linux—ships with a pragmatic, transparent security
+                            posture so information security reviewers can quickly evaluate risk, understand data flows, and approve usage inside their organization. This site (pptb-web) only hosts the
+                            tool catalog, documentation, and community pages; the controls below describe the downloadable application itself.
                         </p>
                     </FadeIn>
                     <FadeIn direction="up" delay={0.35}>
                         <div className="mt-10 flex flex-col items-center gap-4 text-sm text-slate-600 sm:flex-row sm:justify-center">
-                            <div className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-slate-900">Version: Public Preview</div>
+                            <div className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-slate-900">Distributed via GitHub Releases</div>
+                            <div className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-slate-900">Open source (GPL-3.0)</div>
                             <div className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-slate-900">Maintained by the PPTB community</div>
                         </div>
                     </FadeIn>
@@ -45,25 +49,31 @@ export default function SecurityPage() {
                             <div>
                                 <h2 className="text-2xl font-semibold text-slate-900">Architecture in plain language</h2>
                                 <p className="mt-4 text-base leading-relaxed text-slate-600">
-                                    PPTB is a cross-platform desktop shell that securely downloads community-built tools from GitHub releases, validates file integrity, and runs them locally within
-                                    the user&apos;s operating system. No customer data is routed through PPTB servers—administrators retain full control over credentials and environments.
+                                    PPTB is a cross-platform Electron desktop application that installs community-built tools from an npm-based registry and runs them locally within an isolated, VS
+                                    Code Extension Host-inspired &ldquo;Secure Tool Host.&rdquo; No customer Dataverse data is routed through PPTB-operated infrastructure—connections, credentials, and
+                                    tokens stay on the user&apos;s device, and administrators retain full control over environments.
                                 </p>
                             </div>
                             <dl className="space-y-4">
                                 <div className="rounded-2xl bg-slate-50 p-4">
                                     <dt className="text-sm font-semibold text-slate-900">Data storage</dt>
-                                    <dd className="mt-2 text-sm text-slate-600">No persistent customer data is stored on PPTB infrastructure. Settings live locally on the user&apos;s device.</dd>
+                                    <dd className="mt-2 text-sm text-slate-600">
+                                        Connection details, settings, and auth tokens are kept locally on the device. Supabase is used only to serve the public tool catalog/registry metadata—never
+                                        customer Dataverse data.
+                                    </dd>
                                 </div>
                                 <div className="rounded-2xl bg-slate-50 p-4">
                                     <dt className="text-sm font-semibold text-slate-900">Authentication</dt>
                                     <dd className="mt-2 text-sm text-slate-600">
-                                        Uses Microsoft Entra ID (Azure AD) OAuth flows via the official MSAL libraries for sign-in to Microsoft cloud services.
+                                        Uses Microsoft Entra ID (Azure AD) OAuth flows via the official <code>@azure/msal-node</code> library to sign in and connect to Dataverse/Power Platform
+                                        environments.
                                     </dd>
                                 </div>
                                 <div className="rounded-2xl bg-slate-50 p-4">
                                     <dt className="text-sm font-semibold text-slate-900">Distribution</dt>
                                     <dd className="mt-2 text-sm text-slate-600">
-                                        Installers are signed and distributed from GitHub, allowing organizations to mirror or validate packages internally.
+                                        Installers are code-signed (Azure Trusted Signing on Windows, Apple notarization on macOS) and published as GitHub Releases, so organizations can verify and
+                                        mirror packages internally.
                                     </dd>
                                 </div>
                             </dl>
@@ -75,20 +85,36 @@ export default function SecurityPage() {
                             <h2 className="text-2xl font-semibold text-slate-900">Security controls at a glance</h2>
                             <ul className="mt-6 space-y-4 text-base text-slate-600">
                                 <li>
-                                    ✅ <span className="font-semibold">Least privilege:</span> Tools request credentials only when needed, and nothing is stored without user consent.
+                                    ✅ <span className="font-semibold">Secure Tool Host:</span> Each installed tool runs in an isolated, VS Code Extension Host-inspired process so one tool cannot read
+                                    or interfere with another.
                                 </li>
                                 <li>
-                                    ✅ <span className="font-semibold">Signed releases:</span> We rely on GitHub release signing plus community validation to detect tampering before distribution.
+                                    ✅ <span className="font-semibold">Per-tool Content Security Policy:</span> Tools must declare and request explicit user consent before reaching external resources
+                                    beyond their sandboxed baseline.
                                 </li>
                                 <li>
-                                    ✅ <span className="font-semibold">Transparent code:</span> The entire stack is open-source so internal security teams can audit, fork, or build custom policies.
+                                    ✅ <span className="font-semibold">Signed &amp; notarized releases:</span> Windows binaries are signed with Azure Trusted Signing and macOS builds are notarized by
+                                    Apple before publication—unsigned artifacts never reach end users.
                                 </li>
                                 <li>
-                                    ✅ <span className="font-semibold">Network awareness:</span> The desktop client only communicates with GitHub APIs, Microsoft identity endpoints, and the
-                                    organization&apos;s own Dataverse/Power Platform services.
+                                    ✅ <span className="font-semibold">Hardened deep links:</span> The <code>pptb://</code> protocol handler validates and rate-limits install requests and always
+                                    requires explicit user confirmation before installing a tool.
                                 </li>
                                 <li>
-                                    ✅ <span className="font-semibold">Dependency hygiene:</span> Automated Dependabot alerts and manual reviews keep OSS libraries patched.
+                                    ✅ <span className="font-semibold">Transparent code:</span> The entire desktop app is open-source (GPL-3.0) so internal security teams can audit, fork, or build
+                                    custom policies.
+                                </li>
+                                <li>
+                                    ✅ <span className="font-semibold">Continuous scanning:</span> CodeQL static analysis runs against every change, and a Snyk project monitors every repository across
+                                    the PowerPlatformToolBox organization for vulnerable open-source dependencies and license issues.
+                                </li>
+                                <li>
+                                    ✅ <span className="font-semibold">Controlled auto-updates:</span> <code>electron-updater</code> keeps installations current, with user visibility and control over
+                                    when updates apply.
+                                </li>
+                                <li>
+                                    ✅ <span className="font-semibold">Optional telemetry:</span> Error tracking via Sentry is on by default to help diagnose issues, and can be disabled at any time in
+                                    application settings.
                                 </li>
                             </ul>
                         </div>
@@ -101,7 +127,7 @@ export default function SecurityPage() {
                                 <div className="rounded-2xl bg-white/80 p-5 shadow-sm">
                                     <h3 className="text-lg font-semibold text-slate-900">Artifacts we provide</h3>
                                     <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <li>• Software bill of materials (SBOM) upon request</li>
+                                        <li>• Software bill of materials (SBOM) for the desktop app</li>
                                         <li>• Threat model outline with data-flow diagrams</li>
                                         <li>• Secure coding checklist aligned to OWASP</li>
                                         <li>• Release notes documenting security fixes</li>
@@ -110,17 +136,25 @@ export default function SecurityPage() {
                                 <div className="rounded-2xl bg-white/80 p-5 shadow-sm">
                                     <h3 className="text-lg font-semibold text-slate-900">What we ask from you</h3>
                                     <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <li>• Validate the GitHub org and release signatures</li>
-                                        <li>• Distribute installers via your approved channels</li>
-                                        <li>• Enforce endpoint protection policies for the client</li>
+                                        <li>• Download installers only from official GitHub releases</li>
+                                        <li>• Verify code-signing/notarization before distribution</li>
+                                        <li>• Keep auto-updates enabled or patch on a regular cadence</li>
                                         <li>• Share findings so we can harden the platform</li>
                                     </ul>
                                 </div>
                             </div>
                             <p className="mt-6 text-sm text-slate-500">
-                                Review our existing security documentation in the repository at
+                                Review the desktop app source and release history at
+                                <Link href={DESKTOP_APP_REPO_URL} target="_blank" rel="noopener noreferrer" className="ml-1 font-semibold text-blue-600 underline-offset-4 hover:underline">
+                                    PowerPlatformToolBox/desktop-app
+                                </Link>
+                                , download signed installers from the
+                                <Link href={DESKTOP_APP_RELEASES_URL} target="_blank" rel="noopener noreferrer" className="ml-1 font-semibold text-blue-600 underline-offset-4 hover:underline">
+                                    releases page
+                                </Link>
+                                , or browse our existing security artifacts at
                                 <Link href={SECURITY_DOC_URL} target="_blank" rel="noopener noreferrer" className="ml-1 font-semibold text-blue-600 underline-offset-4 hover:underline">
-                                    docs/security
+                                    artifacts/security
                                 </Link>
                                 .
                             </p>

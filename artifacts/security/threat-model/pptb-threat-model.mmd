@@ -1,21 +1,24 @@
-%% PPTB Threat Model (starter)
+%% PPTB Desktop App Threat Model
 flowchart LR
     Maker(Maker / Tool Author)
-    PPTB[PPTB Desktop Client]
-    Github[(GitHub Releases)]
+    PPTB[PPTB Desktop Client - Electron]
+    ToolHost[Secure Tool Host<br/>Isolated per-tool process]
+    Github[(GitHub Releases<br/>Signed installers + auto-updates)]
+    Registry[(Supabase Tool Registry<br/>Public catalog metadata only)]
     EntraID[(Microsoft Entra ID)]
-    Supabase[(Supabase APIs)]
     Dataverse[(Customer Dataverse / Power Platform)]
 
-    Maker -->|Downloads installer| PPTB
-    PPTB -->|Fetches tools| Github
-    PPTB -->|OAuth flow| EntraID
-    PPTB -->|Calls secured endpoints| Supabase
-    PPTB -->|Executes maker actions| Dataverse
+    Maker -->|Downloads signed installer| PPTB
+    PPTB -->|Checks for updates / installs tools| Github
+    PPTB -->|Fetches public tool catalog| Registry
+    PPTB -->|Runs each tool isolated + per-tool CSP| ToolHost
+    PPTB -->|MSAL OAuth flow| EntraID
+    ToolHost -->|Executes maker actions via stored connection| Dataverse
 
     classDef boundary fill:#fef3c7,stroke:#f59e0b,stroke-width:2px;
     subgraph TB1 [Local Device]
         PPTB
+        ToolHost
     end
     class TB1 boundary;
 
@@ -26,6 +29,7 @@ flowchart LR
     class TB2 boundary;
 
     subgraph TB3 [PPTB Managed Services]
-        Supabase
+        Github
+        Registry
     end
     class TB3 boundary;

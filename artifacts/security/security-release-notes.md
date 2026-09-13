@@ -1,16 +1,19 @@
 # Security Release Notes
 
+These notes track security-impacting changes in the **PPTB desktop app** (`PowerPlatformToolBox/desktop-app`). Web-app-only fixes to pptb-web/Supabase infrastructure are tracked separately in that repository.
+
 ## 2026-01-20 Hardening Update
 
-- **Supabase Admin APIs** – Tightened Row Level Security to limit writes to members of the `pptb_admins` role only. Verified via Supabase policy tests.
-- **Tool Intake Validation** – Strengthened schema validation in `tool-validation.ts` to close gaps that previously allowed malformed URLs. Covered by new unit tests.
-- **Dashboard Session Handling** – Fixed a regression that could keep stale Supabase sessions alive after sign-out. Added integration test to ensure tokens are revoked immediately.
+- **`pptb://` Protocol Handler** – Added strict `toolId` validation (alphanumeric/hyphen/underscore only), a 100/200 character length cap, and rate limiting (max 3 requests per 5-second window) to prevent path-traversal, injection, and deep-link spam/DoS attempts.
+- **Secure Tool Host** – Hardened per-tool process isolation and Content Security Policy enforcement so a compromised or misbehaving tool cannot access another tool's data or reach unapproved external resources without explicit user consent.
+- **Auto-Update Verification** – Confirmed `electron-updater` only applies signed update artifacts fetched from GitHub Releases.
 
-**Upgrade Guidance**: Deploy the latest `/api` routes and re-run `supabase db push`. Desktop users no impact; web app users should clear cookies to ensure fresh sessions.
+**Upgrade Guidance**: Update to Power Platform ToolBox desktop app v1.2.x or later (auto-updates apply this automatically; manual installs should download the latest signed release).
 
 ## 2025-12-05 Critical Patch
 
-- **Markdown Rendering** – Patched the tool review renderer to escape HTML, preventing stored XSS (CWE-79). Manual pen test validated the fix.
-- **Dependency Updates** – Applied patched versions of `marked` and `next` to remove known CVEs (GHSA-xxxxx). Tracked via Dependabot PRs #312 and #314.
+- **Windows Code Signing** – Migrated Windows installer/binary signing to Azure Trusted Signing across all three signing phases (app binaries, installers, and installer wrappers) to remove reliance on long-lived local certificates.
+- **macOS Notarization** – Hardened the macOS release pipeline so `.dmg`/`.zip` artifacts are signed with a dedicated, isolated keychain and stapled only after Apple notarization succeeds; releases stay in draft until notarization completes.
+- **Dependency Updates** – Applied patched versions of vulnerable Electron/npm dependencies flagged by the org-wide Snyk project.
 
-**Upgrade Guidance**: Update the web app to commit `7c4d1bf` or later and run `npm install` to pull the safe dependency graph.
+**Upgrade Guidance**: Update to Power Platform ToolBox desktop app v1.2.5 or later to receive signed, notarized installers.
