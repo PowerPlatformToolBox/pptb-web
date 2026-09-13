@@ -16,10 +16,12 @@ export function Footer() {
                     <Logo className="mx-auto h-10 w-auto" alt="PPTB" />
                     <nav className="mt-10 text-sm" aria-label="quick links">
                         <div className="-my-1 flex flex-wrap justify-center gap-x-3 gap-y-2 sm:gap-x-6 [&_a]:whitespace-nowrap">
-                            <NavLink href="#features">Features</NavLink>
-                            <NavLink href="#faq">FAQs</NavLink>
+                            <NavLink href="/features">Features</NavLink>
+                            <NavLink href="/team">Team</NavLink>
+                            <NavLink href="/faqs">FAQs</NavLink>
                             <NavLink href="/security">Security</NavLink>
-                            <NavLink href="/project-alumni">Project Alumni</NavLink>
+                            <NavLink href="/versions">Versions</NavLink>
+                            <NavLink href="/team#alumni">Project Alumni</NavLink>
                             <NavLink href="/policy/privacy">Privacy Policy</NavLink>
                             <NavLink href="/policy/terms">Terms of Service</NavLink>
                         </div>

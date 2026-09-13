@@ -2,59 +2,7 @@ import Link from "next/link";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
-
-const lead = {
-    name: "Danish Naglekar",
-    alias: "Power Maverick",
-    title: "Chief Tool Wrangler",
-    description: "Builds the vision for Power Platform ToolBox and stewards the open-source roadmap.",
-    linkedin: "https://www.linkedin.com/in/danishnaglekar/",
-};
-
-const supportingTeam = [
-    {
-        name: "Matt Berg",
-        alias: "",
-        title: "The Product Whisperer",
-        blurb: "Turns ideas into features and chaos into clarity.",
-        linkedin: "https://www.linkedin.com/in/mattberg11/",
-    },
-    {
-        name: "Carl Cookson",
-        alias: "LinkeD365",
-        title: "Bug Crusher 🐞💥",
-        blurb: "First to test, first to build, first to break things so others don’t.",
-        linkedin: "https://www.linkedin.com/in/carlcookson/",
-    },
-    {
-        name: "Lars Hildebrandt",
-        alias: "",
-        title: "The Box Breaker 📦🚀",
-        blurb: "Thinks beyond boundaries and makes bold ideas actually work.",
-        linkedin: "https://www.linkedin.com/in/lars-hildebrandt-6209a437/",
-    },
-    {
-        name: "Mohsin Mirza",
-        alias: "mohsinonxrm",
-        title: "The Triple Threat ⚔️",
-        blurb: "Tester, implementor, and tool author — a one-person strike team.",
-        linkedin: "https://www.linkedin.com/in/mohsin-mirza-94210615/",
-    },
-    {
-        name: "Oliver Flint",
-        alias: "",
-        title: "The Momentum Engine ⚡",
-        blurb: "Generates ideas and relentlessly pushes the team forward.",
-        linkedin: "https://www.linkedin.com/in/oliverflint/",
-    },
-    {
-        name: "Christoph Schaffer",
-        alias: "darkwheel",
-        title: "The Code Alchemist 🧙‍♂️",
-        blurb: "Transforms complex problems into elegant code solutions.",
-        linkedin: "https://www.linkedin.com/in/christoph-schaffer/",
-    },
-];
+import { lead, supportingTeam } from "@/lib/constants/team";
 
 export function Team() {
     return (
@@ -73,6 +21,10 @@ export function Team() {
                         Power Platform ToolBox exists because makers across the community lend their time, ideas, and obsession for detail. Meet the core crew keeping the lights on and the features
                         shipping.
                     </p>
+                    <Link href="/team" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-blue-200 transition hover:text-white">
+                        Meet the full team & open roles
+                        <span aria-hidden="true">&rarr;</span>
+                    </Link>
                 </FadeIn>
 
                 <FadeIn direction="up" delay={0.2}>

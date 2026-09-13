@@ -3,6 +3,7 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import clsx from "clsx";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
@@ -114,6 +115,14 @@ export function PrimaryFeatures() {
                         )}
                     </TabGroup>
                 </SlideIn>
+                <FadeIn direction="up" delay={0.5}>
+                    <div className="mt-12 text-center">
+                        <Link href="/features" className="inline-flex items-center gap-2 text-sm font-semibold text-white transition hover:text-blue-100">
+                            See all features
+                            <span aria-hidden="true">&rarr;</span>
+                        </Link>
+                    </div>
+                </FadeIn>
             </Container>
         </section>
     );

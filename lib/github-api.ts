@@ -308,6 +308,9 @@ export interface GitHubSponsor {
         name: string;
         monthlyPriceInDollars: number;
     } | null;
+    isActive: boolean;
+    isOneTimePayment: boolean;
+    createdAt: string;
 }
 
 export interface SponsorData {
@@ -317,21 +320,24 @@ export interface SponsorData {
     githubUrl: string;
     tier: string;
     monthlyAmount: number;
+    isActive: boolean;
+    isOneTime: boolean;
+    totalContributed: number;
 }
 
 /**
- * Fetches the list of active GitHub sponsors for an organization using GraphQL API.
+ * Fetches GitHub sponsors (active, past, and one-time) for an organization using GraphQL API.
  *
  * @param organizationLogin - The GitHub organization login (e.g., "PowerPlatformToolBox")
  * @param token - GitHub personal access token with appropriate permissions
- * @returns Array of sponsor data sorted by monthly contribution amount (highest first)
+ * @returns Array of sponsor data with active sponsors first, sorted by total contribution within each group
  * @throws Error if the GraphQL query fails or returns errors
  */
 export async function fetchGitHubSponsors(organizationLogin: string, token: string): Promise<SponsorData[]> {
     const query = `
         query($login: String!) {
             organization(login: $login) {
-                sponsorshipsAsMaintainer(first: 100, activeOnly: true) {
+                sponsorshipsAsMaintainer(first: 100, activeOnly: false) {
                     nodes {
                         sponsorEntity {
                             ... on User {
@@ -351,6 +357,9 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
                             name
                             monthlyPriceInDollars
                         }
+                        isActive
+                        isOneTimePayment
+                        createdAt
                     }
                 }
             }
@@ -388,15 +397,27 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
 
     const sponsors: SponsorData[] = nodes
         .filter((node: GitHubSponsor) => node.sponsorEntity)
-        .map((node: GitHubSponsor) => ({
-            name: node.sponsorEntity.name || node.sponsorEntity.login,
-            login: node.sponsorEntity.login,
-            avatarUrl: node.sponsorEntity.avatarUrl,
-            githubUrl: node.sponsorEntity.url,
-            tier: node.tier?.name || "Sponsor",
-            monthlyAmount: node.tier?.monthlyPriceInDollars || 0,
-        }))
-        .sort((a: SponsorData, b: SponsorData) => b.monthlyAmount - a.monthlyAmount);
+        .map((node: GitHubSponsor) => {
+            const monthlyAmount = node.tier?.monthlyPriceInDollars || 0;
+            // GitHub doesn't expose lifetime totals, so approximate from months since the sponsorship started.
+            const monthsSponsoring = Math.max(1, Math.round((Date.now() - new Date(node.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)));
+
+            return {
+                name: node.sponsorEntity.name || node.sponsorEntity.login,
+                login: node.sponsorEntity.login,
+                avatarUrl: node.sponsorEntity.avatarUrl,
+                githubUrl: node.sponsorEntity.url,
+                tier: node.tier?.name || (node.isOneTimePayment ? "One-time" : "Sponsor"),
+                monthlyAmount,
+                isActive: node.isActive,
+                isOneTime: node.isOneTimePayment,
+                totalContributed: node.isOneTimePayment ? monthlyAmount : monthlyAmount * monthsSponsoring,
+            };
+        })
+        .sort((a: SponsorData, b: SponsorData) => {
+            if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+            return b.totalContributed - a.totalContributed;
+        });
 
     return sponsors;
 }

@@ -29,6 +29,8 @@ type NavGroup = {
 
 const PRIMARY_LINKS: NavItem[] = [
     { label: "Tools", href: "/tools" },
+    { label: "Features", href: "/features" },
+    { label: "Team", href: "/team" },
     { label: "Updates", href: "/updates" },
     { label: "Sponsors", href: "/sponsors" },
 ];
@@ -46,10 +48,8 @@ const SOCIAL_LINKS: SocialLink[] = [
 
 const NAVIGATION_GROUPS: NavGroup[] = [
     {
-        label: "Platform",
+        label: "Company",
         items: [
-            { label: "Features", href: "/#features" },
-            { label: "Teams", href: "/#team" },
             { label: "About", href: "/about" },
             { label: "Security", href: "/security" },
         ],
@@ -59,6 +59,7 @@ const NAVIGATION_GROUPS: NavGroup[] = [
         items: [
             { label: "Documentation", href: "https://docs.powerplatformtoolbox.com", external: true },
             { label: "FAQs", href: "/faqs" },
+            { label: "Versions", href: "/versions" },
         ],
     },
     {

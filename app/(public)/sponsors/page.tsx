@@ -14,6 +14,9 @@ interface Sponsor {
     githubUrl: string;
     tier: string;
     monthlyAmount: number;
+    isActive: boolean;
+    isOneTime: boolean;
+    totalContributed: number;
 }
 
 export default function SponsorsPage() {
@@ -39,6 +42,7 @@ export default function SponsorsPage() {
 
         fetchSponsors();
     }, []);
+
     return (
         <main className="bg-slate-50">
             {/* Slim Hero Banner with CTA */}
@@ -104,8 +108,13 @@ export default function SponsorsPage() {
                                         <div className="flex items-center gap-4">
                                             <Image src={sponsor.avatarUrl} alt={sponsor.name} width={48} height={48} className="rounded-full" />
                                             <div>
-                                                <h3 className="font-semibold text-slate-900">{sponsor.name}</h3>
-                                                <p className="text-sm text-slate-600">{sponsor.tier}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold text-slate-900">{sponsor.name}</h3>
+                                                    {sponsor.isActive && !sponsor.isOneTime && (
+                                                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Active</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-slate-600">{sponsor.isOneTime ? `$${sponsor.totalContributed} one-time` : `$${sponsor.totalContributed} contributed`}</p>
                                             </div>
                                         </div>
                                     </a>

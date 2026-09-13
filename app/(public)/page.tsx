@@ -5,6 +5,7 @@ import { HomeReleaseVideo } from "@/components/HomeReleaseVideo";
 import { HonoringXTB } from "@/components/HonoringXTB";
 import { Pricing } from "@/components/Pricing";
 import { PrimaryFeatures } from "@/components/PrimaryFeatures";
+import { SponsorsTeaser } from "@/components/SponsorsTeaser";
 import { Team } from "@/components/Team";
 import { buildPageMetadata } from "@/lib/metadata";
 import { getLatestUpdateReleaseWithVideoSlug, getUpdateRelease } from "@/lib/updates";
@@ -27,6 +28,7 @@ export default async function Home() {
             {latestVideoRelease && latestVideo && <HomeReleaseVideo releaseTitle={latestVideoRelease.meta.title} description={latestVideoRelease.meta.description} video={latestVideo} />}
             <HonoringXTB />
             <Team />
+            <SponsorsTeaser />
             {/* <Testimonials /> */}
             <Pricing />
         </main>
