@@ -105,6 +105,29 @@ function ErrorList({ errors }: { errors: string[] }) {
     );
 }
 
+interface CriterionSummary {
+    label: string;
+    comment?: string | null;
+}
+
+export type { CriterionSummary };
+
+function CriteriaList({ criteria, showLabelWhenNoComment }: { criteria: CriterionSummary[]; showLabelWhenNoComment: boolean }) {
+    const items = showLabelWhenNoComment ? criteria : criteria.filter((criterion) => Boolean(criterion.comment?.trim()));
+    if (items.length === 0) return null;
+
+    return (
+        <ul style={styles.list}>
+            {items.map((criterion) => (
+                <li key={criterion.label}>
+                    <strong>{criterion.label}</strong>
+                    {criterion.comment?.trim() ? `: ${criterion.comment.trim()}` : ""}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 export function ToolSubmissionAdminEmail({ toolName, description, submissionDate, submittedBy }: { toolName: string; description: string; submissionDate: string; submittedBy: string }) {
     return (
         <EmailLayout preview={`New tool intake: ${toolName}`} eyebrow="Admin notification" title="New tool submitted">
@@ -234,24 +257,25 @@ export function VerificationRequestCancelledEmail({ toolName }: { toolName: stri
     );
 }
 
-export function VerificationApprovedEmail({ toolName }: { toolName: string }) {
+export function VerificationApprovedEmail({ toolName, sections }: { toolName: string; sections?: CriterionSummary[] }) {
     return (
         <EmailLayout preview={`${toolName} is now verified`} eyebrow="Verification" title="Verification approved">
             <Text style={styles.text}>
                 <strong>{toolName}</strong> passed every required verification criterion and is now Verified.
             </Text>
+            {sections && sections.length > 0 && <CriteriaList criteria={sections} showLabelWhenNoComment={false} />}
             <Text style={styles.text}>The Verified badge is now visible in the marketplace.</Text>
         </EmailLayout>
     );
 }
 
-export function VerificationRejectedEmail({ toolName, failedCriteria }: { toolName: string; failedCriteria: string[] }) {
+export function VerificationRejectedEmail({ toolName, failedCriteria }: { toolName: string; failedCriteria: CriterionSummary[] }) {
     return (
         <EmailLayout preview={`${toolName} was not approved for verification`} eyebrow="Verification" title="Verification not approved">
             <Text style={styles.text}>
                 <strong>{toolName}</strong> did not pass verification. These required criteria did not pass:
             </Text>
-            <ErrorList errors={failedCriteria} />
+            <CriteriaList criteria={failedCriteria} showLabelWhenNoComment />
             <Text style={styles.text}>After addressing these items, you can submit a new request for a full review.</Text>
         </EmailLayout>
     );

@@ -5,11 +5,12 @@ import {
     ToolUpdateAdminEmail,
     ToolUpdateDeveloperEmail,
     VerificationApprovedEmail,
-    VerificationRequestAdminEmail,
     VerificationRejectedEmail,
+    VerificationRequestAdminEmail,
     VerificationRequestCancelledEmail,
     VerificationRequestSubmittedEmail,
     VerificationRevokedEmail,
+    type CriterionSummary,
 } from "@/components/emails/PPTBEmails";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createElement, type ReactElement } from "react";
@@ -62,8 +63,12 @@ interface VerificationRequestAdminPayload {
     submittedBy: string;
 }
 
+interface VerificationApprovedPayload extends VerificationDeveloperPayload {
+    sections?: CriterionSummary[];
+}
+
 interface VerificationRejectedPayload extends VerificationDeveloperPayload {
-    failedCriteria: string[];
+    failedCriteria: CriterionSummary[];
 }
 
 interface VerificationRevokedPayload extends VerificationDeveloperPayload {
@@ -101,13 +106,18 @@ type SendEmailOptions =
           supabase: SupabaseClient;
       }
     | {
-          type: "verification-request-submitted" | "verification-request-cancelled" | "verification-approved";
+          type: "verification-request-submitted" | "verification-request-cancelled";
           data: VerificationDeveloperPayload;
           supabase: SupabaseClient;
       }
     | {
           type: "verification-request-admin";
           data: VerificationRequestAdminPayload;
+      }
+    | {
+          type: "verification-approved";
+          data: VerificationApprovedPayload;
+          supabase: SupabaseClient;
       }
     | {
           type: "verification-rejected";
@@ -251,10 +261,10 @@ async function sendVerificationRequestCancelledEmail(supabase: SupabaseClient, d
     });
 }
 
-async function sendVerificationApprovedEmail(supabase: SupabaseClient, data: VerificationDeveloperPayload): Promise<EmailResult> {
+async function sendVerificationApprovedEmail(supabase: SupabaseClient, data: VerificationApprovedPayload): Promise<EmailResult> {
     return deliverDeveloperEmail(supabase, data.developerId, {
         subject: `Verification approved: ${data.toolName}`,
-        react: createElement(VerificationApprovedEmail, { toolName: data.toolName }),
+        react: createElement(VerificationApprovedEmail, { toolName: data.toolName, sections: data.sections }),
     });
 }
 

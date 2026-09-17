@@ -326,12 +326,20 @@ export async function POST(request: NextRequest) {
                 ? await sendEmail({
                       type: "verification-approved",
                       supabase,
-                      data: { developerId: verificationRequest.developer_id, toolName: tool.name },
+                      data: {
+                          developerId: verificationRequest.developer_id,
+                          toolName: tool.name,
+                          sections: criteria.map((criterion) => ({ label: criterion.label, comment: resultByKey.get(criterion.key)?.comment?.trim() || null })),
+                      },
                   })
                 : await sendEmail({
                       type: "verification-rejected",
                       supabase,
-                      data: { developerId: verificationRequest.developer_id, toolName: tool.name, failedCriteria: failedRequiredCriteria.map((criterion) => criterion.label) },
+                      data: {
+                          developerId: verificationRequest.developer_id,
+                          toolName: tool.name,
+                          failedCriteria: failedRequiredCriteria.map((criterion) => ({ label: criterion.label, comment: resultByKey.get(criterion.key)?.comment?.trim() || null })),
+                      },
                   });
         if (!emailResult.success) console.warn(`[maturity-admin] Decision email was not sent for ${verificationRequest.id}: ${emailResult.error}`);
 
