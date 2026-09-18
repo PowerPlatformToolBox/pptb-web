@@ -87,6 +87,9 @@ export default function DownloadButton() {
                     </a>
                     {vsCodeExtensionButton}
                 </div>
+                <a href="/features#comparison" className="text-sm font-medium text-light underline-offset-4 hover:underline">
+                    See full comparison ↓
+                </a>
             </div>
         );
     }
@@ -103,9 +106,9 @@ export default function DownloadButton() {
                 </a>
                 {vsCodeExtensionButton}
             </div>
-            <div className="text-xs text-light opacity-70">
-                Detected: {osDisplay} {archDisplay}
-            </div>
+            <a href="/features#comparison" className="text-sm font-medium text-light underline-offset-4 hover:underline">
+                See full Desktop vs VS Code comparison →
+            </a>
             <div className="text-sm text-light">
                 {version && (
                     <span className="mr-4 font-medium">
@@ -118,7 +121,7 @@ export default function DownloadButton() {
                     </span>
                 )}
             </div>
-            {platform.os === "mac" && (
+            {/* {platform.os === "mac" && (
                 <div className="card max-w-2xl mt-2 bg-amber-50 border-2 border-amber-200">
                     <p className="mb-3 text-dark">
                         <strong className="text-amber-700">⚠️ macOS Users:</strong> If you see a &apos;damaged&apos; or &apos;unidentified developer&apos; warning after installation, run the following
@@ -140,11 +143,14 @@ export default function DownloadButton() {
                         </button>
                     </div>
                 </div>
-            )}
+            )} */}
             <div className="text-sm">
                 <a href="/versions" className="text-blue hover:text-purple font-medium transition-colors underline decoration-2 underline-offset-4">
                     View all platforms and versions →
                 </a>
+            </div>
+            <div className="text-xs text-light opacity-70">
+                Detected: {osDisplay} {archDisplay}
             </div>
         </div>
     );

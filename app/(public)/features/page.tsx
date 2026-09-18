@@ -2,6 +2,7 @@ import { ArrowPathIcon, BellIcon, BoltIcon, Cog6ToothIcon, LinkIcon, LockClosedI
 import type { Metadata } from "next";
 
 import { Container } from "@/components/Container";
+import { FeatureComparisonTable } from "@/components/FeatureComparisonTable";
 import { FadeIn } from "@/components/animations";
 import { buildPageMetadata } from "@/lib/metadata";
 
@@ -89,6 +90,22 @@ export default function FeaturesPage() {
                     </div>
                 </FadeIn>
             </Container>
+
+            <section id="comparison" className="border-t border-slate-200 bg-white py-16 lg:py-24">
+                <Container>
+                    <FadeIn direction="up" delay={0.1}>
+                        <div className="mx-auto max-w-3xl text-center">
+                            <h2 className="font-display text-3xl font-medium tracking-tight text-slate-900 sm:text-4xl">VS Code Extension vs Desktop App</h2>
+                            <p className="mt-4 text-lg leading-relaxed text-slate-700">
+                                The VS Code extension is under active development. Here&apos;s how it compares today to the more mature Power Platform ToolBox Desktop App.
+                            </p>
+                        </div>
+                    </FadeIn>
+                    <div className="mx-auto mt-12 max-w-5xl">
+                        <FeatureComparisonTable />
+                    </div>
+                </Container>
+            </section>
         </main>
     );
 }
