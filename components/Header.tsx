@@ -30,6 +30,7 @@ type NavGroup = {
 const PRIMARY_LINKS: NavItem[] = [
     { label: "Tools", href: "/tools" },
     { label: "Features", href: "/features" },
+    { label: "About", href: "/about" },
     { label: "Team", href: "/team" },
     { label: "Updates", href: "/updates" },
     { label: "Sponsors", href: "/sponsors" },
@@ -48,22 +49,16 @@ const SOCIAL_LINKS: SocialLink[] = [
 
 const NAVIGATION_GROUPS: NavGroup[] = [
     {
-        label: "Company",
-        items: [
-            { label: "About", href: "/about" },
-            { label: "Security", href: "/security" },
-        ],
-    },
-    {
         label: "Resources",
         items: [
             { label: "Documentation", href: "https://docs.powerplatformtoolbox.com", external: true },
             { label: "FAQs", href: "/faqs" },
             { label: "Versions", href: "/versions" },
+            { label: "Security", href: "/security" },
         ],
     },
     {
-        label: "Social",
+        label: "Community",
         items: SOCIAL_LINKS.map(({ label, href, icon }) => ({ label, href, icon, external: true })),
     },
 ];
