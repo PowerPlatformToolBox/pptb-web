@@ -95,7 +95,7 @@ export default function FeaturesPage() {
                 <Container>
                     <FadeIn direction="up" delay={0.1}>
                         <div className="mx-auto max-w-3xl text-center">
-                            <h2 className="font-display text-3xl font-medium tracking-tight text-slate-900 sm:text-4xl">VS Code Extension vs Desktop App</h2>
+                            <h2 className="font-display text-3xl font-medium tracking-tight text-slate-900 sm:text-4xl">Desktop App vs VS Code Extension</h2>
                             <p className="mt-4 text-lg leading-relaxed text-slate-700">
                                 The VS Code extension is under active development. Here&apos;s how it compares today to the more mature Power Platform ToolBox Desktop App.
                             </p>
