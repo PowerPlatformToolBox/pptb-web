@@ -1,13 +1,14 @@
 ---
 title: "Insider"
-date: "2026-09-20"
+date: "2026-09-24"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- feat(marketplace): enhance tool library to include mcpHeadlessEnabled status
+- chore: update version from 1.2.6 to 1.2.7 in package.json
+- [Feature] Add uninstall action to installed tool detail view (#667)
 
 ## Fixes
 
@@ -15,15 +16,15 @@ heroImage: "/images/updates/Insider.png"
 
 ## Developer & Build
 
-- Version: 1.2.6-dev.20260920
+- Version: 1.2.7-dev.20260924
 - Branch: dev
 - Commits: 3 in the last 24 hours
-- Build Date: 35482276940
+- Build Date: 35944202119
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.6-dev.20260920` (and newer).
+- This page currently reflects Insider build `v1.2.7-dev.20260924` (and newer).
 
 ## Getting an Insider build
 
