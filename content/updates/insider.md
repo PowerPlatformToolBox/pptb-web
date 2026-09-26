@@ -1,30 +1,37 @@
 ---
 title: "Insider"
-date: "2026-09-24"
+date: "2026-09-26"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- chore: update version from 1.2.6 to 1.2.7 in package.json
-- [Feature] Add uninstall action to installed tool detail view (#667)
+- Simplify verified badge theme helper
+- Refine verified badge theme test typing
+- Tighten verified badge theme refresh
+- Refresh verified badge icons on theme change
+- Initial plan
+- feat: implement Dataverse user impersonation feature
+- chore: update version to 1.2.7 in package.json and types package.json
+- feat: Implement consent review management for CSP and Dataverse headers
 
 ## Fixes
 
-- N/A
+- fix: remove duplicate import of AsyncLocalStorage in dataverseManager.ts
+- Fix all the issues
 
 ## Developer & Build
 
-- Version: 1.2.7-dev.20260924
+- Version: 1.2.7-dev.20260926
 - Branch: dev
-- Commits: 3 in the last 24 hours
-- Build Date: 35944202119
+- Commits: 12 in the last 24 hours
+- Build Date: 36210625981
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.7-dev.20260924` (and newer).
+- This page currently reflects Insider build `v1.2.7-dev.20260926` (and newer).
 
 ## Getting an Insider build
 
