@@ -1,14 +1,13 @@
 ---
 title: "Insider"
-date: "2026-09-24"
+date: "2026-09-28"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- chore: update version from 1.2.6 to 1.2.7 in package.json
-- [Feature] Add uninstall action to installed tool detail view (#667)
+- feat: add headless support to agents configuration and validation tests
 
 ## Fixes
 
@@ -16,15 +15,15 @@ heroImage: "/images/updates/Insider.png"
 
 ## Developer & Build
 
-- Version: 1.2.7-dev.20260924
+- Version: 1.2.7-dev.20260928
 - Branch: dev
-- Commits: 3 in the last 24 hours
-- Build Date: 35944202119
+- Commits: 1 in the last 24 hours
+- Build Date: 36368339058
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.7-dev.20260924` (and newer).
+- This page currently reflects Insider build `v1.2.7-dev.20260928` (and newer).
 
 ## Getting an Insider build
 
