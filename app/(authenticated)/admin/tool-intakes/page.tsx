@@ -29,6 +29,7 @@ interface ToolIntake {
     contributors: Contributor[];
     csp_exceptions: Record<string, string[]> | null;
     features: Features | null;
+    mcp_enabled: boolean;
     configurations: {
         repository?: string;
         website?: string;
@@ -427,6 +428,10 @@ export default function AdminToolIntakesPage() {
                                                                 </li>
                                                             </ul>
                                                         </div>
+                                                    </div>
+
+                                                    <div className="mb-4 text-sm text-slate-700">
+                                                        <span className="font-medium">MCP Enabled:</span> {intake.mcp_enabled ? "Yes" : "No"}
                                                     </div>
 
                                                     {/* Features Section */}

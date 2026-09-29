@@ -49,6 +49,16 @@ export async function GET(request: NextRequest) {
             maturityRows?.forEach((row) => maturityByToolId.set(row.tool_id, row.status));
         }
 
+        const catalogByToolId = new Map<string, { multi_connection: string | null; connection_requirement: string | null; enabled_for_power_platform_api: boolean; mcp_enabled: boolean }>();
+        if (toolIds.length > 0) {
+            const { data: catalogRows, error: catalogError } = await supabase
+                .from("tools_catalog")
+                .select("id, multi_connection, connection_requirement, enabled_for_power_platform_api, mcp_enabled")
+                .in("id", toolIds);
+            if (catalogError) throw catalogError;
+            catalogRows?.forEach((row) => catalogByToolId.set(row.id, row));
+        }
+
         const baseUrl = new URL(request.url);
         const contextUrl = `${baseUrl.protocol}//${baseUrl.host}/api/odata/$metadata#Tools`;
 
@@ -64,6 +74,10 @@ export async function GET(request: NextRequest) {
                 Website: (tool.website as string | null) ?? null,
                 Repository: (tool.repository as string | null) ?? null,
                 MinAPI: (tool.min_api as string | null) ?? null,
+                MCPEnabled: catalogByToolId.get(tool.id)?.mcp_enabled ?? false,
+                MultiConnection: catalogByToolId.get(tool.id)?.multi_connection ?? null,
+                ConnectionRequirement: catalogByToolId.get(tool.id)?.connection_requirement ?? null,
+                EnabledForPowerPlatformAPI: catalogByToolId.get(tool.id)?.enabled_for_power_platform_api ?? false,
                 CreatedOn: (tool.created_at as string | null) ?? null,
                 LastPublishedOn: (tool.published_at as string | null) ?? null,
                 Downloads: (tool.tool_analytics?.downloads as number) ?? 0,

@@ -201,10 +201,21 @@ export async function POST(request: NextRequest) {
         const versionInfoResult = await extractVersionInfo(cleanPackageName);
 
         if (!versionInfoResult.success) {
+            if (versionInfoResult.validation) {
+                return NextResponse.json(
+                    {
+                        error: "Package validation failed",
+                        step: "validation",
+                        details: versionInfoResult.validation,
+                    },
+                    { status: 400 },
+                );
+            }
             console.warn(`[submit-tool] Could not extract version info for ${cleanPackageName}: ${versionInfoResult.error}`);
+            return NextResponse.json({ error: versionInfoResult.error, step: "package_extraction" }, { status: 502 });
         }
 
-        const minAPI = versionInfoResult.success ? versionInfoResult.data.minAPI : null;
+        const { minAPI, mcpEnabled, warnings: configWarnings } = versionInfoResult.data;
 
         // Step 4: Store the intake request
         if (!supabase) {
@@ -272,9 +283,10 @@ export async function POST(request: NextRequest) {
                 configurations: packageInfo.configurations,
                 submitted_by: user.id,
                 status: "pending_review",
-                validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
+                validation_warnings: [...validationResult.warnings, ...configWarnings].length > 0 ? [...validationResult.warnings, ...configWarnings] : null,
                 features: packageInfo.features || null,
                 min_api: minAPI,
+                mcp_enabled: mcpEnabled,
             })
             .select()
             .single();

@@ -12,6 +12,9 @@ export interface MockTool {
     repository: string;
     website: string;
     readmeUrl?: string;
+    mcpEnabled?: boolean;
+    multiConnection?: string;
+    enabledForPowerPlatformAPI?: boolean;
 }
 
 export const mockTools: MockTool[] = [
@@ -28,6 +31,9 @@ export const mockTools: MockTool[] = [
         version: "2.1.0",
         repository: "https://github.com/PowerPlatformToolBox/solution-manager",
         website: "https://powerplatformtoolbox.com",
+        mcpEnabled: true,
+        multiConnection: "optional",
+        enabledForPowerPlatformAPI: true,
     },
     {
         id: "2",
@@ -42,6 +48,7 @@ export const mockTools: MockTool[] = [
         version: "1.8.5",
         repository: "https://github.com/PowerPlatformToolBox/desktop-app",
         website: "https://powerplatformtoolbox.com",
+        multiConnection: "required",
     },
     {
         id: "3",
@@ -116,6 +123,10 @@ export function toToolSummaryApiRecord(tool: MockTool) {
         tool_categories: tool.categories.map((name) => ({ categories: { name } })),
         tool_contributors: tool.contributors.map((name) => ({ contributors: { name } })),
         tool_maturity: { status: tool.id === "1" ? "verified" : "unverified" },
+        mcp_enabled: tool.mcpEnabled ?? false,
+        multi_connection: tool.multiConnection ?? null,
+        enabled_for_power_platform_api: tool.enabledForPowerPlatformAPI ?? false,
+        published_at: null,
     };
 }
 

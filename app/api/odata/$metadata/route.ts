@@ -21,6 +21,10 @@ export async function GET() {
         <Property Name="Website" Type="Edm.String" />
         <Property Name="Repository" Type="Edm.String" />
         <Property Name="MinAPI" Type="Edm.String" />
+        <Property Name="MCPEnabled" Type="Edm.Boolean" Nullable="false" />
+        <Property Name="MultiConnection" Type="Edm.String" />
+        <Property Name="ConnectionRequirement" Type="Edm.String" />
+        <Property Name="EnabledForPowerPlatformAPI" Type="Edm.Boolean" Nullable="false" />
         <Property Name="LastPublishedOn" Type="Edm.DateTimeOffset" />
         <Property Name="Downloads" Type="Edm.Int32" />
         <Property Name="Rating" Type="Edm.Decimal" />
