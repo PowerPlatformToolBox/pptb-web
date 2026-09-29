@@ -131,10 +131,22 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch the tool created by the workflow (upsert) using unique packagename
-        const { data: newTool, error: fetchToolError } = await supabase.from("tools").select("id, packagename, name, version").eq("packagename", intake.package_name).single();
+        const { data: newTool, error: fetchToolError } = await supabase.from("tools").select("id, packagename, name, version, current_release_id").eq("packagename", intake.package_name).single();
         if (fetchToolError || !newTool) {
             console.error("Tool not found after workflow upsert:", fetchToolError);
             return NextResponse.json({ error: "Tool not found after workflow" }, { status: 500 });
+        }
+
+        if (!newTool.current_release_id || newTool.version !== intake.version) {
+            return NextResponse.json({ error: "Current release was not synchronized for this intake" }, { status: 500 });
+        }
+
+        const { error: mcpError } = intake.mcp_enabled
+            ? await supabase.from("tool_release_features").upsert({ release_id: newTool.current_release_id, feature_key: "mcpEnabled", value: "true" })
+            : await supabase.from("tool_release_features").delete().eq("release_id", newTool.current_release_id).eq("feature_key", "mcpEnabled");
+        if (mcpError) {
+            console.error("Failed to store MCP status for converted intake:", mcpError);
+            return NextResponse.json({ error: "Failed to store MCP status" }, { status: 500 });
         }
 
         // // Backfill fields not set by workflow (non-fatal on failure)

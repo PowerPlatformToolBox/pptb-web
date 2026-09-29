@@ -53,7 +53,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             throw maturityError;
         }
 
-        return NextResponse.json({ ...data, tool_maturity: maturity || { status: "unverified" } });
+        const { data: catalog, error: catalogError } = await supabase
+            .from("tools_catalog")
+            .select("icon, download, multi_connection, enabled_for_power_platform_api, mcp_enabled")
+            .eq("id", id)
+            .single();
+        if (catalogError) throw catalogError;
+
+        return NextResponse.json({ ...data, ...catalog, tool_maturity: maturity || { status: "unverified" } });
     } catch (error) {
         console.error("Error fetching tool:", error);
         return NextResponse.json({ error: "Failed to fetch tool" }, { status: 500 });

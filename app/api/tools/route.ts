@@ -46,8 +46,30 @@ export async function GET() {
             maturityRows?.forEach((row) => maturityByToolId.set(row.tool_id, row.status));
         }
 
+        const catalogByToolId = new Map<
+            string,
+            { icon: string | null; download: string | null; multi_connection: string | null; enabled_for_power_platform_api: boolean; mcp_enabled: boolean; published_at: string | null }
+        >();
+        if (toolIds.length > 0) {
+            const { data: catalogRows, error: catalogError } = await supabase
+                .from("tools_catalog")
+                .select("id, icon, download, multi_connection, enabled_for_power_platform_api, mcp_enabled, published_at")
+                .in("id", toolIds);
+            if (catalogError) throw catalogError;
+            catalogRows?.forEach((row) => catalogByToolId.set(row.id, row));
+        }
+
         const tools = (data || [])
-            .map((tool) => ({ ...tool, tool_maturity: { status: maturityByToolId.get(tool.id) || "unverified" } }))
+            .map((tool) => ({
+                ...tool,
+                icon: catalogByToolId.get(tool.id)?.icon ?? null,
+                download: catalogByToolId.get(tool.id)?.download ?? null,
+                multi_connection: catalogByToolId.get(tool.id)?.multi_connection ?? null,
+                enabled_for_power_platform_api: catalogByToolId.get(tool.id)?.enabled_for_power_platform_api ?? false,
+                mcp_enabled: catalogByToolId.get(tool.id)?.mcp_enabled ?? false,
+                published_at: catalogByToolId.get(tool.id)?.published_at ?? null,
+                tool_maturity: { status: maturityByToolId.get(tool.id) || "unverified" },
+            }))
             .sort((first, second) => {
                 const maturityOrder = Number(second.tool_maturity.status === "verified") - Number(first.tool_maturity.status === "verified");
                 return maturityOrder || first.name.localeCompare(second.name);

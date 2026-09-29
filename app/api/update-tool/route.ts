@@ -140,10 +140,13 @@ export async function POST(request: NextRequest) {
         };
 
         const validationResult = await validatePackageJson(packageJson);
+        const versionInfoResult = validationResult.valid ? await extractVersionInfo(cleanPackageName) : null;
+        const configValidation = versionInfoResult && !versionInfoResult.success ? versionInfoResult.validation : undefined;
+        const validationErrors = [...validationResult.errors, ...(configValidation?.errors ?? [])];
+        const validationWarnings = [...validationResult.warnings, ...(configValidation?.warnings ?? [])];
 
-        if (!validationResult.valid) {
+        if (validationErrors.length > 0) {
             const toolName = packageJson.displayName || packageJson.name;
-            const validationErrors = validationResult.errors || [];
 
             let notificationAlreadySent = false;
             const { data: existingNotifications, error: existingNotificationError } = await supabase
@@ -214,22 +217,19 @@ export async function POST(request: NextRequest) {
                     error: "Package validation failed",
                     step: "validation",
                     details: {
-                        errors: validationResult.errors,
-                        warnings: validationResult.warnings,
+                        errors: validationErrors,
+                        warnings: validationWarnings,
                     },
                 },
                 { status: 400 },
             );
         }
 
-        // Extract version information (minAPI) — best-effort, null if unavailable
-        const versionInfoResult = await extractVersionInfo(cleanPackageName);
-
-        if (!versionInfoResult.success) {
-            console.warn(`[update-tool] Could not extract version info for ${cleanPackageName}: ${versionInfoResult.error}`);
+        if (!versionInfoResult?.success) {
+            return NextResponse.json({ error: versionInfoResult?.error ?? "Package extraction failed", step: "package_extraction" }, { status: 502 });
         }
 
-        const minAPI = versionInfoResult.success ? versionInfoResult.data.minAPI : null;
+        const { minAPI, mcpEnabled, warnings: configWarnings } = versionInfoResult.data;
 
         // Update tool table entry with latest validated package info
         const { data: updatedTool, error: toolUpdateError } = await supabase
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
                 min_api: minAPI,
             })
             .eq("packagename", packageJson.name)
-            .select("id, name")
+            .select("id, name, version, current_release_id")
             .maybeSingle();
 
         if (toolUpdateError) {
@@ -258,6 +258,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Published tool not found" }, { status: 404 });
         }
 
+        if (!updatedTool.current_release_id || updatedTool.version !== packageJson.version) {
+            throw new Error("Current release was not synchronized for this tool update");
+        }
+
+        const { error: mcpError } = mcpEnabled
+            ? await supabase.from("tool_release_features").upsert({ release_id: updatedTool.current_release_id, feature_key: "mcpEnabled", value: "true" })
+            : await supabase.from("tool_release_features").delete().eq("release_id", updatedTool.current_release_id).eq("feature_key", "mcpEnabled");
+        if (mcpError) throw new Error(`Failed to store MCP status: ${mcpError.message}`);
+
         await cancelActiveVerificationRequest(supabase, updatedTool);
 
         // Update tool update record as validated
@@ -265,7 +274,7 @@ export async function POST(request: NextRequest) {
             .from("tool_updates")
             .update({
                 status: "validated",
-                validation_warnings: validationResult.warnings.length > 0 ? validationResult.warnings : null,
+                validation_warnings: [...validationWarnings, ...configWarnings].length > 0 ? [...validationWarnings, ...configWarnings] : null,
                 min_api: minAPI,
             })
             .eq("id", toolUpdateId);

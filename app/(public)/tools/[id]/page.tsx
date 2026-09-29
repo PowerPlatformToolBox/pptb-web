@@ -31,6 +31,7 @@ interface Tool {
     repository?: string;
     website?: string;
     tool_maturity?: { status: "unverified" | "verified" };
+    mcp_enabled?: boolean;
 }
 
 // Mock data for a tool (will be replaced with Supabase data)
@@ -51,6 +52,7 @@ const mockTools: Record<string, Tool> = {
         lastUpdated: "2024-01-15",
         repository: "https://github.com/PowerPlatformToolBox/solution-manager",
         website: "https://powerplatformtoolbox.com",
+        mcp_enabled: true,
     },
     "2": {
         id: "2",
@@ -169,6 +171,7 @@ export default function ToolDetailsPage() {
                         repository: (toolData as any).repository,
                         website: (toolData as any).website,
                         tool_maturity: toolData.tool_maturity || { status: "unverified" },
+                        mcp_enabled: toolData.mcp_enabled ?? false,
                     });
                 } else if (mockTools[toolId]) {
                     setTool(mockTools[toolId]);
@@ -259,6 +262,7 @@ export default function ToolDetailsPage() {
                                         {category}
                                     </span>
                                 ))}
+                                {tool.mcp_enabled && <span className="rounded border border-teal-200 bg-teal-50 px-3 py-1 text-sm font-medium text-teal-800">MCP Enabled</span>}
                             </div>
                             <p className="text-lg text-slate-600 mb-4">{tool.description}</p>
                         </header>

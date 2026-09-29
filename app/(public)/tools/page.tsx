@@ -3,9 +3,27 @@
 import { Container } from "@/components/Container";
 import { VerifiedCheckmark } from "@/components/VerifiedCheckmark";
 import { FadeIn, SlideIn } from "@/components/animations";
+import { FunnelIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+function subscribeToFilters(onChange: () => void) {
+    window.addEventListener("popstate", onChange);
+    window.addEventListener("tools:filters", onChange);
+    return () => {
+        window.removeEventListener("popstate", onChange);
+        window.removeEventListener("tools:filters", onChange);
+    };
+}
+
+function getFilterQuery() {
+    return window.location.search;
+}
+
+function getServerFilterQuery() {
+    return "";
+}
 
 interface Tool {
     id: string;
@@ -18,6 +36,10 @@ interface Tool {
     contributors: string[];
     mau?: number;
     tool_maturity?: { status: "unverified" | "verified" };
+    mcp_enabled?: boolean;
+    multi_connection?: string | null;
+    enabled_for_power_platform_api?: boolean;
+    published_at?: string | null;
 }
 
 // Mock data for tools (fallback if API fails)
@@ -32,6 +54,9 @@ const mockTools: Tool[] = [
         downloads: 1250,
         rating: 4.8,
         mau: 320,
+        mcp_enabled: true,
+        multi_connection: "optional",
+        enabled_for_power_platform_api: true,
     },
     {
         id: "2",
@@ -43,6 +68,7 @@ const mockTools: Tool[] = [
         downloads: 980,
         rating: 4.6,
         mau: 280,
+        multi_connection: "required",
     },
     {
         id: "3",
@@ -93,8 +119,29 @@ const mockTools: Tool[] = [
 export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>(mockTools);
     const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState<string>("All");
-    const [searchQuery, setSearchQuery] = useState<string>("");
+    const filterParams = new URLSearchParams(useSyncExternalStore(subscribeToFilters, getFilterQuery, getServerFilterQuery));
+    const selectedCategory = filterParams.get("category") || "All";
+    const searchQuery = filterParams.get("q") || "";
+    const mcpOnly = filterParams.get("mcp") === "true";
+    const verifiedOnly = filterParams.get("verified") === "true";
+    const powerPlatformOnly = filterParams.get("powerPlatform") === "true";
+    const multiConnection = filterParams.get("multiConnection") || "any";
+    const sortBy = filterParams.get("sort") || "featured";
+
+    function setQueryParam(key: string, value: string | null) {
+        const url = new URL(window.location.href);
+        if (value) url.searchParams.set(key, value);
+        else url.searchParams.delete(key);
+        window.history.replaceState(null, "", url);
+        window.dispatchEvent(new Event("tools:filters"));
+    }
+
+    function clearFilters() {
+        const url = new URL(window.location.href);
+        for (const key of ["category", "q", "mcp", "verified", "powerPlatform", "multiConnection", "sort"]) url.searchParams.delete(key);
+        window.history.replaceState(null, "", url);
+        window.dispatchEvent(new Event("tools:filters"));
+    }
 
     useEffect(() => {
         (async () => {
@@ -113,6 +160,10 @@ export default function ToolsPage() {
                         tool_categories?: Array<{ categories: unknown }>;
                         tool_contributors?: Array<{ contributors: unknown }>;
                         tool_maturity?: { status: "unverified" | "verified" };
+                        mcp_enabled?: boolean;
+                        multi_connection?: string | null;
+                        enabled_for_power_platform_api?: boolean;
+                        published_at?: string | null;
                     }) => ({
                         id: tool.id,
                         name: tool.name,
@@ -124,6 +175,10 @@ export default function ToolsPage() {
                         rating: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.rating || 0,
                         mau: (tool.tool_analytics as { downloads: number; rating: number; mau?: number })?.mau || 0,
                         tool_maturity: tool.tool_maturity || { status: "unverified" },
+                        mcp_enabled: tool.mcp_enabled ?? false,
+                        multi_connection: tool.multi_connection ?? null,
+                        enabled_for_power_platform_api: tool.enabled_for_power_platform_api ?? false,
+                        published_at: tool.published_at,
                     }),
                 );
                 setTools(transformed);
@@ -137,12 +192,28 @@ export default function ToolsPage() {
     }, []);
 
     const toolCount = tools.length;
-    const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories)))];
-    const filteredTools = tools.filter((tool) => {
-        const matchesCategory = selectedCategory === "All" || tool.categories.includes(selectedCategory);
-        const matchesSearch = searchQuery === "" || tool.name.toLowerCase().includes(searchQuery.toLowerCase()) || tool.description.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
-    });
+    const categories = ["All", ...Array.from(new Set(tools.flatMap((t) => t.categories))).filter((category) => category.trim())];
+    const filteredTools = tools
+        .filter((tool) => {
+            const matchesCategory = selectedCategory === "All" || tool.categories.includes(selectedCategory);
+            const matchesSearch = searchQuery === "" || tool.name.toLowerCase().includes(searchQuery.toLowerCase()) || tool.description.toLowerCase().includes(searchQuery.toLowerCase());
+            return (
+                matchesCategory &&
+                matchesSearch &&
+                (!mcpOnly || tool.mcp_enabled) &&
+                (!verifiedOnly || tool.tool_maturity?.status === "verified") &&
+                (!powerPlatformOnly || tool.enabled_for_power_platform_api) &&
+                (multiConnection === "any" || tool.multi_connection === multiConnection)
+            );
+        })
+        .sort((first, second) => {
+            if (sortBy === "downloads") return second.downloads - first.downloads || first.name.localeCompare(second.name);
+            if (sortBy === "rating") return second.rating - first.rating || first.name.localeCompare(second.name);
+            if (sortBy === "newest") return (second.published_at || "").localeCompare(first.published_at || "") || first.name.localeCompare(second.name);
+            if (sortBy === "name") return first.name.localeCompare(second.name);
+            return Number(second.tool_maturity?.status === "verified") - Number(first.tool_maturity?.status === "verified") || first.name.localeCompare(second.name);
+        });
+    const hasFilters = searchQuery !== "" || selectedCategory !== "All" || mcpOnly || verifiedOnly || powerPlatformOnly || multiConnection !== "any" || sortBy !== "featured";
 
     return (
         <main>
@@ -158,41 +229,100 @@ export default function ToolsPage() {
                         </header>
                     </FadeIn>
 
-                    {/* Search and Category Filters */}
                     <FadeIn direction="up" delay={0.3}>
-                        <div className="mb-8 space-y-4">
-                            {/* Search Input - Full Width */}
-                            <div className="relative max-w-2xl mx-auto">
+                        <div className="mb-8 space-y-5 border-b border-slate-200 pb-6">
+                            <div className="relative max-w-2xl">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
+                                    <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" aria-hidden="true" />
                                 </div>
                                 <input
                                     type="text"
                                     aria-label="Search tools"
                                     placeholder="Search tools by name or description..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(event) => {
+                                        setQueryParam("q", event.target.value);
+                                    }}
                                     className="block w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm"
                                 />
                             </div>
-                            {/* Category Filters */}
-                            <div className="flex flex-wrap justify-center gap-3">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <FunnelIcon className="h-4 w-4" aria-hidden="true" /> Filters
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Category">
                                 {categories.map((category) => (
                                     <button
                                         key={category}
-                                        onClick={() => setSelectedCategory(category)}
+                                        type="button"
+                                        onClick={() => {
+                                            setQueryParam("category", category === "All" ? null : category);
+                                        }}
                                         aria-pressed={selectedCategory === category}
-                                        className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                                            selectedCategory === category
-                                                ? "bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105"
-                                                : "bg-white text-slate-700 border-2 border-slate-200 hover:border-blue-600 hover:text-blue-600 hover:shadow-md"
-                                        }`}
+                                        className={`min-w-12 shrink-0 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${selectedCategory === category ? "border-transparent bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:border-blue-600"}`}
                                     >
                                         {category}
                                     </button>
                                 ))}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
+                                {[
+                                    { label: "MCP Enabled", key: "mcp", checked: mcpOnly },
+                                    { label: "Verified only", key: "verified", checked: verifiedOnly },
+                                    { label: "Power Platform API", key: "powerPlatform", checked: powerPlatformOnly },
+                                ].map((filter) => (
+                                    <label key={filter.key} className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-slate-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={filter.checked}
+                                            onChange={(event) => {
+                                                setQueryParam(filter.key, event.target.checked ? "true" : null);
+                                            }}
+                                            className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+                                        />
+                                        {filter.label}
+                                    </label>
+                                ))}
+                                <label className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap text-slate-700">
+                                    Multi-connection
+                                    <select
+                                        value={multiConnection}
+                                        onChange={(event) => {
+                                            setQueryParam("multiConnection", event.target.value === "any" ? null : event.target.value);
+                                        }}
+                                        className="h-10 rounded-md border border-slate-300 bg-white px-2 focus:border-blue-600 focus:ring-blue-600"
+                                    >
+                                        <option value="any">Any</option>
+                                        <option value="required">Required</option>
+                                        <option value="optional">Optional</option>
+                                        <option value="none">None</option>
+                                    </select>
+                                </label>
+                                <label className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap text-slate-700">
+                                    Sort
+                                    <select
+                                        value={sortBy}
+                                        onChange={(event) => {
+                                            setQueryParam("sort", event.target.value === "featured" ? null : event.target.value);
+                                        }}
+                                        className="h-10 rounded-md border border-slate-300 bg-white px-2 focus:border-blue-600 focus:ring-blue-600"
+                                    >
+                                        <option value="featured">Featured</option>
+                                        <option value="downloads">Most downloaded</option>
+                                        <option value="rating">Top rated</option>
+                                        <option value="newest">Newest</option>
+                                        <option value="name">A–Z</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-slate-500">
+                                <span aria-live="polite">
+                                    {filteredTools.length} {filteredTools.length === 1 ? "tool" : "tools"}
+                                </span>
+                                {hasFilters && (
+                                    <button type="button" onClick={clearFilters} className="font-medium text-blue-700 hover:underline">
+                                        Clear filters
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </FadeIn>
@@ -214,18 +344,10 @@ export default function ToolsPage() {
                                     </div>
                                     <h3 className="text-lg font-medium text-slate-900 mb-2">No tools found</h3>
                                     <p className="text-slate-600 max-w-md mx-auto">
-                                        {searchQuery || selectedCategory !== "All"
-                                            ? "Try adjusting your search terms or category filter to find what you're looking for."
-                                            : "No tools are currently available. Check back later for new additions!"}
+                                        {hasFilters ? "Try adjusting your filters to find what you're looking for." : "No tools are currently available. Check back later for new additions!"}
                                     </p>
-                                    {(searchQuery || selectedCategory !== "All") && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchQuery("");
-                                                setSelectedCategory("All");
-                                            }}
-                                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                        >
+                                    {hasFilters && (
+                                        <button type="button" onClick={clearFilters} className="mt-4 font-medium text-blue-700 hover:underline">
                                             Clear filters
                                         </button>
                                     )}
@@ -246,6 +368,7 @@ export default function ToolsPage() {
                                                             {category}
                                                         </span>
                                                     ))}
+                                                    {tool.mcp_enabled && <span className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-medium text-teal-800">MCP Enabled</span>}
                                                 </div>
 
                                                 {/* Icon and Name Section */}

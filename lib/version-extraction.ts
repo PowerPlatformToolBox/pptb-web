@@ -1,12 +1,31 @@
 // Version extraction utilities for tool packages
 // Reads minAPI from package.json features
 
+import { validatePPTBConfig, type PPTBConfig } from "@pptb/validate";
 import { fetchNpmPackageMetadata } from "@pptb/validate/npm";
 
 const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/;
 
 export interface VersionInfo {
     minAPI: string | null;
+    mcpEnabled: boolean;
+    warnings: string[];
+}
+
+type ConfigValidation = { valid: true; mcpEnabled: boolean; warnings: string[] } | { valid: false; errors: string[]; warnings: string[] };
+
+export function validateToolConfig(content: string): ConfigValidation {
+    let config: unknown;
+    try {
+        config = JSON.parse(content);
+    } catch {
+        return { valid: false, errors: ["pptb.config.json must contain valid JSON"], warnings: [] };
+    }
+
+    const result = validatePPTBConfig(config as PPTBConfig);
+    if (!result.valid) return { valid: false, errors: result.errors, warnings: result.warnings };
+
+    return { valid: true, mcpEnabled: (result.packageInfo as PPTBConfig).agents?.headless === true, warnings: result.warnings };
 }
 
 /**
@@ -22,7 +41,9 @@ export function isValidSemver(version: string): boolean {
  *
  * The value may be null if not present or not a valid semver string.
  */
-export async function extractVersionInfo(packageName: string): Promise<{ success: true; data: VersionInfo } | { success: false; error: string }> {
+export async function extractVersionInfo(
+    packageName: string,
+): Promise<{ success: true; data: VersionInfo } | { success: false; error: string; validation?: { errors: string[]; warnings: string[] } }> {
     try {
         // Fetch package metadata (tarball URL) via shared helper
         const metadataResult = await fetchNpmPackageMetadata(packageName);
@@ -88,10 +109,26 @@ export async function extractVersionInfo(packageName: string): Promise<{ success
                 console.warn(`[version-extraction] package.json not found in ${packageName}; storing null for minAPI`);
             }
 
+            let mcpEnabled = false;
+            let warnings: string[] = [];
+            try {
+                const configContent = await fs.promises.readFile(path.join(packageDir, "pptb.config.json"), "utf-8");
+                const validation = validateToolConfig(configContent);
+                if (!validation.valid) {
+                    return { success: false, error: "pptb.config.json validation failed", validation: { errors: validation.errors, warnings: validation.warnings } };
+                }
+                mcpEnabled = validation.mcpEnabled;
+                warnings = validation.warnings;
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+            }
+
             return {
                 success: true,
                 data: {
                     minAPI,
+                    mcpEnabled,
+                    warnings,
                 },
             };
         } finally {
