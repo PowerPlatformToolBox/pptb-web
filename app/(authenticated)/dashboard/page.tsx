@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeftIcon, ChevronRightIcon, LightBulbIcon, Squares2X2Icon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +10,7 @@ import { FadeIn, SlideIn } from "@/components/animations";
 import { TOOL_STATUSES } from "@/lib/constants/tool-statuses";
 
 const PLACEHOLDER_ICON_PATH = "/images/placeholders/tool-icon-placeholder.svg";
+const IDEAS_PAGE_SIZE = 8;
 
 interface User {
     id: string;
@@ -58,6 +60,15 @@ interface FailedToolUpdate {
     validation_warnings: string[] | null;
 }
 
+interface SubmittedIdea {
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    created_at: string;
+    upvotes: number;
+}
+
 type ToolUpdateState = {
     status: "updating" | "success" | "error";
     message: string;
@@ -79,9 +90,13 @@ export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>([]);
     const [failedToolUpdates, setFailedToolUpdates] = useState<FailedToolUpdate[]>([]);
+    const [toolIdeas, setToolIdeas] = useState<SubmittedIdea[]>([]);
+    const [toolIdeasError, setToolIdeasError] = useState(false);
+    const [ideaPage, setIdeaPage] = useState(1);
+    const [expandedIdeaId, setExpandedIdeaId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"downloads" | "rating" | "mau">("downloads");
-    const [viewMode, setViewMode] = useState<"all" | "my">("all");
+    const [viewMode, setViewMode] = useState<"all" | "my" | "ideas">("all");
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
     const [toolUpdateStates, setToolUpdateStates] = useState<Record<string, ToolUpdateState>>({});
@@ -119,12 +134,14 @@ export default function DashboardPage() {
 
                 if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
-                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates } = await response.json();
+                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates, toolIdeas: submittedIdeas, toolIdeasError: ideasError } = await response.json();
 
                 setUser(dashUser || null);
                 setIsAdmin(Boolean(admin));
                 setTools(dashTools || []);
                 setFailedToolUpdates(failedUpdates || []);
+                setToolIdeas(submittedIdeas || []);
+                setToolIdeasError(Boolean(ideasError));
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
                 setTools([]);
@@ -378,6 +395,10 @@ export default function DashboardPage() {
 
     const publishedTools = filteredTools.filter((tool) => !tool.isIntake);
     const hasRows = sortedTools.length > 0;
+    const ideaPageCount = Math.max(1, Math.ceil(toolIdeas.length / IDEAS_PAGE_SIZE));
+    const currentIdeaPage = Math.min(ideaPage, ideaPageCount);
+    const ideaPageStart = (currentIdeaPage - 1) * IDEAS_PAGE_SIZE;
+    const visibleIdeas = toolIdeas.slice(ideaPageStart, ideaPageStart + IDEAS_PAGE_SIZE);
 
     if (loading) {
         return (
@@ -427,590 +448,700 @@ export default function DashboardPage() {
                             </div>
                         </header>
 
-                        {/* Stats Overview */}
-                        <SlideIn direction="up" delay={0.3}>
-                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-12">
-                                <div className="card p-6 bg-linear-to-br from-blue-50 to-blue-100">
-                                    <div className="flex items-center gap-4">
-                                        <div className="rounded-full bg-blue-600 p-3">
-                                            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                                                />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-blue-900">{viewMode === "my" ? "My Tools" : "Total Tools"}</p>
-                                            <p className="text-2xl font-bold text-blue-900">{filteredTools.length}</p>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div role="group" aria-label="Dashboard view" className="mb-8 flex w-full gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1.5 sm:w-fit">
+                            {(
+                                [
+                                    { mode: "all", label: "All Tools", Icon: Squares2X2Icon },
+                                    { mode: "my", label: "My Tools", Icon: WrenchScrewdriverIcon },
+                                    { mode: "ideas", label: "My Ideas", Icon: LightBulbIcon },
+                                ] as const
+                            ).map(({ mode, label, Icon }) => (
+                                <button
+                                    key={mode}
+                                    type="button"
+                                    aria-pressed={viewMode === mode}
+                                    onClick={() => setViewMode(mode)}
+                                    className={`flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 sm:min-w-40 sm:gap-2 sm:px-4 ${viewMode === mode ? "bg-blue-700 text-white shadow-sm" : "text-slate-700 hover:bg-white hover:text-slate-900"}`}
+                                >
+                                    <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden="true" />
+                                    {label}
+                                    {mode === "ideas" && !toolIdeasError && (
+                                        <span className={`hidden text-xs tabular-nums sm:inline ${viewMode === mode ? "text-blue-100" : "text-slate-500"}`}>{toolIdeas.length}</span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
 
-                                <div className="card p-6 bg-linear-to-br from-purple-50 to-purple-100">
-                                    <div className="flex items-center gap-4">
-                                        <div className="rounded-full bg-purple-600 p-3">
-                                            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-purple-900">Total Downloads</p>
-                                            <p className="text-2xl font-bold text-purple-900">
-                                                {publishedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.downloads || 0), 0).toLocaleString()}
-                                            </p>
-                                        </div>
-                                    </div>
+                        {viewMode === "ideas" && (
+                            <section aria-labelledby="my-ideas-heading" className="pb-16">
+                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <h2 id="my-ideas-heading" className="text-2xl font-semibold text-slate-900">
+                                        My tool ideas
+                                    </h2>
+                                    <Link href="/tool-ideas" className="text-sm font-semibold text-blue-700 hover:underline">
+                                        Browse ideas and suggest a tool
+                                    </Link>
                                 </div>
-
-                                <div className="card p-6 bg-linear-to-br from-amber-50 to-amber-100">
-                                    <div className="flex items-center gap-4">
-                                        <div className="rounded-full bg-amber-600 p-3">
-                                            <svg className="h-6 w-6 text-white fill-current" viewBox="0 0 20 20">
-                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-amber-900">Average Rating</p>
-                                            <p className="text-2xl font-bold text-amber-900">
-                                                {(() => {
-                                                    const ratedTools = publishedTools.filter((tool) => (tool.tool_analytics?.rating || 0) > 0);
-                                                    return ratedTools.length > 0
-                                                        ? (ratedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.rating || 0), 0) / ratedTools.length).toFixed(1)
-                                                        : "--";
-                                                })()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </SlideIn>
-
-                        {/* View Selector and Sort Options */}
-                        <FadeIn direction="up" delay={0.4}>
-                            <div className="mb-8 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <h2 className="text-2xl font-semibold text-slate-900">Tools</h2>
-                                    <div className="flex gap-2 border border-slate-300 rounded-lg p-1">
-                                        <button
-                                            onClick={() => setViewMode("all")}
-                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                                viewMode === "all" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                            }`}
-                                        >
-                                            All Tools
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode("my")}
-                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                                viewMode === "my" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                            }`}
-                                        >
-                                            My Tools
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <label htmlFor="sort" className="text-sm text-slate-600">
-                                        Sort by:
-                                    </label>
-                                    <select
-                                        id="sort"
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value as "downloads" | "rating" | "mau")}
-                                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-                                    >
-                                        <option value="downloads">Downloads</option>
-                                        <option value="rating">Rating</option>
-                                        <option value="mau">Monthly Active Users</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </FadeIn>
-
-                        {/* Failed Tool Updates Alert - shown only in My Tools view */}
-                        {viewMode === "my" && failedToolUpdates.length > 0 && (
-                            <FadeIn direction="up" delay={0.45}>
-                                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="shrink-0">
-                                            <svg className="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                                />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-sm font-semibold text-red-800">
-                                                {failedToolUpdates.length === 1 ? "1 tool update failed validation" : `${failedToolUpdates.length} tool updates failed validation`}
-                                            </h3>
-                                            <p className="mt-1 text-sm text-red-700">
-                                                The following tool{failedToolUpdates.length > 1 ? "s have" : " has"} a pending update that failed validation. Please review and fix the issues to
-                                                publish the update.
-                                            </p>
-                                            <ul className="mt-2 space-y-1">
-                                                {failedToolUpdates.map((update) => (
-                                                    <li key={update.id} className="text-sm text-red-700">
-                                                        <span className="font-medium">{update.package_name}</span>
-                                                        {update.version && <span className="ml-1 text-red-600">v{update.version}</span>}
-                                                        {update.validation_warnings && update.validation_warnings.length > 0 && (
-                                                            <span className="ml-2 text-red-600">
-                                                                ({update.validation_warnings[0]}
-                                                                {update.validation_warnings.length > 1 ? ` +${update.validation_warnings.length - 1} more` : ""})
+                                {toolIdeasError ? (
+                                    <p role="alert" className="mt-4 text-sm text-red-700">
+                                        Your submitted ideas could not be loaded right now.
+                                    </p>
+                                ) : toolIdeas.length === 0 ? (
+                                    <p className="mt-4 text-sm text-slate-600">You haven&apos;t submitted any tool ideas yet.</p>
+                                ) : (
+                                    <>
+                                        <p className="mt-2 text-sm text-slate-500">
+                                            {toolIdeas.length} submitted {toolIdeas.length === 1 ? "idea" : "ideas"}
+                                        </p>
+                                        <ul className="mt-6 divide-y divide-slate-200 border-y border-slate-200">
+                                            {visibleIdeas.map((idea) => (
+                                                <li key={idea.id} className="py-1">
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`${expandedIdeaId === idea.id ? "Collapse" : "Expand"} ${idea.title}`}
+                                                        aria-expanded={expandedIdeaId === idea.id}
+                                                        aria-controls={`idea-description-${idea.id}`}
+                                                        onClick={() => setExpandedIdeaId(expandedIdeaId === idea.id ? null : idea.id)}
+                                                        className="flex w-full cursor-pointer flex-wrap items-center gap-x-6 gap-y-2 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                                                    >
+                                                        <span className="flex w-full min-w-0 items-start gap-3 sm:w-auto sm:flex-1">
+                                                            <ChevronRightIcon
+                                                                className={`mt-1 h-4 w-4 shrink-0 text-slate-500 transition-transform ${expandedIdeaId === idea.id ? "rotate-90" : ""}`}
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span className="min-w-0">
+                                                                <span className="block wrap-break-word text-base font-semibold text-slate-900">{idea.title}</span>
+                                                                {expandedIdeaId !== idea.id && (
+                                                                    <span className="mt-1 line-clamp-2 wrap-break-word whitespace-pre-line text-sm text-slate-600">{idea.description}</span>
+                                                                )}
                                                             </span>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </FadeIn>
+                                                        </span>
+                                                        <span className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 pl-7 text-sm sm:w-auto sm:shrink-0 sm:pl-0">
+                                                            <span className="font-semibold tabular-nums text-blue-700">
+                                                                {idea.upvotes} {idea.upvotes === 1 ? "vote" : "votes"}
+                                                            </span>
+                                                            <span className="font-medium capitalize text-slate-600">{idea.status.replaceAll("_", " ")}</span>
+                                                            <time dateTime={idea.created_at} className="text-slate-500">
+                                                                {new Date(idea.created_at).toLocaleDateString()}
+                                                            </time>
+                                                        </span>
+                                                    </button>
+                                                    <p
+                                                        id={`idea-description-${idea.id}`}
+                                                        hidden={expandedIdeaId !== idea.id}
+                                                        className="wrap-break-word whitespace-pre-wrap pb-5 pl-7 text-sm leading-6 text-slate-700"
+                                                    >
+                                                        {idea.description}
+                                                    </p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        {ideaPageCount > 1 && (
+                                            <nav aria-label="My ideas pages" className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm">
+                                                <span className="text-slate-600">
+                                                    Showing {ideaPageStart + 1}-{Math.min(ideaPageStart + IDEAS_PAGE_SIZE, toolIdeas.length)} of {toolIdeas.length}
+                                                </span>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIdeaPage(currentIdeaPage - 1)}
+                                                        disabled={currentIdeaPage === 1}
+                                                        className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                    >
+                                                        <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" /> Previous
+                                                    </button>
+                                                    <span className="tabular-nums text-slate-600">
+                                                        {currentIdeaPage} / {ideaPageCount}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIdeaPage(currentIdeaPage + 1)}
+                                                        disabled={currentIdeaPage === ideaPageCount}
+                                                        className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                    >
+                                                        Next <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
+                                                    </button>
+                                                </div>
+                                            </nav>
+                                        )}
+                                    </>
+                                )}
+                            </section>
                         )}
 
-                        {/* Tools Table */}
-                        <SlideIn direction="up" delay={0.5}>
-                            {!hasRows ? (
-                                <div className="card p-12 text-center">
-                                    <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                                        />
-                                    </svg>
-                                    <h3 className="mt-4 text-lg font-medium text-slate-900">No tools found</h3>
-                                    <p className="mt-2 text-slate-600">{viewMode === "my" ? "You haven't submitted any tools yet." : "No tools are available at the moment."}</p>
-                                    {viewMode === "my" && (
-                                        <Link href="/submit-tool" className="mt-6 inline-flex items-center gap-2 btn-primary">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                            </svg>
-                                            Submit Your First Tool
-                                        </Link>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="card overflow-visible">
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-slate-200">
-                                            <thead className="bg-slate-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tool</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
-                                                    {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Version</th>}
-                                                    {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>}
-                                                    {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Verified Status</th>}
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Downloads</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rating</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">MAU</th>
-                                                    <th className="sticky right-0 z-10 min-w-40 bg-slate-50 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-1px_0_0_0_rgb(226_232_240)]">
-                                                        Actions
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-slate-200">
-                                                {sortedTools.map((tool) => {
-                                                    if (tool.isIntake) {
-                                                        const badge = INTAKE_STATUS_BADGES[tool.status || ""] || {
-                                                            label: tool.status,
-                                                            className: "text-slate-700 bg-slate-100",
-                                                        };
-                                                        return (
-                                                            <tr key={`intake-${tool.id}`} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Image
-                                                                            src={tool.icon && tool.icon.startsWith("http") ? tool.icon : PLACEHOLDER_ICON_PATH}
-                                                                            alt={tool.name}
-                                                                            width={32}
-                                                                            height={32}
-                                                                            className="rounded"
-                                                                        />
-                                                                        <div>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-sm font-medium text-slate-900">{tool.name}</span>
-                                                                            </div>
-                                                                            <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
-                                                                                {tool.description}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {tool.categories && tool.categories.length > 0 ? (
-                                                                            tool.categories.map((cat) => (
-                                                                                <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
-                                                                                    {cat.name}
-                                                                                </span>
-                                                                            ))
-                                                                        ) : (
-                                                                            <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">--</span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="sticky right-0 z-10 bg-slate-50 px-6 py-4 whitespace-nowrap text-sm shadow-[-1px_0_0_0_rgb(226_232_240)]">
-                                                                    {tool.version ? (
-                                                                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
-                                                                    ) : (
-                                                                        <span className="text-slate-400">--</span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.className}`} title={tool.reviewer_notes || undefined}>
-                                                                        {badge.label}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                    {tool.status === "needs_changes" ? (
-                                                                        <Link href="/submit-tool" className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                            Resubmit
-                                                                        </Link>
-                                                                    ) : (
-                                                                        <span className="text-slate-400">--</span>
-                                                                    )}
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    }
+                        {viewMode !== "ideas" && (
+                            <>
+                                {/* Stats Overview */}
+                                <SlideIn direction="up" delay={0.3}>
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-12">
+                                        <div className="card p-6 bg-linear-to-br from-blue-50 to-blue-100">
+                                            <div className="flex items-center gap-4">
+                                                <div className="rounded-full bg-blue-600 p-3">
+                                                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-blue-900">{viewMode === "my" ? "My Tools" : "Total Tools"}</p>
+                                                    <p className="text-2xl font-bold text-blue-900">{filteredTools.length}</p>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                    const analytics = tool.tool_analytics;
-                                                    const toolHasFailedUpdate = viewMode === "my" && !!tool.packagename && failedUpdatePackageNames.has(tool.packagename);
-                                                    const updateState = toolUpdateStates[tool.id];
-                                                    return (
-                                                        <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <div className="flex items-center gap-3">
-                                                                    <Image
-                                                                        src={tool.icon && tool.icon.startsWith("http") ? tool.icon : PLACEHOLDER_ICON_PATH}
-                                                                        alt={tool.name}
-                                                                        width={32}
-                                                                        height={32}
-                                                                        className="rounded"
-                                                                    />
-                                                                    <div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-sm font-medium text-slate-900">{tool.name}</span>
-                                                                            {toolHasFailedUpdate && (
+                                        <div className="card p-6 bg-linear-to-br from-purple-50 to-purple-100">
+                                            <div className="flex items-center gap-4">
+                                                <div className="rounded-full bg-purple-600 p-3">
+                                                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-purple-900">Total Tool Downloads</p>
+                                                    <p className="text-2xl font-bold text-purple-900">
+                                                        {publishedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.downloads || 0), 0).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="card p-6 bg-linear-to-br from-amber-50 to-amber-100">
+                                            <div className="flex items-center gap-4">
+                                                <div className="rounded-full bg-amber-600 p-3">
+                                                    <svg className="h-6 w-6 text-white fill-current" viewBox="0 0 20 20">
+                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-amber-900">Average Rating</p>
+                                                    <p className="text-2xl font-bold text-amber-900">
+                                                        {(() => {
+                                                            const ratedTools = publishedTools.filter((tool) => (tool.tool_analytics?.rating || 0) > 0);
+                                                            return ratedTools.length > 0
+                                                                ? (ratedTools.reduce((sum, tool) => sum + (tool.tool_analytics?.rating || 0), 0) / ratedTools.length).toFixed(1)
+                                                                : "--";
+                                                        })()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </SlideIn>
+
+                                {/* Sort Options */}
+                                <FadeIn direction="up" delay={0.4}>
+                                    <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+                                        <h2 className="text-2xl font-semibold text-slate-900">{viewMode === "my" ? "My tools" : "All tools"}</h2>
+                                        <div className="flex items-center gap-2">
+                                            <label htmlFor="sort" className="text-sm text-slate-600">
+                                                Sort by:
+                                            </label>
+                                            <select
+                                                id="sort"
+                                                value={sortBy}
+                                                onChange={(e) => setSortBy(e.target.value as "downloads" | "rating" | "mau")}
+                                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                            >
+                                                <option value="downloads">Downloads</option>
+                                                <option value="rating">Rating</option>
+                                                <option value="mau">Monthly Active Users</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </FadeIn>
+
+                                {/* Failed Tool Updates Alert - shown only in My Tools view */}
+                                {viewMode === "my" && failedToolUpdates.length > 0 && (
+                                    <FadeIn direction="up" delay={0.45}>
+                                        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="shrink-0">
+                                                    <svg className="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="text-sm font-semibold text-red-800">
+                                                        {failedToolUpdates.length === 1 ? "1 tool update failed validation" : `${failedToolUpdates.length} tool updates failed validation`}
+                                                    </h3>
+                                                    <p className="mt-1 text-sm text-red-700">
+                                                        The following tool{failedToolUpdates.length > 1 ? "s have" : " has"} a pending update that failed validation. Please review and fix the issues
+                                                        to publish the update.
+                                                    </p>
+                                                    <ul className="mt-2 space-y-1">
+                                                        {failedToolUpdates.map((update) => (
+                                                            <li key={update.id} className="text-sm text-red-700">
+                                                                <span className="font-medium">{update.package_name}</span>
+                                                                {update.version && <span className="ml-1 text-red-600">v{update.version}</span>}
+                                                                {update.validation_warnings && update.validation_warnings.length > 0 && (
+                                                                    <span className="ml-2 text-red-600">
+                                                                        ({update.validation_warnings[0]}
+                                                                        {update.validation_warnings.length > 1 ? ` +${update.validation_warnings.length - 1} more` : ""})
+                                                                    </span>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FadeIn>
+                                )}
+
+                                {/* Tools Table */}
+                                <SlideIn direction="up" delay={0.5}>
+                                    {!hasRows ? (
+                                        <div className="card p-12 text-center">
+                                            <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                                                />
+                                            </svg>
+                                            <h3 className="mt-4 text-lg font-medium text-slate-900">No tools found</h3>
+                                            <p className="mt-2 text-slate-600">{viewMode === "my" ? "You haven't submitted any tools yet." : "No tools are available at the moment."}</p>
+                                            {viewMode === "my" && (
+                                                <Link href="/submit-tool" className="mt-6 inline-flex items-center gap-2 btn-primary">
+                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    Submit Your First Tool
+                                                </Link>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="card overflow-visible">
+                                            <div className="overflow-x-auto">
+                                                <table className="min-w-full divide-y divide-slate-200">
+                                                    <thead className="bg-slate-50">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tool</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                                                            {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Version</th>}
+                                                            {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>}
+                                                            {viewMode === "my" && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Verified Status</th>}
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Downloads</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rating</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">MAU</th>
+                                                            <th className="sticky right-0 z-10 min-w-40 bg-slate-50 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider shadow-[-1px_0_0_0_rgb(226_232_240)]">
+                                                                Actions
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-slate-200">
+                                                        {sortedTools.map((tool) => {
+                                                            if (tool.isIntake) {
+                                                                const badge = INTAKE_STATUS_BADGES[tool.status || ""] || {
+                                                                    label: tool.status,
+                                                                    className: "text-slate-700 bg-slate-100",
+                                                                };
+                                                                return (
+                                                                    <tr key={`intake-${tool.id}`} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <Image
+                                                                                    src={tool.icon && tool.icon.startsWith("http") ? tool.icon : PLACEHOLDER_ICON_PATH}
+                                                                                    alt={tool.name}
+                                                                                    width={32}
+                                                                                    height={32}
+                                                                                    className="rounded"
+                                                                                />
+                                                                                <div>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-sm font-medium text-slate-900">{tool.name}</span>
+                                                                                    </div>
+                                                                                    <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
+                                                                                        {tool.description}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {tool.categories && tool.categories.length > 0 ? (
+                                                                                    tool.categories.map((cat) => (
+                                                                                        <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                                                                                            {cat.name}
+                                                                                        </span>
+                                                                                    ))
+                                                                                ) : (
+                                                                                    <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">--</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="sticky right-0 z-10 bg-slate-50 px-6 py-4 whitespace-nowrap text-sm shadow-[-1px_0_0_0_rgb(226_232_240)]">
+                                                                            {tool.version ? (
+                                                                                <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
+                                                                            ) : (
+                                                                                <span className="text-slate-400">--</span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.className}`} title={tool.reviewer_notes || undefined}>
+                                                                                {badge.label}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                            {tool.status === "needs_changes" ? (
+                                                                                <Link href="/submit-tool" className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                    Resubmit
+                                                                                </Link>
+                                                                            ) : (
+                                                                                <span className="text-slate-400">--</span>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+
+                                                            const analytics = tool.tool_analytics;
+                                                            const toolHasFailedUpdate = viewMode === "my" && !!tool.packagename && failedUpdatePackageNames.has(tool.packagename);
+                                                            const updateState = toolUpdateStates[tool.id];
+                                                            return (
+                                                                <tr key={tool.id} className="hover:bg-slate-50 transition-colors">
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Image
+                                                                                src={tool.icon && tool.icon.startsWith("http") ? tool.icon : PLACEHOLDER_ICON_PATH}
+                                                                                alt={tool.name}
+                                                                                width={32}
+                                                                                height={32}
+                                                                                className="rounded"
+                                                                            />
+                                                                            <div>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="text-sm font-medium text-slate-900">{tool.name}</span>
+                                                                                    {toolHasFailedUpdate && (
+                                                                                        <span
+                                                                                            className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full"
+                                                                                            title="This tool has a pending update that failed validation"
+                                                                                        >
+                                                                                            Update failed
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
+                                                                                    {tool.description}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {tool.categories && tool.categories.length > 0 ? (
+                                                                                tool.categories.map((cat) => (
+                                                                                    <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                                                                                        {cat.name}
+                                                                                    </span>
+                                                                                ))
+                                                                            ) : (
+                                                                                <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">--</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    {viewMode === "my" && (
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                            {tool.version ? (
+                                                                                <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
+                                                                            ) : (
+                                                                                <span className="text-slate-400">--</span>
+                                                                            )}
+                                                                        </td>
+                                                                    )}
+                                                                    {viewMode === "my" && (
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            {tool.status === TOOL_STATUSES.DEPRECATED ? (
+                                                                                <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Deprecated</span>
+                                                                            ) : tool.status === TOOL_STATUSES.DELETED ? (
+                                                                                <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Deleted</span>
+                                                                            ) : (
+                                                                                <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Active</span>
+                                                                            )}
+                                                                        </td>
+                                                                    )}
+                                                                    {viewMode === "my" && (
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <div className="flex flex-col items-start gap-2">
+                                                                                {tool.tool_verification_request?.status === "queued" ? (
+                                                                                    <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Verification queued</span>
+                                                                                ) : tool.tool_verification_request?.status === "in_review" ? (
+                                                                                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">Verification in review</span>
+                                                                                ) : tool.tool_maturity?.status === "verified" ? (
+                                                                                    <span className="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-100 rounded-full">Verified</span>
+                                                                                ) : tool.tool_verification_request?.status === "rejected" ? (
+                                                                                    <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Rejected</span>
+                                                                                ) : (
+                                                                                    <span className="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded-full">Unverified</span>
+                                                                                )}
+                                                                                {verificationRequestStates[tool.id] && (
+                                                                                    <span
+                                                                                        role="status"
+                                                                                        className={`max-w-48 whitespace-normal text-xs ${verificationRequestStates[tool.id].status === "error" ? "text-red-600" : "text-slate-600"}`}
+                                                                                    >
+                                                                                        {verificationRequestStates[tool.id].message}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    )}
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(analytics?.downloads || 0).toLocaleString()}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <svg className="h-4 w-4 text-amber-500 fill-current" viewBox="0 0 20 20">
+                                                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                                            </svg>
+                                                                            <span className="text-sm text-slate-900">{(analytics?.rating || 0) > 0 ? (analytics?.rating || 0).toFixed(1) : "--"}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "--"}</td>
+                                                                    <td
+                                                                        className={`sticky right-0 bg-white px-6 py-4 whitespace-nowrap text-sm shadow-[-1px_0_0_0_rgb(226_232_240)] ${
+                                                                            openMoreMenuForToolId === tool.id ? "z-30" : "z-10"
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex min-w-32 flex-col items-start gap-1.5">
+                                                                            {viewMode === "my" && updateState && (
                                                                                 <span
-                                                                                    className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full"
-                                                                                    title="This tool has a pending update that failed validation"
+                                                                                    role="status"
+                                                                                    title={updateState.message}
+                                                                                    className={`inline-flex h-5 items-center gap-1.5 rounded px-2 text-xs font-medium ${
+                                                                                        updateState.status === "updating"
+                                                                                            ? "bg-blue-50 text-blue-700"
+                                                                                            : updateState.status === "success"
+                                                                                              ? "bg-green-50 text-green-700"
+                                                                                              : "bg-red-50 text-red-700"
+                                                                                    }`}
                                                                                 >
-                                                                                    Update failed
+                                                                                    {updateState.status === "updating" ? (
+                                                                                        <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+                                                                                    ) : updateState.status === "success" ? (
+                                                                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                                                        </svg>
+                                                                                    ) : (
+                                                                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v3m0 4h.01" />
+                                                                                        </svg>
+                                                                                    )}
+                                                                                    {updateState.status === "updating" ? "Updating" : updateState.status === "success" ? "Triggered" : "Failed"}
                                                                                 </span>
                                                                             )}
-                                                                        </div>
-                                                                        <div className="text-sm text-slate-500 max-w-md line-clamp-3" style={{ textWrap: "wrap" }}>
-                                                                            {tool.description}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {tool.categories && tool.categories.length > 0 ? (
-                                                                        tool.categories.map((cat) => (
-                                                                            <span key={cat.id} className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
-                                                                                {cat.name}
-                                                                            </span>
-                                                                        ))
-                                                                    ) : (
-                                                                        <span className="px-2 py-1 text-xs font-medium text-slate-400 bg-slate-100 rounded-full">--</span>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                            {viewMode === "my" && (
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                    {tool.version ? (
-                                                                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">v{tool.version}</span>
-                                                                    ) : (
-                                                                        <span className="text-slate-400">--</span>
-                                                                    )}
-                                                                </td>
-                                                            )}
-                                                            {viewMode === "my" && (
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    {tool.status === TOOL_STATUSES.DEPRECATED ? (
-                                                                        <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Deprecated</span>
-                                                                    ) : tool.status === TOOL_STATUSES.DELETED ? (
-                                                                        <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Deleted</span>
-                                                                    ) : (
-                                                                        <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Active</span>
-                                                                    )}
-                                                                </td>
-                                                            )}
-                                                            {viewMode === "my" && (
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <div className="flex flex-col items-start gap-2">
-                                                                        {tool.tool_verification_request?.status === "queued" ? (
-                                                                            <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">Verification queued</span>
-                                                                        ) : tool.tool_verification_request?.status === "in_review" ? (
-                                                                            <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">Verification in review</span>
-                                                                        ) : tool.tool_maturity?.status === "verified" ? (
-                                                                            <span className="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-100 rounded-full">Verified</span>
-                                                                        ) : tool.tool_verification_request?.status === "rejected" ? (
-                                                                            <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Rejected</span>
-                                                                        ) : (
-                                                                            <span className="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded-full">Unverified</span>
-                                                                        )}
-                                                                        {verificationRequestStates[tool.id] && (
-                                                                            <span
-                                                                                role="status"
-                                                                                className={`max-w-48 whitespace-normal text-xs ${verificationRequestStates[tool.id].status === "error" ? "text-red-600" : "text-slate-600"}`}
-                                                                            >
-                                                                                {verificationRequestStates[tool.id].message}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(analytics?.downloads || 0).toLocaleString()}</td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <div className="flex items-center gap-1">
-                                                                    <svg className="h-4 w-4 text-amber-500 fill-current" viewBox="0 0 20 20">
-                                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                                    </svg>
-                                                                    <span className="text-sm text-slate-900">{(analytics?.rating || 0) > 0 ? (analytics?.rating || 0).toFixed(1) : "--"}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{analytics?.mau?.toLocaleString() || "--"}</td>
-                                                            <td
-                                                                className={`sticky right-0 bg-white px-6 py-4 whitespace-nowrap text-sm shadow-[-1px_0_0_0_rgb(226_232_240)] ${
-                                                                    openMoreMenuForToolId === tool.id ? "z-30" : "z-10"
-                                                                }`}
-                                                            >
-                                                                <div className="flex min-w-32 flex-col items-start gap-1.5">
-                                                                    {viewMode === "my" && updateState && (
-                                                                        <span
-                                                                            role="status"
-                                                                            title={updateState.message}
-                                                                            className={`inline-flex h-5 items-center gap-1.5 rounded px-2 text-xs font-medium ${
-                                                                                updateState.status === "updating"
-                                                                                    ? "bg-blue-50 text-blue-700"
-                                                                                    : updateState.status === "success"
-                                                                                      ? "bg-green-50 text-green-700"
-                                                                                      : "bg-red-50 text-red-700"
-                                                                            }`}
-                                                                        >
-                                                                            {updateState.status === "updating" ? (
-                                                                                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
-                                                                            ) : updateState.status === "success" ? (
-                                                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                                                </svg>
-                                                                            ) : (
-                                                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v3m0 4h.01" />
-                                                                                </svg>
-                                                                            )}
-                                                                            {updateState.status === "updating" ? "Updating" : updateState.status === "success" ? "Triggered" : "Failed"}
-                                                                        </span>
-                                                                    )}
-                                                                    <div className="flex items-center gap-2">
-                                                                        {viewMode === "my" ? (
-                                                                            <>
-                                                                                <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                    View
-                                                                                </Link>
-                                                                                <span className="text-slate-300">|</span>
-                                                                                <div className="relative">
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            const newId = openMoreMenuForToolId === tool.id ? null : tool.id;
-                                                                                            moreMenuAnchorRef.current = newId ? e.currentTarget.getBoundingClientRect() : null;
-                                                                                            setOpenMoreMenuForToolId(newId);
-                                                                                        }}
-                                                                                        aria-haspopup="true"
-                                                                                        aria-expanded={openMoreMenuForToolId === tool.id}
-                                                                                        className="flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium"
-                                                                                    >
-                                                                                        More
-                                                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                                                        </svg>
-                                                                                    </button>
-                                                                                    {openMoreMenuForToolId === tool.id && (
-                                                                                        <>
-                                                                                            <div
-                                                                                                className="fixed inset-0 z-10"
-                                                                                                onClick={() => {
-                                                                                                    setOpenMoreMenuForToolId(null);
-                                                                                                    moreMenuAnchorRef.current = null;
+                                                                            <div className="flex items-center gap-2">
+                                                                                {viewMode === "my" ? (
+                                                                                    <>
+                                                                                        <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                            View
+                                                                                        </Link>
+                                                                                        <span className="text-slate-300">|</span>
+                                                                                        <div className="relative">
+                                                                                            <button
+                                                                                                onClick={(e) => {
+                                                                                                    const newId = openMoreMenuForToolId === tool.id ? null : tool.id;
+                                                                                                    moreMenuAnchorRef.current = newId ? e.currentTarget.getBoundingClientRect() : null;
+                                                                                                    setOpenMoreMenuForToolId(newId);
                                                                                                 }}
-                                                                                                onKeyDown={(e) => {
-                                                                                                    if (e.key === "Escape") {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                    }
-                                                                                                }}
-                                                                                            />
-                                                                                            <div
-                                                                                                role="menu"
-                                                                                                tabIndex={-1}
-                                                                                                autoFocus
-                                                                                                className="fixed z-20 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-                                                                                                style={
-                                                                                                    moreMenuAnchorRef.current
-                                                                                                        ? {
-                                                                                                              top: moreMenuAnchorRef.current.bottom + 4,
-                                                                                                              left: moreMenuAnchorRef.current.right - 192,
-                                                                                                          }
-                                                                                                        : undefined
-                                                                                                }
-                                                                                                onKeyDown={(e) => {
-                                                                                                    if (e.key === "Escape") {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                    }
-                                                                                                }}
+                                                                                                aria-haspopup="true"
+                                                                                                aria-expanded={openMoreMenuForToolId === tool.id}
+                                                                                                className="flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium"
                                                                                             >
-                                                                                                {tool.status === TOOL_STATUSES.ACTIVE &&
-                                                                                                    tool.tool_maturity?.status !== "verified" &&
-                                                                                                    !["queued", "in_review"].includes(tool.tool_verification_request?.status || "") && (
+                                                                                                More
+                                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                                                                </svg>
+                                                                                            </button>
+                                                                                            {openMoreMenuForToolId === tool.id && (
+                                                                                                <>
+                                                                                                    <div
+                                                                                                        className="fixed inset-0 z-10"
+                                                                                                        onClick={() => {
+                                                                                                            setOpenMoreMenuForToolId(null);
+                                                                                                            moreMenuAnchorRef.current = null;
+                                                                                                        }}
+                                                                                                        onKeyDown={(e) => {
+                                                                                                            if (e.key === "Escape") {
+                                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                                moreMenuAnchorRef.current = null;
+                                                                                                            }
+                                                                                                        }}
+                                                                                                    />
+                                                                                                    <div
+                                                                                                        role="menu"
+                                                                                                        tabIndex={-1}
+                                                                                                        autoFocus
+                                                                                                        className="fixed z-20 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                                                                                        style={
+                                                                                                            moreMenuAnchorRef.current
+                                                                                                                ? {
+                                                                                                                      top: moreMenuAnchorRef.current.bottom + 4,
+                                                                                                                      left: moreMenuAnchorRef.current.right - 192,
+                                                                                                                  }
+                                                                                                                : undefined
+                                                                                                        }
+                                                                                                        onKeyDown={(e) => {
+                                                                                                            if (e.key === "Escape") {
+                                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                                moreMenuAnchorRef.current = null;
+                                                                                                            }
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        {tool.status === TOOL_STATUSES.ACTIVE &&
+                                                                                                            tool.tool_maturity?.status !== "verified" &&
+                                                                                                            !["queued", "in_review"].includes(tool.tool_verification_request?.status || "") && (
+                                                                                                                <button
+                                                                                                                    role="menuitem"
+                                                                                                                    onClick={() => {
+                                                                                                                        setOpenMoreMenuForToolId(null);
+                                                                                                                        moreMenuAnchorRef.current = null;
+                                                                                                                        handleRequestVerification(tool.id);
+                                                                                                                    }}
+                                                                                                                    disabled={verificationRequestStates[tool.id]?.status === "submitting"}
+                                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                                >
+                                                                                                                    <svg
+                                                                                                                        className="h-4 w-4"
+                                                                                                                        fill="none"
+                                                                                                                        viewBox="0 0 24 24"
+                                                                                                                        stroke="currentColor"
+                                                                                                                        aria-hidden="true"
+                                                                                                                    >
+                                                                                                                        <path
+                                                                                                                            strokeLinecap="round"
+                                                                                                                            strokeLinejoin="round"
+                                                                                                                            strokeWidth={2}
+                                                                                                                            d="M5 13l4 4L19 7"
+                                                                                                                        />
+                                                                                                                    </svg>
+                                                                                                                    {verificationRequestStates[tool.id]?.status === "submitting"
+                                                                                                                        ? "Submitting..."
+                                                                                                                        : "Get Verified"}
+                                                                                                                </button>
+                                                                                                            )}
                                                                                                         <button
                                                                                                             role="menuitem"
                                                                                                             onClick={() => {
                                                                                                                 setOpenMoreMenuForToolId(null);
                                                                                                                 moreMenuAnchorRef.current = null;
-                                                                                                                handleRequestVerification(tool.id);
+                                                                                                                openCategoryModal(tool);
                                                                                                             }}
-                                                                                                            disabled={verificationRequestStates[tool.id]?.status === "submitting"}
-                                                                                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                            disabled={tool.status === TOOL_STATUSES.DELETED}
+                                                                                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
                                                                                                         >
-                                                                                                            <svg
-                                                                                                                className="h-4 w-4"
-                                                                                                                fill="none"
-                                                                                                                viewBox="0 0 24 24"
-                                                                                                                stroke="currentColor"
-                                                                                                                aria-hidden="true"
-                                                                                                            >
-                                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                                <path
+                                                                                                                    strokeLinecap="round"
+                                                                                                                    strokeLinejoin="round"
+                                                                                                                    strokeWidth={2}
+                                                                                                                    d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
+                                                                                                                />
                                                                                                             </svg>
-                                                                                                            {verificationRequestStates[tool.id]?.status === "submitting"
-                                                                                                                ? "Submitting..."
-                                                                                                                : "Get Verified"}
+                                                                                                            {(tool.categories?.length ?? 0) > 0 ? "Update categories" : "Assign categories"}
                                                                                                         </button>
-                                                                                                    )}
-                                                                                                <button
-                                                                                                    role="menuitem"
-                                                                                                    onClick={() => {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                        openCategoryModal(tool);
-                                                                                                    }}
-                                                                                                    disabled={tool.status === TOOL_STATUSES.DELETED}
-                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                                >
-                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                        <path
-                                                                                                            strokeLinecap="round"
-                                                                                                            strokeLinejoin="round"
-                                                                                                            strokeWidth={2}
-                                                                                                            d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"
-                                                                                                        />
-                                                                                                    </svg>
-                                                                                                    {(tool.categories?.length ?? 0) > 0 ? "Update categories" : "Assign categories"}
-                                                                                                </button>
-                                                                                                <button
-                                                                                                    role="menuitem"
-                                                                                                    onClick={() => {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                        handleTriggerUpdate(tool.id);
-                                                                                                    }}
-                                                                                                    disabled={updateState?.status === "updating" || tool.status === TOOL_STATUSES.DELETED}
-                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                                >
-                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                        <path
-                                                                                                            strokeLinecap="round"
-                                                                                                            strokeLinejoin="round"
-                                                                                                            strokeWidth={2}
-                                                                                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                                                                        />
-                                                                                                    </svg>
-                                                                                                    {updateState?.status === "updating" ? "Updating..." : "Trigger Update"}
-                                                                                                </button>
-                                                                                                <button
-                                                                                                    role="menuitem"
-                                                                                                    onClick={() => {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                        handleToolAction(tool.id, "deprecate");
-                                                                                                    }}
-                                                                                                    disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
-                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                                >
-                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                        <path
-                                                                                                            strokeLinecap="round"
-                                                                                                            strokeLinejoin="round"
-                                                                                                            strokeWidth={2}
-                                                                                                            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                                                                                                        />
-                                                                                                    </svg>
-                                                                                                    {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
-                                                                                                </button>
-                                                                                                <div className="my-1 border-t border-slate-100" />
-                                                                                                <button
-                                                                                                    role="menuitem"
-                                                                                                    onClick={() => {
-                                                                                                        setOpenMoreMenuForToolId(null);
-                                                                                                        moreMenuAnchorRef.current = null;
-                                                                                                        handleToolAction(tool.id, "delete");
-                                                                                                    }}
-                                                                                                    disabled={tool.status === TOOL_STATUSES.DELETED}
-                                                                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                                                                                                >
-                                                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                        <path
-                                                                                                            strokeLinecap="round"
-                                                                                                            strokeLinejoin="round"
-                                                                                                            strokeWidth={2}
-                                                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                                                        />
-                                                                                                    </svg>
-                                                                                                    {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        </>
-                                                                                    )}
-                                                                                </div>
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                    View
-                                                                                </Link>
-                                                                                <span className="text-slate-300">|</span>
-                                                                                <Link href={`/rate-tool?toolId=${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                    Rate
-                                                                                </Link>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                        </SlideIn>
+                                                                                                        <button
+                                                                                                            role="menuitem"
+                                                                                                            onClick={() => {
+                                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                                moreMenuAnchorRef.current = null;
+                                                                                                                handleTriggerUpdate(tool.id);
+                                                                                                            }}
+                                                                                                            disabled={updateState?.status === "updating" || tool.status === TOOL_STATUSES.DELETED}
+                                                                                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                        >
+                                                                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                                <path
+                                                                                                                    strokeLinecap="round"
+                                                                                                                    strokeLinejoin="round"
+                                                                                                                    strokeWidth={2}
+                                                                                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                                                                                                />
+                                                                                                            </svg>
+                                                                                                            {updateState?.status === "updating" ? "Updating..." : "Trigger Update"}
+                                                                                                        </button>
+                                                                                                        <button
+                                                                                                            role="menuitem"
+                                                                                                            onClick={() => {
+                                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                                moreMenuAnchorRef.current = null;
+                                                                                                                handleToolAction(tool.id, "deprecate");
+                                                                                                            }}
+                                                                                                            disabled={tool.status === TOOL_STATUSES.DEPRECATED || tool.status === TOOL_STATUSES.DELETED}
+                                                                                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                        >
+                                                                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                                <path
+                                                                                                                    strokeLinecap="round"
+                                                                                                                    strokeLinejoin="round"
+                                                                                                                    strokeWidth={2}
+                                                                                                                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                                                                                                                />
+                                                                                                            </svg>
+                                                                                                            {tool.status === TOOL_STATUSES.DEPRECATED ? "Deprecated" : "Deprecate"}
+                                                                                                        </button>
+                                                                                                        <div className="my-1 border-t border-slate-100" />
+                                                                                                        <button
+                                                                                                            role="menuitem"
+                                                                                                            onClick={() => {
+                                                                                                                setOpenMoreMenuForToolId(null);
+                                                                                                                moreMenuAnchorRef.current = null;
+                                                                                                                handleToolAction(tool.id, "delete");
+                                                                                                            }}
+                                                                                                            disabled={tool.status === TOOL_STATUSES.DELETED}
+                                                                                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                                        >
+                                                                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                                <path
+                                                                                                                    strokeLinecap="round"
+                                                                                                                    strokeLinejoin="round"
+                                                                                                                    strokeWidth={2}
+                                                                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                                                />
+                                                                                                            </svg>
+                                                                                                            {tool.status === TOOL_STATUSES.DELETED ? "Deleted" : "Delete"}
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                </>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <Link href={`/tools/${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                            View
+                                                                                        </Link>
+                                                                                        <span className="text-slate-300">|</span>
+                                                                                        <Link href={`/rate-tool?toolId=${tool.id}`} className="text-blue-600 hover:text-purple-600 font-medium">
+                                                                                            Rate
+                                                                                        </Link>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </SlideIn>
+                            </>
+                        )}
                     </div>
                 </FadeIn>
             </Container>

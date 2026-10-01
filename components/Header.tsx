@@ -29,6 +29,7 @@ type NavGroup = {
 
 const PRIMARY_LINKS: NavItem[] = [
     { label: "Tools", href: "/tools" },
+    { label: "Tool Ideas", href: "/tool-ideas" },
     { label: "Features", href: "/features" },
     { label: "About", href: "/about" },
     { label: "Team", href: "/team" },

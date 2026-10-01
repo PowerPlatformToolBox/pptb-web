@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
                 isAdmin: isMockAuthRequest,
                 tools,
                 failedToolUpdates: [],
+                toolIdeas: [],
             });
         }
         let user = null;
@@ -251,11 +252,35 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        let toolIdeas: Array<{ id: string; title: string; description: string; status: string; created_at: string; upvotes: number }> = [];
+        let toolIdeasError = false;
+        if (user) {
+            const { data, error: ideasError } = await supabase
+                .from("tool_ideas")
+                .select("id, title, description, status, created_at")
+                .eq("install_id", user.id)
+                .order("created_at", { ascending: false });
+            if (ideasError) {
+                console.error("Error fetching submitted tool ideas:", ideasError);
+                toolIdeasError = true;
+            } else {
+                const counts = await Promise.all((data || []).map((idea) => supabase.from("tool_idea_votes").select("idea_id", { count: "exact", head: true }).eq("idea_id", idea.id)));
+                if (counts.some(({ error }) => error)) {
+                    console.error("Error counting submitted tool idea votes:", counts.find(({ error }) => error)?.error);
+                    toolIdeasError = true;
+                } else {
+                    toolIdeas = (data || []).map((idea, index) => ({ ...idea, upvotes: counts[index].count ?? 0 }));
+                }
+            }
+        }
+
         return NextResponse.json({
             user,
             isAdmin,
             tools: [...intakeTools, ...transformedTools],
             failedToolUpdates,
+            toolIdeas,
+            toolIdeasError,
         });
     } catch (error) {
         console.error("Error fetching dashboard data:", error);

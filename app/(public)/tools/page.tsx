@@ -226,6 +226,9 @@ export default function ToolsPage() {
                             <p className="mt-3 text-base text-slate-500">
                                 Featuring <span className="font-semibold text-slate-900">{toolCount} </span> community-built tools &mdash; and more are added every week.
                             </p>
+                            <Link href="/tool-ideas" className="mt-5 inline-flex items-center text-sm font-semibold text-blue-700 hover:underline">
+                                Missing a tool? Suggest an idea or vote for one
+                            </Link>
                         </header>
                     </FadeIn>
 
