@@ -21,6 +21,7 @@ function getSupabaseClient() {
 interface SubmitToolRequest {
     packageName: string;
     categoryIds: number[];
+    toolIdeaId?: string | null;
     linkedinProfileUrl: string;
     discordHandle?: string;
 }
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
 
         // Parse request body
         const body = (await request.json()) as SubmitToolRequest;
-        const { packageName, categoryIds, linkedinProfileUrl, discordHandle } = body;
+        const { packageName, categoryIds, toolIdeaId, linkedinProfileUrl, discordHandle } = body;
 
         if (!packageName || typeof packageName !== "string") {
             return NextResponse.json({ error: "Package name is required" }, { status: 400 });
@@ -138,6 +139,14 @@ export async function POST(request: NextRequest) {
 
         if (cleanDiscordHandle && cleanDiscordHandle.length > 100) {
             return NextResponse.json({ error: "Discord handle must be 100 characters or fewer" }, { status: 400 });
+        }
+
+        const cleanToolIdeaId = typeof toolIdeaId === "string" && toolIdeaId.trim() ? toolIdeaId.trim() : null;
+        if (cleanToolIdeaId) {
+            const { data: toolIdea, error: toolIdeaError } = await supabase.from("tool_ideas").select("id").eq("id", cleanToolIdeaId).maybeSingle();
+            if (toolIdeaError || !toolIdea) {
+                return NextResponse.json({ error: "The selected tool idea could not be found" }, { status: 400 });
+            }
         }
 
         // Clean up package name
@@ -281,6 +290,7 @@ export async function POST(request: NextRequest) {
                 icon: packageInfo.icon || null,
                 csp_exceptions: packageInfo.cspExceptions || null,
                 configurations: packageInfo.configurations,
+                tool_idea_id: cleanToolIdeaId,
                 submitted_by: user.id,
                 status: "pending_review",
                 validation_warnings: [...validationResult.warnings, ...configWarnings].length > 0 ? [...validationResult.warnings, ...configWarnings] : null,

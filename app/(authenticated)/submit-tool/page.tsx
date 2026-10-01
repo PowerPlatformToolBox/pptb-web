@@ -1,5 +1,7 @@
 "use client";
 
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from "@headlessui/react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -10,6 +12,13 @@ import { useSupabase } from "@/lib/useSupabase";
 interface Category {
     id: number;
     name: string;
+}
+
+interface ToolIdea {
+    id: string;
+    title: string;
+    description: string;
+    upvotes: number;
 }
 
 interface ValidationError {
@@ -41,11 +50,19 @@ export default function SubmitToolPage() {
     const [discordHandle, setDiscordHandle] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [toolIdeas, setToolIdeas] = useState<ToolIdea[]>([]);
+    const [selectedIdeaId, setSelectedIdeaId] = useState("");
+    const [ideaQuery, setIdeaQuery] = useState("");
     const [loadingCategories, setLoadingCategories] = useState(true);
+    const [loadingIdeas, setLoadingIdeas] = useState(true);
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ValidationError | null>(null);
     const [success, setSuccess] = useState<SubmitSuccessResponse["data"] | null>(null);
+    const selectedIdea = toolIdeas.find((idea) => idea.id === selectedIdeaId);
+    const filteredIdeas = toolIdeas.filter((idea) => `${idea.title} ${idea.description}`.toLowerCase().includes(ideaQuery.trim().toLowerCase()));
+    const topIdeas = [...toolIdeas].sort((first, second) => second.upvotes - first.upvotes).slice(0, 3);
+    const visibleIdeas = ideaQuery.trim() ? filteredIdeas : topIdeas;
 
     // Fetch categories from API on mount
     useEffect(() => {
@@ -64,6 +81,27 @@ export default function SubmitToolPage() {
 
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        if (!supabase) return;
+
+        let active = true;
+        async function fetchToolIdeas() {
+            const { data, error } = await supabase!.rpc("get_tool_ideas", { p_install_id: "" });
+            if (!active) return;
+            if (error) {
+                console.error("Error fetching tool ideas:", error);
+            } else {
+                setToolIdeas(data ?? []);
+            }
+            setLoadingIdeas(false);
+        }
+
+        void fetchToolIdeas();
+        return () => {
+            active = false;
+        };
+    }, [supabase]);
 
     useEffect(() => {
         if (!supabase) return;
@@ -153,6 +191,7 @@ export default function SubmitToolPage() {
                 body: JSON.stringify({
                     packageName: packageName.trim(),
                     categoryIds: selectedCategories,
+                    toolIdeaId: selectedIdeaId || null,
                     linkedinProfileUrl: linkedinProfileUrl.trim(),
                     discordHandle: discordHandle.trim(),
                 }),
@@ -168,6 +207,7 @@ export default function SubmitToolPage() {
             setSuccess((data as SubmitSuccessResponse).data);
             setPackageName("");
             setSelectedCategories([]);
+            setSelectedIdeaId("");
         } catch (err) {
             console.error("Error submitting tool:", err);
             setError({
@@ -195,63 +235,34 @@ export default function SubmitToolPage() {
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Submit a New Tool</h1>
                             <p className="mt-4 text-lg text-slate-600">
-                                Submit your npm package to be added to the Power Platform Tool Box. We&apos;ll validate your package and review it for inclusion.
+                                Submit your npm package to be added to the Power Platform ToolBox. We&apos;ll validate your package and review it for inclusion.
                             </p>
                         </div>
 
                         {/* Info Box */}
                         <SlideIn direction="up" delay={0.3}>
                             <div className="card p-6 mb-8 bg-blue-50 border border-blue-200">
-                                <h2 className="font-semibold text-blue-900 mb-2">Package Requirements</h2>
-                                <p className="text-sm text-blue-800 mb-3">
-                                    Your npm package must include the following fields in its <code className="bg-blue-100 px-1 rounded">package.json</code>:
-                                </p>
-                                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                                    <li>
-                                        <strong>displayName</strong> - Human-readable name for your tool (required)
-                                    </li>
-                                    <li>
-                                        <strong>description</strong> - A brief description of what your tool does (required)
-                                    </li>
-                                    <li>
-                                        <strong>contributors</strong> - Array of contributor objects with name and optional URL (required, at least one)
-                                    </li>
-                                    <li>
-                                        <strong>license</strong> - Must be an approved open-source license: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, GPL-2.0, GPL-3.0, LGPL-3.0, ISC, or
-                                        AGPL-3.0-only (required)
-                                    </li>
-                                    <li>
-                                        <strong>icon</strong> - Relative path to bundled SVG icon under <code className="bg-blue-100 px-1 rounded">dist</code> (e.g.,{" "}
-                                        <code className="bg-blue-100 px-1 rounded">icon.svg</code>). HTTP(S) URLs are not supported (optional)
-                                    </li>
-                                    <li>
-                                        <strong>configurations.repository</strong> - GitHub repository URL (required)
-                                    </li>
-                                    <li>
-                                        <strong>configurations.readmeUrl</strong> - README URL, must be hosted on <code className="bg-blue-100 px-1 rounded">raw.githubusercontent.com</code> (required)
-                                    </li>
-                                    <li>
-                                        <strong>configurations.website</strong> - Project website URL (optional)
-                                    </li>
-                                    <li>
-                                        <strong>cspExceptions</strong> - Content Security Policy exceptions if your tool needs to access external resources (optional)
-                                    </li>
-                                    <li>
-                                        <strong>features.multiConnection</strong> - Set to &quot;required&quot; or &quot;optional&quot; if your tool supports multiple connections (optional)
-                                    </li>
-                                    <li>
-                                        <strong>features.connectionRequirement</strong> - Set to &quot;optional&quot; if your tool can run without a Dataverse connection (optional)
-                                    </li>
-                                    <li>
-                                        <strong>features.minAPI</strong> - Minimum ToolBox API version your tool requires (optional)
-                                    </li>
-                                    <li>
-                                        <strong>features.enabledForPowerPlatformAPI</strong> - Set to <code className="bg-blue-100 px-1 rounded">true</code> if your tool uses{" "}
-                                        <code className="bg-blue-100 px-1 rounded">window.powerplatformAPI</code> (optional)
-                                    </li>
-                                </ul>
-                                <p className="text-sm text-blue-800 mt-3">
-                                    <strong>Note:</strong> You&apos;ll select categories from the dropdown below instead of including them in package.json.
+                                <h2 className="font-semibold text-blue-900 mb-2">Validate Your Tool</h2>
+                                <p className="text-sm text-blue-800">
+                                    Check the{" "}
+                                    <a
+                                        href="https://docs.powerplatformtoolbox.com/tool-development/validation#what-is-validated"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-medium text-blue-700 underline hover:text-blue-900"
+                                    >
+                                        validation requirements
+                                    </a>{" "}
+                                    for details on what is checked. Please run the{" "}
+                                    <a
+                                        href="https://docs.powerplatformtoolbox.com/tool-development/validation"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-medium text-blue-700 underline hover:text-blue-900"
+                                    >
+                                        local validation
+                                    </a>{" "}
+                                    before submitting your package.
                                 </p>
                             </div>
                         </SlideIn>
@@ -314,6 +325,62 @@ export default function SubmitToolPage() {
                                         </a>{" "}
                                         to connect with other developers and get support.
                                     </p>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label htmlFor="toolIdeaId" className="block text-sm font-medium text-slate-700 mb-2">
+                                        Related community idea <span className="font-normal text-slate-500">(optional)</span>
+                                    </label>
+                                    <Combobox
+                                        value={selectedIdeaId || null}
+                                        onChange={(ideaId: string | null) => {
+                                            setSelectedIdeaId(ideaId ?? "");
+                                            setIdeaQuery("");
+                                        }}
+                                        disabled={loading || loadingIdeas || toolIdeas.length === 0}
+                                    >
+                                        <div className="relative">
+                                            <ComboboxInput
+                                                id="toolIdeaId"
+                                                displayValue={(ideaId: string | null) => toolIdeas.find((idea) => idea.id === ideaId)?.title ?? ""}
+                                                onChange={(event) => {
+                                                    setIdeaQuery(event.target.value);
+                                                    if (selectedIdeaId) setSelectedIdeaId("");
+                                                }}
+                                                placeholder={supabase && loadingIdeas ? "Loading ideas..." : toolIdeas.length === 0 ? "No ideas available" : "Search ideas..."}
+                                                className="w-full rounded-lg border border-slate-300 px-4 py-3 pr-12 text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                                            />
+                                            {selectedIdeaId && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedIdeaId("");
+                                                        setIdeaQuery("");
+                                                    }}
+                                                    aria-label="Clear selected idea"
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                                                >
+                                                    <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                                                </button>
+                                            )}
+                                            <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg focus:outline-none">
+                                                {visibleIdeas.length === 0 ? (
+                                                    <div className="px-4 py-3 text-sm text-slate-500">No matching ideas</div>
+                                                ) : (
+                                                    visibleIdeas.map((idea) => (
+                                                        <ComboboxOption key={idea.id} value={idea.id} className={({ focus }) => `cursor-pointer px-4 py-2 ${focus ? "bg-blue-50" : ""}`}>
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <span className="font-medium text-slate-900">{idea.title}</span>
+                                                                <span className="shrink-0 text-xs text-slate-500">{idea.upvotes} votes</span>
+                                                            </div>
+                                                            <p className="mt-1 line-clamp-2 text-xs text-slate-600">{idea.description}</p>
+                                                        </ComboboxOption>
+                                                    ))
+                                                )}
+                                            </ComboboxOptions>
+                                        </div>
+                                    </Combobox>
+                                    {selectedIdea?.description && <p className="mt-2 text-xs text-slate-500">{selectedIdea.description}</p>}
                                 </div>
 
                                 <div className="mb-6">
@@ -459,12 +526,12 @@ export default function SubmitToolPage() {
                             </SlideIn>
                         )}
 
-                        {/* Example Package.json */}
+                        {/* Manifest Documentation */}
                         <SlideIn direction="up" delay={0.5}>
                             <div className="mt-8 card p-6">
-                                <h2 className="text-lg font-semibold text-slate-900">Example package.json</h2>
-                                <p className="mt-2 mb-4 text-sm text-slate-600">
-                                    See the{" "}
+                                <h2 className="text-lg font-semibold text-slate-900">Tool manifest</h2>
+                                <p className="mt-2 text-sm text-slate-600">
+                                    See the latest package structure and requirements in the{" "}
                                     <a
                                         href="https://docs.powerplatformtoolbox.com/tool-development/manifest"
                                         target="_blank"
@@ -472,40 +539,9 @@ export default function SubmitToolPage() {
                                         className="font-medium text-blue-600 underline hover:text-blue-700"
                                     >
                                         tool manifest documentation
-                                    </a>{" "}
-                                    for the complete schema and guidance.
+                                    </a>
+                                    .
                                 </p>
-                                <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-xs">
-                                    {`{
-  "name": "pptb-sample-tool",
-  "version": "1.0.0",
-  "displayName": "Sample Power Platform Tool",
-  "description": "A sample tool for Power Platform",
-  "icon": "icon.svg",
-  "contributors": [
-    {
-      "name": "Your Name",
-      "url": "https://github.com/yourusername"
-    }
-  ],
-  "license": "MIT",
-  "cspExceptions": {
-    "connect-src": ["https://*.dynamics.com"],
-    "script-src": ["https://cdn.example.com"]
-  },
-  "features": {
-    "multiConnection": "required",
-    "connectionRequirement": "optional",
-    "enabledForPowerPlatformAPI": true,
-    "minAPI": "1.2.0"
-  },
-  "configurations": {
-    "repository": "https://github.com/yourorg/your-tool",
-    "website": "https://your-tool.example.com",
-    "readmeUrl": "https://raw.githubusercontent.com/yourorg/your-tool/main/README.md"
-  }
-}`}
-                                </pre>
                             </div>
                         </SlideIn>
                     </div>

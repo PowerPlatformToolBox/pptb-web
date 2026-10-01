@@ -18,6 +18,12 @@ interface Category {
     name: string;
 }
 
+interface ToolIdea {
+    id: string;
+    title: string;
+    description: string;
+}
+
 interface ToolIntake {
     id: string;
     package_name: string;
@@ -45,6 +51,7 @@ interface ToolIntake {
     created_at: string;
     updated_at: string;
     categories?: Category[];
+    tool_idea?: ToolIdea | null;
 }
 
 type StatusFilter = "all" | "pending_review" | "approved" | "rejected" | "needs_changes";
@@ -316,6 +323,12 @@ export default function AdminToolIntakesPage() {
                                                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(intake.status)}`}>{intake.status.replace(/_/g, " ")}</span>
                                                     </div>
                                                     <p className="text-sm text-slate-600 mb-2">{intake.description}</p>
+                                                    {intake.tool_idea && (
+                                                        <div className="mb-3 border-l-2 border-blue-500 bg-blue-50 px-3 py-2 text-sm">
+                                                            <strong className="text-blue-900">Community idea:</strong> <span className="text-blue-800">{intake.tool_idea.title}</span>
+                                                            <p className="mt-1 text-xs text-blue-700">{intake.tool_idea.description}</p>
+                                                        </div>
+                                                    )}
                                                     <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                                                         <span>
                                                             <strong>Package:</strong> {intake.package_name}
@@ -372,6 +385,12 @@ export default function AdminToolIntakesPage() {
                                                     <h4 className="font-medium text-slate-900 mb-3">Review Actions</h4>
 
                                                     {/* Package Details */}
+                                                    {intake.tool_idea && (
+                                                        <div className="mb-4 border border-blue-200 bg-blue-50 p-3 text-sm">
+                                                            <strong className="text-blue-900">Linked tool idea: {intake.tool_idea.title}</strong>
+                                                            <p className="mt-1 text-blue-800">{intake.tool_idea.description}</p>
+                                                        </div>
+                                                    )}
                                                     <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
                                                         <div>
                                                             <strong className="text-slate-700">Contributors:</strong>
@@ -430,38 +449,35 @@ export default function AdminToolIntakesPage() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="mb-4 text-sm text-slate-700">
-                                                        <span className="font-medium">MCP Enabled:</span> {intake.mcp_enabled ? "Yes" : "No"}
-                                                    </div>
-
                                                     {/* Features Section */}
-                                                    {intake.features && (
-                                                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
-                                                            <strong className="text-blue-900">Features:</strong>
-                                                            <ul className="text-blue-800 mt-1 space-y-1">
-                                                                {intake.features.multiConnection && (
-                                                                    <li>
-                                                                        <span className="font-medium">Multi-Connection:</span> {intake.features.multiConnection}
-                                                                    </li>
-                                                                )}
-                                                                {intake.features.connectionRequirement && (
-                                                                    <li>
-                                                                        <span className="font-medium">Connection Requirement:</span> {intake.features.connectionRequirement}
-                                                                    </li>
-                                                                )}
-                                                                {intake.features.minAPI && (
-                                                                    <li>
-                                                                        <span className="font-medium">Min API:</span> {intake.features.minAPI}
-                                                                    </li>
-                                                                )}
-                                                                {intake.features.enabledForPowerPlatformAPI !== undefined && (
-                                                                    <li>
-                                                                        <span className="font-medium">Enabled For Power Platform API:</span> {intake.features.enabledForPowerPlatformAPI ? "Yes" : "No"}
-                                                                    </li>
-                                                                )}
-                                                            </ul>
-                                                        </div>
-                                                    )}
+                                                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                                                        <strong className="text-blue-900">Features:</strong>
+                                                        <ul className="text-blue-800 mt-1 space-y-1">
+                                                            {intake.features?.multiConnection && (
+                                                                <li>
+                                                                    <span className="font-medium">Multi-Connection:</span> {intake.features.multiConnection}
+                                                                </li>
+                                                            )}
+                                                            {intake.features?.connectionRequirement && (
+                                                                <li>
+                                                                    <span className="font-medium">Connection Requirement:</span> {intake.features.connectionRequirement}
+                                                                </li>
+                                                            )}
+                                                            {intake.features?.minAPI && (
+                                                                <li>
+                                                                    <span className="font-medium">Min API:</span> {intake.features.minAPI}
+                                                                </li>
+                                                            )}
+                                                            {intake.features?.enabledForPowerPlatformAPI !== undefined && (
+                                                                <li>
+                                                                    <span className="font-medium">Enabled For Power Platform API:</span> {intake.features.enabledForPowerPlatformAPI ? "Yes" : "No"}
+                                                                </li>
+                                                            )}
+                                                            <li>
+                                                                <span className="font-medium">MCP Enabled:</span> {intake.mcp_enabled ? "Yes" : "No"}
+                                                            </li>
+                                                        </ul>
+                                                    </div>
 
                                                     {/* CSP Exceptions Section */}
                                                     {intake.csp_exceptions && Object.keys(intake.csp_exceptions).length > 0 && (

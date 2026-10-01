@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
         <div className="max-w-2xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
             <p className="mb-4 text-gray-700">
-                Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use Power Platform Tool Box on the web or in the desktop app.
+                Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use Power Platform ToolBox on the web or in the desktop app.
             </p>
             <h2 className="text-xl font-semibold mt-8 mb-2">Information We Collect</h2>
             <ul className="list-disc ml-6 text-gray-700 mb-4">
