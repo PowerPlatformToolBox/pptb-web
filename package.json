@@ -12,7 +12,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.6",
     "@heroicons/react": "^2.2.0",
-    "@pptb/validate": "^1.0.3",
+    "@pptb/validate": "^1.0.4",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.1.0",
     "@supabase/supabase-js": "^2.112.3",
