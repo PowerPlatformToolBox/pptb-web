@@ -28,7 +28,9 @@ async function convert({ intakeVersion = "2.0.0", releaseVersion = "2.0.0", rele
         auth: { getUser: async () => ({ data: { user: { id: "admin-id" } }, error: null }) },
         from(table) {
             const query = {
-                then(resolve, reject) { return Promise.resolve(results[table]).then(resolve, reject); },
+                then(resolve, reject) {
+                    return Promise.resolve(results[table]).then(resolve, reject);
+                },
             };
             for (const method of ["select", "eq", "single", "upsert", "delete", "update", "insert"]) {
                 query[method] = (...args) => {
@@ -43,7 +45,13 @@ async function convert({ intakeVersion = "2.0.0", releaseVersion = "2.0.0", rele
     vm.runInNewContext(compiled, {
         exports,
         require(name) {
-            if (name === "@/lib/github-api") return { runConvertToolWorkflow: async ({ inputs }) => { workflowInputs = inputs; return "success"; } };
+            if (name === "@/lib/github-api")
+                return {
+                    runConvertToolWorkflow: async ({ inputs }) => {
+                        workflowInputs = inputs;
+                        return "success";
+                    },
+                };
             if (name === "@/lib/resend") return { sendEmail: async () => {} };
             if (name === "@supabase/supabase-js") return { createClient: () => supabase };
             if (name === "next/server") return { NextResponse: { json: (body, options) => Response.json(body, options) } };

@@ -142,12 +142,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Conversion workflow succeeded, but the tool has no current release. Check the workflow's release synchronization." }, { status: 500 });
         }
 
-        const { data: currentRelease, error: fetchReleaseError } = await supabase
-            .from("tool_releases")
-            .select("id, version")
-            .eq("tool_id", newTool.id)
-            .eq("id", newTool.current_release_id)
-            .single();
+        const { data: currentRelease, error: fetchReleaseError } = await supabase.from("tool_releases").select("id, version").eq("tool_id", newTool.id).eq("id", newTool.current_release_id).single();
 
         if (fetchReleaseError || !currentRelease) {
             console.error("Current release not found after workflow:", fetchReleaseError);
@@ -155,7 +150,10 @@ export async function POST(request: NextRequest) {
         }
 
         if (currentRelease.version !== expectedVersion) {
-            return NextResponse.json({ error: `Conversion workflow succeeded, but the current release is version "${currentRelease.version}" instead of the expected "${expectedVersion}".` }, { status: 500 });
+            return NextResponse.json(
+                { error: `Conversion workflow succeeded, but the current release is version "${currentRelease.version}" instead of the expected "${expectedVersion}".` },
+                { status: 500 },
+            );
         }
 
         const { error: mcpError } = intake.mcp_enabled
