@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
 
         const repoOwner = "PowerPlatformToolBox";
         const repoName = "tool-management";
+        const expectedVersion = intake.version || "1.0.0";
         const authorString =
             (intake.tool_intake_contributors || [])
                 .map((tic: { contributors?: { name?: string | null } }) => tic.contributors?.name)
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
                 description: intake.description,
                 icon: intake.icon || "",
                 readme_url: intake.configurations?.readmeUrl || "",
-                version: intake.version || "1.0.0",
+                version: expectedVersion,
                 license: intake.license || "MIT",
                 csp_exceptions: intake.csp_exceptions ? JSON.stringify(intake.csp_exceptions) : "",
                 submitted_by: intake.submitted_by || "",
@@ -131,14 +132,30 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch the tool created by the workflow (upsert) using unique packagename
-        const { data: newTool, error: fetchToolError } = await supabase.from("tools").select("id, packagename, name, version, current_release_id").eq("packagename", intake.package_name).single();
+        const { data: newTool, error: fetchToolError } = await supabase.from("tools").select("id, packagename, name, current_release_id").eq("packagename", intake.package_name).single();
         if (fetchToolError || !newTool) {
             console.error("Tool not found after workflow upsert:", fetchToolError);
             return NextResponse.json({ error: "Tool not found after workflow" }, { status: 500 });
         }
 
-        if (!newTool.current_release_id || newTool.version !== intake.version) {
-            return NextResponse.json({ error: "Current release was not synchronized for this intake" }, { status: 500 });
+        if (!newTool.current_release_id) {
+            return NextResponse.json({ error: "Conversion workflow succeeded, but the tool has no current release. Check the workflow's release synchronization." }, { status: 500 });
+        }
+
+        const { data: currentRelease, error: fetchReleaseError } = await supabase
+            .from("tool_releases")
+            .select("id, version")
+            .eq("tool_id", newTool.id)
+            .eq("id", newTool.current_release_id)
+            .single();
+
+        if (fetchReleaseError || !currentRelease) {
+            console.error("Current release not found after workflow:", fetchReleaseError);
+            return NextResponse.json({ error: "Conversion workflow succeeded, but the tool's current release could not be loaded." }, { status: 500 });
+        }
+
+        if (currentRelease.version !== expectedVersion) {
+            return NextResponse.json({ error: `Conversion workflow succeeded, but the current release is version "${currentRelease.version}" instead of the expected "${expectedVersion}".` }, { status: 500 });
         }
 
         const { error: mcpError } = intake.mcp_enabled
