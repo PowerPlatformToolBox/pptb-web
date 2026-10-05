@@ -1,37 +1,38 @@
 ---
 title: "Insider"
-date: "2026-09-30"
+date: "2026-10-05"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- Cover duplicate continuation filter rejection
-- Wire paged impersonation picker and targeted tests
-- Add paged Dataverse user search API
-- Constrain long notification toast messages
-- Initial plan
-- Initial plan
-- Test modal visibility guard
-- Keep modal dialog above main window on Linux
-- Initial plan
+- Enhance CI workflow and E2E tests: streamline pnpm installation, add caching, and improve test structure
+- Enhance connection slot management and documentation
+- Phase 6 MCP multi-connection invocation
+- phase 5 Deletion, downgrade, restore, and auth edge cases
+- Phase 4 Runtime support for more than two slots
+- Refactor tool detail rating display and enhance styles for better alignment
+- Enhance agent configuration with execution modes and headless entry support
+- Phase 4 : WIP - Not Validated
+- Phase 3 : Status-bar squares and connection management
+- Phase 2 Slot storage and selection modal with UI validation
 
 ## Fixes
 
-- logs were not getting recorded due to an error which this commit fixes it
+- N/A
 
 ## Developer & Build
 
-- Version: 1.2.7-dev.20260930
+- Version: 1.2.7-dev.20261005
 - Branch: dev
-- Commits: 14 in the last 24 hours
-- Build Date: 36660237002
+- Commits: 6 in the last 24 hours
+- Build Date: 37255601744
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.7-dev.20260930` (and newer).
+- This page currently reflects Insider build `v1.2.7-dev.20261005` (and newer).
 
 ## Getting an Insider build
 
