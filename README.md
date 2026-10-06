@@ -41,6 +41,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the website.
 
+Before deploying intake resubmission, apply `scripts/resubmit-tool-intake.sql` in the Supabase SQL editor. It installs the service-role-only function that atomically refreshes a `needs_changes` intake and its category/contributor relationships.
+
 ### Running a Fork Without Supabase
 
 If you are testing from a fork and do not have Supabase credentials, you can still run the app locally:

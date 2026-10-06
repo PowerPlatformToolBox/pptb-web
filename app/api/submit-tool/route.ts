@@ -138,27 +138,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Tool intake not found" }, { status: 404 });
         }
         if (existingIntake && existingIntake.status !== "needs_changes") {
-            return NextResponse.json(
-                { error: `This package has already been submitted (Status: ${existingIntake.status})`, step: "duplicate_check" },
-                { status: 409 },
-            );
+            return NextResponse.json({ error: `This package has already been submitted (Status: ${existingIntake.status})`, step: "duplicate_check" }, { status: 409 });
         }
         if (existingIntake && existingIntake.submitted_by !== user.id) {
             return NextResponse.json({ error: "You do not have permission to resubmit this tool" }, { status: 403 });
         }
 
-        let previousCategoryRelations: { tool_intake_id: string; category_id: number }[] = [];
-        if (existingIntake) {
+        if (intakeId && existingIntake) {
             const { data, error } = await supabase.from("tool_intake_categories").select("tool_intake_id, category_id").eq("tool_intake_id", existingIntake.id);
             if (error || !data) {
                 return NextResponse.json({ error: "Failed to load tool categories", step: "database" }, { status: 500 });
             }
-            previousCategoryRelations = data;
-            if (intakeId) {
-                packageName = existingIntake.package_name;
-                categoryIds = data.map((relation) => relation.category_id);
-                toolIdeaId = existingIntake.tool_idea_id;
-            }
+            packageName = existingIntake.package_name;
+            categoryIds = data.map((relation) => relation.category_id);
+            toolIdeaId = existingIntake.tool_idea_id;
         }
 
         if (!packageName || typeof packageName !== "string") {
@@ -340,15 +333,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Resubmissions replace metadata and relationships in one database transaction.
         const intakeQuery = existingIntake
-            ? supabase
-                  .from("tool_intakes")
-                  .update({ ...intakeValues, reviewer_notes: null, reviewed_by: null, reviewed_at: null })
-                  .eq("id", existingIntake.id)
-                  .eq("submitted_by", user.id)
-                  .eq("status", "needs_changes")
-            : supabase.from("tool_intakes").insert(intakeValues);
-        const { data: intakeData, error: saveError } = await intakeQuery.select().maybeSingle();
+            ? supabase.rpc("resubmit_tool_intake", {
+                  p_intake_id: existingIntake.id,
+                  p_submitted_by: user.id,
+                  p_values: intakeValues,
+                  p_category_ids: categoryIds,
+                  p_contributors: packageInfo.contributors || [],
+              })
+            : supabase.from("tool_intakes").insert(intakeValues).select();
+        const { data: intakeData, error: saveError } = await intakeQuery.maybeSingle();
 
         if (saveError) {
             console.error("Error saving tool intake:", saveError);
@@ -364,100 +359,73 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Tool intake is no longer awaiting changes", step: "duplicate_check" }, { status: 409 });
         }
 
-        let categoriesReplaced = false;
-        // Restore resubmissions on failure; only newly inserted intakes may be deleted.
-        const rollbackIntake = async () => {
-            const { error } = existingIntake
-                ? await supabase.from("tool_intakes").update(existingIntake).eq("id", intakeData.id).eq("status", "pending_review")
-                : await supabase.from("tool_intakes").delete().eq("id", intakeData.id);
-            if (error) {
-                console.warn(`[submit-tool] Failed to rollback intake ${intakeData.id}:`, error);
-            }
-            if (existingIntake && categoriesReplaced) {
-                const { error: deleteError } = await supabase.from("tool_intake_categories").delete().eq("tool_intake_id", intakeData.id);
-                const { error: restoreError } = previousCategoryRelations.length
-                    ? await supabase.from("tool_intake_categories").insert(previousCategoryRelations)
-                    : { error: null };
-                if (deleteError || restoreError) {
-                    console.warn(`[submit-tool] Failed to restore categories for intake ${intakeData.id}:`, deleteError || restoreError);
+        // Only newly inserted intakes need application-level relationship writes.
+        if (!existingIntake) {
+            const rollbackIntake = async () => {
+                const { error } = await supabase.from("tool_intakes").delete().eq("id", intakeData.id);
+                if (error) {
+                    console.warn(`[submit-tool] Failed to rollback intake ${intakeData.id}:`, error);
                 }
-            }
-        };
+            };
 
-        if (existingIntake) {
-            const { error } = await supabase.from("tool_intake_categories").delete().eq("tool_intake_id", intakeData.id);
-            if (error) {
+            // Insert category relationships
+            const categoryRelations = categoryIds.map((categoryId) => ({
+                tool_intake_id: intakeData.id,
+                category_id: categoryId,
+            }));
+
+            const { error: categoryError } = await supabase.from("tool_intake_categories").insert(categoryRelations);
+
+            if (categoryError) {
                 await rollbackIntake();
-                return NextResponse.json({ error: "Failed to replace tool categories. Please resubmit.", step: "category_insert" }, { status: 500 });
+                console.error("Error inserting tool intake categories:", categoryError);
+                return NextResponse.json(
+                    {
+                        error: "Failed to save tool categories. Please resubmit.",
+                        step: "category_insert",
+                    },
+                    { status: 500 },
+                );
             }
-            categoriesReplaced = true;
-        }
 
-        // Insert category relationships
-        const categoryRelations = categoryIds.map((categoryId) => ({
-            tool_intake_id: intakeData.id,
-            category_id: categoryId,
-        }));
+            // Normalize contributors: insert into contributors table & link
+            if (packageInfo.contributors && packageInfo.contributors.length > 0) {
+                for (const contrib of packageInfo.contributors) {
+                    if (!contrib.name) continue;
 
-        const { error: categoryError } = await supabase.from("tool_intake_categories").insert(categoryRelations);
-
-        if (categoryError) {
-            await rollbackIntake();
-            console.error("Error inserting tool intake categories:", categoryError);
-            return NextResponse.json(
-                {
-                    error: "Failed to save tool categories. Please resubmit.",
-                    step: "category_insert",
-                },
-                { status: 500 },
-            );
-        }
-
-        if (existingIntake) {
-            const { error } = await supabase.from("tool_intake_contributors").delete().eq("tool_intake_id", intakeData.id);
-            if (error) {
-                await rollbackIntake();
-                return NextResponse.json({ error: "Failed to replace tool contributors. Please resubmit.", step: "database" }, { status: 500 });
-            }
-        }
-
-        const { error: developerFlagError } = await supabase.from("user_profiles").update({ is_tool_developer: true }).eq("id", user.id);
-
-        if (developerFlagError) {
-            console.error("Error setting tool developer flag:", developerFlagError);
-        }
-
-        // Normalize contributors: insert into contributors table & link
-        if (packageInfo.contributors && packageInfo.contributors.length > 0) {
-            for (const contrib of packageInfo.contributors) {
-                if (!contrib.name) continue;
-
-                // Attempt to find existing contributor by name + profile_url
-                const { data: existingContributor } = await supabase
-                    .from("contributors")
-                    .select("id")
-                    .eq("name", contrib.name)
-                    .eq("profile_url", contrib.url || null)
-                    .maybeSingle();
-
-                let contributorId = existingContributor?.id;
-                if (!contributorId) {
-                    const { data: insertedContributor, error: insertContribError } = await supabase
+                    // Attempt to find existing contributor by name + profile_url
+                    const { data: existingContributor } = await supabase
                         .from("contributors")
-                        .insert({ name: contrib.name, profile_url: contrib.url || null })
                         .select("id")
-                        .single();
-                    if (insertContribError) {
-                        console.error("Failed to insert contributor", contrib.name, insertContribError);
-                        continue; // skip this contributor
+                        .eq("name", contrib.name)
+                        .eq("profile_url", contrib.url || null)
+                        .maybeSingle();
+
+                    let contributorId = existingContributor?.id;
+                    if (!contributorId) {
+                        const { data: insertedContributor, error: insertContribError } = await supabase
+                            .from("contributors")
+                            .insert({ name: contrib.name, profile_url: contrib.url || null })
+                            .select("id")
+                            .single();
+                        if (insertContribError) {
+                            console.error("Failed to insert contributor", contrib.name, insertContribError);
+                            continue; // skip this contributor
+                        }
+                        contributorId = insertedContributor.id;
                     }
-                    contributorId = insertedContributor.id;
+
+                    // Link contributor to intake
+                    const { error: linkError } = await supabase.from("tool_intake_contributors").insert({ tool_intake_id: intakeData.id, contributor_id: contributorId });
+                    if (linkError) {
+                        console.error("Failed to link contributor", contrib.name, linkError);
+                    }
                 }
 
-                // Link contributor to intake
-                const { error: linkError } = await supabase.from("tool_intake_contributors").insert({ tool_intake_id: intakeData.id, contributor_id: contributorId });
-                if (linkError) {
-                    console.error("Failed to link contributor", contrib.name, linkError);
+                const { error: developerFlagError } = await supabase.from("user_profiles").update({ is_tool_developer: true }).eq("id", user.id);
+
+                if (developerFlagError) {
+                    console.error("Error setting tool developer flag:", developerFlagError);
                 }
             }
         }

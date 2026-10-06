@@ -61,6 +61,19 @@ async function submit({
     };
     const supabase = {
         auth: { getUser: async () => ({ data: { user: authenticated ? { id: "user-id", email: "developer@example.test" } : null }, error: null }) },
+        rpc(name, args) {
+            calls.push({ table: name, method: "rpc", args: [args] });
+            return {
+                async maybeSingle() {
+                    if (failure === "rpc_failure") return { data: null, error: { message: "Transaction failed" } };
+                    if (failure === "concurrent_update") return { data: null, error: null };
+                    intake = { ...intake, ...args.p_values, reviewer_notes: null, reviewed_by: null, reviewed_at: null };
+                    categories = args.p_category_ids.map((category_id) => ({ tool_intake_id: intake.id, category_id }));
+                    contributorLinks = args.p_contributors.map(() => ({ tool_intake_id: intake.id, contributor_id: "new-contributor" }));
+                    return { data: intake, error: null };
+                },
+            };
+        },
         from(table) {
             let operation = "select";
             let values;
@@ -69,7 +82,7 @@ async function submit({
                 then(resolve, reject) {
                     let result = { data: null, error: null };
                     const key = `${table}:${operation}`;
-                    if (failure === key && !(table === "tool_intake_categories" && operation === "insert" && values[0]?.category_id === 1)) {
+                    if (failure === key) {
                         result.error = { message: "Database failure" };
                     } else if (table === "tool_intakes") {
                         if (operation === "select") result.data = intake;
@@ -90,12 +103,13 @@ async function submit({
                         if (operation === "delete") categories = [];
                         if (operation === "insert") categories = [...categories, ...values];
                     } else if (table === "tool_intake_contributors") {
+                        if (operation === "select") result.data = contributorLinks;
                         if (operation === "delete") contributorLinks = [];
-                        if (operation === "insert") contributorLinks.push(values);
+                        if (operation === "insert") contributorLinks.push(...(Array.isArray(values) ? values : [values]));
                     } else if (table === "categories") {
                         result.data = failure === "invalid_category" ? [] : [{ id: 1 }, { id: 2 }];
                     } else if (table === "contributors") {
-                        result.data = { id: "new-contributor" };
+                        result.data = failure === "contributors:insert" ? null : { id: "new-contributor" };
                     } else if (table === "tool_ideas") {
                         result.data = { id: "idea-id" };
                     }
@@ -165,7 +179,10 @@ test("resubmission refreshes the existing intake and replaces categories and con
     assert.deepEqual(result.contributorLinks.map((relation) => relation.contributor_id), ["new-contributor"]);
     assert.equal(result.emails.length, 1);
     assert.ok(!result.calls.some(({ table, method }) => table === "tool_intakes" && ["insert", "delete"].includes(method)));
-    assert.ok(result.calls.some(({ table, method, args }) => table === "tool_intakes" && method === "eq" && args[0] === "status" && args[1] === "needs_changes"));
+    const transaction = result.calls.find(({ table, method }) => table === "resubmit_tool_intake" && method === "rpc");
+    assert.equal(transaction.args[0].p_intake_id, "intake-id");
+    assert.equal(transaction.args[0].p_submitted_by, "user-id");
+    assert.ok(!result.calls.some(({ table, method }) => ["tool_intake_categories", "tool_intake_contributors"].includes(table) && ["insert", "delete"].includes(method)));
 });
 
 test("inline resubmission reuses saved categories and idea without overwriting the developer profile", async () => {
@@ -228,7 +245,7 @@ test("invalid npm packages leave the existing intake untouched", async () => {
     assert.deepEqual(result.intake, result.original);
 });
 
-for (const failure of ["tool_intakes:select", "tool_intake_categories:select", "categories:select", "invalid_category", "tool_intakes:update", "concurrent_update"]) {
+for (const failure of ["tool_intakes:select", "categories:select", "invalid_category", "rpc_failure", "concurrent_update"]) {
     test(`${failure} leaves the existing intake and relationships untouched`, async () => {
         const result = await submit({ failure });
         assert.equal(result.status, failure === "invalid_category" ? 400 : failure === "concurrent_update" ? 409 : 500);
@@ -239,17 +256,12 @@ for (const failure of ["tool_intakes:select", "tool_intake_categories:select", "
     });
 }
 
-for (const failure of ["tool_intake_categories:delete", "tool_intake_categories:insert", "tool_intake_contributors:delete"]) {
-    test(`${failure} restores rather than deletes a resubmitted intake`, async () => {
-        const result = await submit({ failure });
-        assert.equal(result.status, 500);
-        assert.deepEqual(result.intake, result.original);
-        assert.deepEqual(Array.from(result.categories, (relation) => relation.category_id), [1]);
-        assert.deepEqual(result.contributorLinks.map((relation) => relation.contributor_id), ["old-contributor"]);
-        assert.ok(!result.calls.some(({ table, method }) => table === "tool_intakes" && method === "delete"));
-        assert.equal(result.emails.length, 0);
-    });
-}
+test("inline category lookup failure leaves the intake untouched", async () => {
+    const result = await submit({ inline: true, failure: "tool_intake_categories:select" });
+    assert.equal(result.status, 500);
+    assert.deepEqual(result.intake, result.original);
+    assert.ok(!result.calls.some(({ method }) => method === "rpc"));
+});
 
 test("category insert failure still rolls back a newly inserted intake", async () => {
     const result = await submit({ status: null, failure: "tool_intake_categories:insert" });
