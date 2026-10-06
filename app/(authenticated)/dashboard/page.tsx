@@ -100,6 +100,7 @@ export default function DashboardPage() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
     const [toolUpdateStates, setToolUpdateStates] = useState<Record<string, ToolUpdateState>>({});
+    const [resubmitStates, setResubmitStates] = useState<Record<string, ToolUpdateState>>({});
     const [verificationRequestStates, setVerificationRequestStates] = useState<Record<string, VerificationRequestState>>({});
     const [openMoreMenuForToolId, setOpenMoreMenuForToolId] = useState<string | null>(null);
     const moreMenuAnchorRef = useRef<DOMRect | null>(null);
@@ -266,6 +267,36 @@ export default function DashboardPage() {
                     status: "error",
                     message: error instanceof Error ? error.message : "Update failed",
                 },
+            }));
+        }
+    };
+
+    const handleResubmit = async (tool: Tool) => {
+        if (!user || !authToken) return;
+        if (!confirm("Resubmit this tool with the latest npm package for review?")) return;
+
+        setResubmitStates((current) => ({ ...current, [tool.id]: { status: "updating", message: "Resubmitting..." } }));
+        try {
+            const response = await fetch("/api/submit-tool", {
+                method: "POST",
+                headers: { Authorization: "Bearer " + authToken, "Content-Type": "application/json" },
+                body: JSON.stringify({ intakeId: tool.id }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                if (result.details?.errors) {
+                    setValidationModal({ packageName: tool.packagename || tool.name, errors: result.details.errors, warnings: result.details.warnings || [] });
+                }
+                throw new Error(result.error || "Failed to resubmit tool");
+            }
+            setTools((current) =>
+                current.map((item) => (item.id === tool.id ? { ...item, status: result.data.status, version: result.data.version, name: result.data.displayName, reviewer_notes: null } : item)),
+            );
+            setResubmitStates((current) => ({ ...current, [tool.id]: { status: "success", message: "Resubmitted for review" } }));
+        } catch (error) {
+            setResubmitStates((current) => ({
+                ...current,
+                [tool.id]: { status: "error", message: error instanceof Error ? error.message : "Failed to resubmit tool" },
             }));
         }
     };
@@ -798,11 +829,20 @@ export default function DashboardPage() {
                                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">--</td>
                                                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                                             {tool.status === "needs_changes" ? (
-                                                                                <Link href="/submit-tool" className="text-blue-600 hover:text-purple-600 font-medium">
-                                                                                    Resubmit
-                                                                                </Link>
+                                                                                <button
+                                                                                    onClick={() => handleResubmit(tool)}
+                                                                                    disabled={resubmitStates[tool.id]?.status === "updating"}
+                                                                                    className="text-blue-600 hover:text-purple-600 font-medium disabled:cursor-not-allowed disabled:text-slate-400"
+                                                                                >
+                                                                                    {resubmitStates[tool.id]?.status === "updating" ? "Resubmitting..." : "Resubmit"}
+                                                                                </button>
                                                                             ) : (
                                                                                 <span className="text-slate-400">--</span>
+                                                                            )}
+                                                                            {resubmitStates[tool.id] && resubmitStates[tool.id].status !== "updating" && (
+                                                                                <p role="status" className={`mt-1 text-xs ${resubmitStates[tool.id].status === "error" ? "text-red-600" : "text-green-600"}`}>
+                                                                                    {resubmitStates[tool.id].message}
+                                                                                </p>
                                                                             )}
                                                                         </td>
                                                                     </tr>

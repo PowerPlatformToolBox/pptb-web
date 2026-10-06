@@ -19,10 +19,11 @@ function getSupabaseClient() {
 }
 
 interface SubmitToolRequest {
-    packageName: string;
-    categoryIds: number[];
+    intakeId?: string;
+    packageName?: string;
+    categoryIds?: number[];
     toolIdeaId?: string | null;
-    linkedinProfileUrl: string;
+    linkedinProfileUrl?: string;
     discordHandle?: string;
 }
 
@@ -121,7 +122,44 @@ export async function POST(request: NextRequest) {
 
         // Parse request body
         const body = (await request.json()) as SubmitToolRequest;
-        const { packageName, categoryIds, toolIdeaId, linkedinProfileUrl, discordHandle } = body;
+        const { intakeId, linkedinProfileUrl, discordHandle } = body;
+        let { packageName, categoryIds, toolIdeaId } = body;
+
+        const { data: existingIntake, error: intakeLookupError } = await supabase
+            .from("tool_intakes")
+            .select("*")
+            .eq(intakeId ? "id" : "package_name", intakeId || (typeof packageName === "string" ? packageName.trim().toLowerCase() : ""))
+            .maybeSingle();
+
+        if (intakeLookupError) {
+            return NextResponse.json({ error: "Failed to load tool intake", step: "database" }, { status: 500 });
+        }
+        if (intakeId && !existingIntake) {
+            return NextResponse.json({ error: "Tool intake not found" }, { status: 404 });
+        }
+        if (existingIntake && existingIntake.status !== "needs_changes") {
+            return NextResponse.json(
+                { error: `This package has already been submitted (Status: ${existingIntake.status})`, step: "duplicate_check" },
+                { status: 409 },
+            );
+        }
+        if (existingIntake && existingIntake.submitted_by !== user.id) {
+            return NextResponse.json({ error: "You do not have permission to resubmit this tool" }, { status: 403 });
+        }
+
+        let previousCategoryRelations: { tool_intake_id: string; category_id: number }[] = [];
+        if (existingIntake) {
+            const { data, error } = await supabase.from("tool_intake_categories").select("tool_intake_id, category_id").eq("tool_intake_id", existingIntake.id);
+            if (error || !data) {
+                return NextResponse.json({ error: "Failed to load tool categories", step: "database" }, { status: 500 });
+            }
+            previousCategoryRelations = data;
+            if (intakeId) {
+                packageName = existingIntake.package_name;
+                categoryIds = data.map((relation) => relation.category_id);
+                toolIdeaId = existingIntake.tool_idea_id;
+            }
+        }
 
         if (!packageName || typeof packageName !== "string") {
             return NextResponse.json({ error: "Package name is required" }, { status: 400 });
@@ -133,7 +171,7 @@ export async function POST(request: NextRequest) {
 
         const cleanLinkedInProfileUrl = linkedinProfileUrl?.trim();
         const cleanDiscordHandle = discordHandle?.trim() || null;
-        if (!cleanLinkedInProfileUrl || !linkedInProfileRegex.test(cleanLinkedInProfileUrl)) {
+        if (!intakeId && (!cleanLinkedInProfileUrl || !linkedInProfileRegex.test(cleanLinkedInProfileUrl))) {
             return NextResponse.json({ error: "A valid LinkedIn profile URL is required" }, { status: 400 });
         }
 
@@ -237,33 +275,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check if this package already exists in tool_intakes
-        const { data: existingIntake } = await supabase.from("tool_intakes").select("id, status").eq("package_name", cleanPackageName).single();
-
-        if (existingIntake) {
-            return NextResponse.json(
+        if (!intakeId) {
+            const { error: profileError } = await supabase.from("user_profiles").upsert(
                 {
-                    error: `This package has already been submitted (Status: ${existingIntake.status})`,
-                    step: "duplicate_check",
+                    id: user.id,
+                    email: user.email || "",
+                    linkedin_profile_url: cleanLinkedInProfileUrl,
+                    discord_handle: cleanDiscordHandle,
+                    updated_at: new Date().toISOString(),
                 },
-                { status: 409 },
+                { onConflict: "id" },
             );
-        }
 
-        const { error: profileError } = await supabase.from("user_profiles").upsert(
-            {
-                id: user.id,
-                email: user.email || "",
-                linkedin_profile_url: cleanLinkedInProfileUrl,
-                discord_handle: cleanDiscordHandle,
-                updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" },
-        );
-
-        if (profileError) {
-            console.error("Error updating developer profile:", profileError);
-            return NextResponse.json({ error: "Failed to update developer profile", step: "profile_update" }, { status: 500 });
+            if (profileError) {
+                console.error("Error updating developer profile:", profileError);
+                return NextResponse.json({ error: "Failed to update developer profile", step: "profile_update" }, { status: 500 });
+            }
         }
 
         // Extract packageInfo for cleaner access (validated to exist at this point)
@@ -278,31 +305,53 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Store the tool intake request (contributors now normalized via join table)
-        const { data: intakeData, error: insertError } = await supabase
-            .from("tool_intakes")
-            .insert({
-                package_name: cleanPackageName,
-                version: packageInfo.version,
-                display_name: packageInfo.displayName,
-                description: packageInfo.description,
-                license: packageInfo.license,
-                icon: packageInfo.icon || null,
-                csp_exceptions: packageInfo.cspExceptions || null,
-                configurations: packageInfo.configurations,
-                tool_idea_id: cleanToolIdeaId,
-                submitted_by: user.id,
-                status: "pending_review",
-                validation_warnings: [...validationResult.warnings, ...configWarnings].length > 0 ? [...validationResult.warnings, ...configWarnings] : null,
-                features: packageInfo.features || null,
-                min_api: minAPI,
-                mcp_enabled: mcpEnabled,
-            })
-            .select()
-            .single();
+        const intakeValues = {
+            package_name: cleanPackageName,
+            version: packageInfo.version,
+            display_name: packageInfo.displayName,
+            description: packageInfo.description,
+            license: packageInfo.license,
+            icon: packageInfo.icon || null,
+            csp_exceptions: packageInfo.cspExceptions || null,
+            configurations: packageInfo.configurations,
+            tool_idea_id: cleanToolIdeaId,
+            submitted_by: user.id,
+            status: "pending_review",
+            validation_warnings: [...validationResult.warnings, ...configWarnings].length > 0 ? [...validationResult.warnings, ...configWarnings] : null,
+            features: packageInfo.features || null,
+            min_api: minAPI,
+            mcp_enabled: mcpEnabled,
+        };
 
-        if (insertError) {
-            console.error("Error inserting tool intake:", insertError);
+        // Validate categories before changing the intake or its relationships.
+        const { data: existingCategories, error: categoriesLookupError } = await supabase.from("categories").select("id").in("id", categoryIds);
+        if (categoriesLookupError || !existingCategories) {
+            return NextResponse.json({ error: "Failed to validate categories. Please resubmit.", step: "category_validation" }, { status: 500 });
+        }
+        const validCategoryIds = new Set(existingCategories.map((c) => c.id));
+        const invalidCount = categoryIds.filter((id) => !validCategoryIds.has(id)).length;
+        if (invalidCount > 0) {
+            return NextResponse.json(
+                {
+                    error: `${invalidCount} selected ${invalidCount === 1 ? "category is" : "categories are"} invalid. Please resubmit with valid categories.`,
+                    step: "category_validation",
+                },
+                { status: 400 },
+            );
+        }
+
+        const intakeQuery = existingIntake
+            ? supabase
+                  .from("tool_intakes")
+                  .update({ ...intakeValues, reviewer_notes: null, reviewed_by: null, reviewed_at: null })
+                  .eq("id", existingIntake.id)
+                  .eq("submitted_by", user.id)
+                  .eq("status", "needs_changes")
+            : supabase.from("tool_intakes").insert(intakeValues);
+        const { data: intakeData, error: saveError } = await intakeQuery.select().maybeSingle();
+
+        if (saveError) {
+            console.error("Error saving tool intake:", saveError);
             return NextResponse.json(
                 {
                     error: "Failed to save tool intake request",
@@ -311,42 +360,37 @@ export async function POST(request: NextRequest) {
                 { status: 500 },
             );
         }
+        if (!intakeData) {
+            return NextResponse.json({ error: "Tool intake is no longer awaiting changes", step: "duplicate_check" }, { status: 409 });
+        }
 
-        // Helper to rollback the intake insert; logs a warning if the delete itself fails
+        let categoriesReplaced = false;
+        // Restore resubmissions on failure; only newly inserted intakes may be deleted.
         const rollbackIntake = async () => {
-            const { error: deleteError } = await supabase.from("tool_intakes").delete().eq("id", intakeData.id);
-            if (deleteError) {
-                console.warn(`[submit-tool] Failed to rollback intake ${intakeData.id}:`, deleteError);
+            const { error } = existingIntake
+                ? await supabase.from("tool_intakes").update(existingIntake).eq("id", intakeData.id).eq("status", "pending_review")
+                : await supabase.from("tool_intakes").delete().eq("id", intakeData.id);
+            if (error) {
+                console.warn(`[submit-tool] Failed to rollback intake ${intakeData.id}:`, error);
+            }
+            if (existingIntake && categoriesReplaced) {
+                const { error: deleteError } = await supabase.from("tool_intake_categories").delete().eq("tool_intake_id", intakeData.id);
+                const { error: restoreError } = previousCategoryRelations.length
+                    ? await supabase.from("tool_intake_categories").insert(previousCategoryRelations)
+                    : { error: null };
+                if (deleteError || restoreError) {
+                    console.warn(`[submit-tool] Failed to restore categories for intake ${intakeData.id}:`, deleteError || restoreError);
+                }
             }
         };
 
-        // Validate that all provided category IDs exist
-        const { data: existingCategories, error: categoriesLookupError } = await supabase.from("categories").select("id").in("id", categoryIds);
-
-        if (categoriesLookupError || !existingCategories) {
-            await rollbackIntake();
-            console.error("Error validating categories:", categoriesLookupError);
-            return NextResponse.json(
-                {
-                    error: "Failed to validate categories. Please resubmit.",
-                    step: "category_validation",
-                },
-                { status: 500 },
-            );
-        }
-
-        const validCategoryIds = new Set(existingCategories.map((c) => c.id));
-        const invalidCount = categoryIds.filter((id) => !validCategoryIds.has(id)).length;
-
-        if (invalidCount > 0) {
-            await rollbackIntake();
-            return NextResponse.json(
-                {
-                    error: `${invalidCount} selected ${invalidCount === 1 ? "category is" : "categories are"} invalid. Please resubmit with valid categories.`,
-                    step: "category_validation",
-                },
-                { status: 400 },
-            );
+        if (existingIntake) {
+            const { error } = await supabase.from("tool_intake_categories").delete().eq("tool_intake_id", intakeData.id);
+            if (error) {
+                await rollbackIntake();
+                return NextResponse.json({ error: "Failed to replace tool categories. Please resubmit.", step: "category_insert" }, { status: 500 });
+            }
+            categoriesReplaced = true;
         }
 
         // Insert category relationships
@@ -367,6 +411,14 @@ export async function POST(request: NextRequest) {
                 },
                 { status: 500 },
             );
+        }
+
+        if (existingIntake) {
+            const { error } = await supabase.from("tool_intake_contributors").delete().eq("tool_intake_id", intakeData.id);
+            if (error) {
+                await rollbackIntake();
+                return NextResponse.json({ error: "Failed to replace tool contributors. Please resubmit.", step: "database" }, { status: 500 });
+            }
         }
 
         const { error: developerFlagError } = await supabase.from("user_profiles").update({ is_tool_developer: true }).eq("id", user.id);
