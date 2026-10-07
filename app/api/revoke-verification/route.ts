@@ -18,10 +18,12 @@ interface RevokeVerificationRequest {
         threshold?: string;
         openBugCount?: number;
         longestResponseDays?: number;
+        highCount?: number;
+        criticalCount?: number;
     };
 }
 
-const MATURITY_EVENTS: Record<string, { variant: "revoked" | "grace"; reason: string }> = {
+const MATURITY_EVENTS: Record<string, { variant: "revoked" | "grace"; reason: string; cve?: boolean }> = {
     revoked_cve: {
         variant: "revoked",
         reason: "A high or critical severity CVE was found in your tool's dependencies.",
@@ -45,6 +47,16 @@ const MATURITY_EVENTS: Record<string, { variant: "revoked" | "grace"; reason: st
     revoked_grace_expired_api_breaking: {
         variant: "revoked",
         reason: "The grace period to resolve the breaking API change in your tool expired.",
+    },
+    cve_grace_started: {
+        variant: "grace",
+        reason: "High or critical severity vulnerabilities were found in your tool's dependencies. Your Verified badge will remain during the 14-day remediation period, but verification may be removed if the vulnerabilities remain at the deadline.",
+        cve: true,
+    },
+    revoked_grace_expired_cve: {
+        variant: "revoked",
+        reason: "The CVE grace period expired with unresolved high or critical severity vulnerabilities in your tool's dependencies.",
+        cve: true,
     },
 };
 
@@ -79,6 +91,15 @@ export async function POST(request: NextRequest) {
         if (!toolId || !UUID_PATTERN.test(toolId)) {
             return NextResponse.json({ error: "A valid toolId is required" }, { status: 400 });
         }
+        if (maturityEvent.cve) {
+            const deadlineAt = details?.deadlineAt;
+            if (typeof deadlineAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(deadlineAt) || Number.isNaN(Date.parse(deadlineAt))) {
+                return NextResponse.json({ error: "A valid ISO deadlineAt is required for CVE events" }, { status: 400 });
+            }
+            if (event === "cve_grace_started" && ![details?.highCount, details?.criticalCount].every((count) => typeof count === "number" && Number.isInteger(count) && count >= 0)) {
+                return NextResponse.json({ error: "Non-negative integer highCount and criticalCount are required for cve_grace_started" }, { status: 400 });
+            }
+        }
 
         // The tool/developer pair is verified against the database so the endpoint cannot be used to email arbitrary users.
         const { data: tool, error: toolError } = await supabase.from("tools").select("id, name, user_id").eq("id", toolId).maybeSingle();
@@ -105,6 +126,8 @@ export async function POST(request: NextRequest) {
                 threshold: details?.threshold,
                 openBugCount: typeof details?.openBugCount === "number" ? details.openBugCount : undefined,
                 longestResponseDays: typeof details?.longestResponseDays === "number" ? details.longestResponseDays : undefined,
+                highCount: maturityEvent.cve && event === "cve_grace_started" ? details?.highCount : undefined,
+                criticalCount: maturityEvent.cve && event === "cve_grace_started" ? details?.criticalCount : undefined,
             },
         });
 

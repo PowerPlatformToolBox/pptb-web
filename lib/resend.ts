@@ -78,6 +78,8 @@ interface VerificationRevokedPayload extends VerificationDeveloperPayload {
     threshold?: string;
     openBugCount?: number;
     longestResponseDays?: number;
+    highCount?: number;
+    criticalCount?: number;
 }
 
 type SendEmailOptions =
@@ -286,6 +288,8 @@ async function sendVerificationRevokedEmail(supabase: SupabaseClient, data: Veri
             threshold: data.threshold,
             openBugCount: data.openBugCount,
             longestResponseDays: data.longestResponseDays,
+            highCount: data.highCount,
+            criticalCount: data.criticalCount,
         }),
     });
 }

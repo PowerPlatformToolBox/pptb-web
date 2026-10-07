@@ -289,6 +289,8 @@ export function VerificationRevokedEmail({
     threshold,
     openBugCount,
     longestResponseDays,
+    highCount,
+    criticalCount,
 }: {
     toolName: string;
     variant: "revoked" | "grace";
@@ -297,9 +299,11 @@ export function VerificationRevokedEmail({
     threshold?: string;
     openBugCount?: number;
     longestResponseDays?: number;
+    highCount?: number;
+    criticalCount?: number;
 }) {
     const isGrace = variant === "grace";
-    const hasDetails = deadlineAt !== undefined || threshold !== undefined || openBugCount !== undefined || longestResponseDays !== undefined;
+    const hasDetails = deadlineAt !== undefined || threshold !== undefined || openBugCount !== undefined || longestResponseDays !== undefined || highCount !== undefined || criticalCount !== undefined;
 
     return (
         <EmailLayout
@@ -325,6 +329,8 @@ export function VerificationRevokedEmail({
                     {threshold !== undefined && <Detail label="Threshold breached">{threshold}</Detail>}
                     {openBugCount !== undefined && <Detail label="Open bugs">{openBugCount}</Detail>}
                     {longestResponseDays !== undefined && <Detail label="Longest response time">{`${longestResponseDays} days`}</Detail>}
+                    {highCount !== undefined && <Detail label="High-severity vulnerabilities">{highCount}</Detail>}
+                    {criticalCount !== undefined && <Detail label="Critical-severity vulnerabilities">{criticalCount}</Detail>}
                 </Section>
             )}
             <Text style={styles.text}>
