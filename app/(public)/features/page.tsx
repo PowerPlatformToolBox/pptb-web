@@ -1,4 +1,16 @@
-import { ArrowPathIcon, BellIcon, BoltIcon, Cog6ToothIcon, LinkIcon, LockClosedIcon, ShieldCheckIcon, SparklesIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import {
+    ArrowPathIcon,
+    ArrowsRightLeftIcon,
+    BellIcon,
+    BoltIcon,
+    Cog6ToothIcon,
+    CpuChipIcon,
+    LinkIcon,
+    LockClosedIcon,
+    ShieldCheckIcon,
+    SparklesIcon,
+    WrenchScrewdriverIcon,
+} from "@heroicons/react/24/outline";
 import type { Metadata } from "next";
 
 import { Container } from "@/components/Container";
@@ -32,6 +44,16 @@ const features = [
         icon: LinkIcon,
         title: "Dataverse Connections",
         description: "Create and manage connections to Dataverse environments.",
+    },
+    {
+        icon: ArrowsRightLeftIcon,
+        title: "Multi-connection Support",
+        description: "Tools can support multiple connections simultaneously.",
+    },
+    {
+        icon: CpuChipIcon,
+        title: "DotNet Worker Support",
+        description: "Tools can leverage .NET workers for background processing, allowing XTB workers to be used within PPTB seamlessly.",
     },
     {
         icon: Cog6ToothIcon,
