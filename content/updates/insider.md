@@ -1,22 +1,13 @@
 ---
 title: "Insider"
-date: "2026-10-05"
+date: "2026-10-06"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- Enhance CI workflow and E2E tests: streamline pnpm installation, add caching, and improve test structure
-- Enhance connection slot management and documentation
-- Phase 6 MCP multi-connection invocation
-- phase 5 Deletion, downgrade, restore, and auth edge cases
-- Phase 4 Runtime support for more than two slots
-- Refactor tool detail rating display and enhance styles for better alignment
-- Enhance agent configuration with execution modes and headless entry support
-- Phase 4 : WIP - Not Validated
-- Phase 3 : Status-bar squares and connection management
-- Phase 2 Slot storage and selection modal with UI validation
+- Refactor tool directory resolution and add tests for BrowserviewProtocolManager
 
 ## Fixes
 
@@ -24,15 +15,15 @@ heroImage: "/images/updates/Insider.png"
 
 ## Developer & Build
 
-- Version: 1.2.7-dev.20261005
+- Version: 1.2.7-dev.20261006
 - Branch: dev
-- Commits: 6 in the last 24 hours
-- Build Date: 37255601744
+- Commits: 1 in the last 24 hours
+- Build Date: 37408799960
 
 ## Notes
 
 - No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.7-dev.20261005` (and newer).
+- This page currently reflects Insider build `v1.2.7-dev.20261006` (and newer).
 
 ## Getting an Insider build
 
