@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
                 .filter(Boolean)
                 .join(", ") || "";
 
-        const conclusion = await runConvertToolWorkflow({
+        const workflowResult = await runConvertToolWorkflow({
             owner: repoOwner,
             repo: repoName,
             token: ghToken,
@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
             pollIntervalMs: 30000,
         });
 
-        if (conclusion !== "success") {
-            return NextResponse.json({ error: "Conversion workflow did not complete successfully" }, { status: 500 });
+        if (workflowResult.conclusion !== "success") {
+            return NextResponse.json({ error: workflowResult.failureReason ?? "Conversion workflow did not complete successfully.", workflowUrl: workflowResult.htmlUrl }, { status: 500 });
         }
 
         // Fetch the tool created by the workflow (upsert) using unique packagename

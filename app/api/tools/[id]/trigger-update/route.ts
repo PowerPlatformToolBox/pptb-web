@@ -1,5 +1,6 @@
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
+import { extractVersionInfo } from "@/lib/version-extraction";
 import { validatePackageJson } from "@pptb/validate";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -112,6 +113,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             );
         }
 
+        const packageArtifactResult = await extractVersionInfo(packageName);
+        if (!packageArtifactResult.success) {
+            const configurationErrors = packageArtifactResult.validation?.errors;
+            const failureReason = configurationErrors?.length
+                ? `Package configuration validation failed for ${packageJson.name}@${packageJson.version}: ${configurationErrors.join("; ")}`
+                : packageArtifactResult.error.includes("HTTP 404")
+                  ? `npm tarball returned HTTP 404 for ${packageJson.name}@${packageJson.version}. Verify that this version is published.`
+                  : `Unable to download or inspect npm package ${packageJson.name}@${packageJson.version}: ${packageArtifactResult.error}`;
+            return NextResponse.json({ error: failureReason, step: "package_extraction" }, { status: 502 });
+        }
+
         // Invoke the GitHub update workflow for this specific tool
         const ghToken = process.env.GH_PAT_TOKEN;
         if (!ghToken) {
@@ -121,7 +133,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const repoOwner = "PowerPlatformToolBox";
         const repoName = "tool-management";
 
-        const conclusion = await runUpdateToolWorkflow({
+        const workflowResult = await runUpdateToolWorkflow({
             owner: repoOwner,
             repo: repoName,
             token: ghToken,
@@ -142,9 +154,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             pollIntervalMs: 30000,
         });
 
-        if (conclusion !== "success") {
-            console.warn(`[trigger-update] Update workflow failed for ${packageJson.name}@${packageJson.version} with conclusion: ${conclusion || "unknown"}`);
-            return NextResponse.json({ error: "Update workflow did not complete successfully" }, { status: 500 });
+        if (workflowResult.conclusion !== "success") {
+            const failureReason = workflowResult.failureReason ?? "Workflow did not complete successfully.";
+            console.warn(`[trigger-update] Update workflow failed for ${packageJson.name}@${packageJson.version}: ${failureReason}`);
+            return NextResponse.json({ error: failureReason, workflowUrl: workflowResult.htmlUrl }, { status: 500 });
         }
 
         return NextResponse.json({

@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
             features: effectiveFeatures ? JSON.stringify(effectiveFeatures) : "",
         };
 
-        const conclusion = await runUpdateToolWorkflow({
+        const workflowResult = await runUpdateToolWorkflow({
             owner: repoOwner,
             repo: repoName,
             token: ghToken,
@@ -312,9 +312,10 @@ export async function POST(request: NextRequest) {
             pollIntervalMs: 30000,
         });
 
-        if (conclusion !== "success") {
-            console.warn(`[update-tool] Conversion workflow failed for ${packageJson.name}@${packageJson.version} with conclusion: ${conclusion || "unknown"}`);
-            return NextResponse.json({ error: "Conversion workflow did not complete successfully" }, { status: 500 });
+        if (workflowResult.conclusion !== "success") {
+            const failureReason = workflowResult.failureReason ?? "Workflow did not complete successfully.";
+            console.warn(`[update-tool] Conversion workflow failed for ${packageJson.name}@${packageJson.version}: ${failureReason}`);
+            return NextResponse.json({ error: failureReason, workflowUrl: workflowResult.htmlUrl }, { status: 500 });
         }
 
         return NextResponse.json({

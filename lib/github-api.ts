@@ -219,10 +219,43 @@ export async function waitForWorkflowCompletion(params: {
     let foundRun = false;
 
     interface WorkflowRun {
+        id: number;
         created_at: string;
         status: string;
         conclusion: string | null;
+        html_url: string;
     }
+
+    const toWorkflowResult = async (run: WorkflowRun) => {
+        let failureReason: string | undefined;
+
+        if (run.conclusion && run.conclusion !== "success") {
+            try {
+                const jobsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/jobs?per_page=100`;
+                const jobsResponse = await ghFetch(jobsUrl, token);
+                if (jobsResponse.ok) {
+                    const jobsData = await jobsResponse.json();
+                    const failedJobs = (jobsData.jobs ?? [])
+                        .filter((job: { conclusion: string | null }) => job.conclusion === "failure")
+                        .flatMap((job: { name: string; steps?: Array<{ name: string; conclusion: string | null }> }) => {
+                            const failedSteps = job.steps?.filter((step) => step.conclusion === "failure") ?? [];
+                            return failedSteps.length > 0 ? failedSteps.map((step) => `${job.name}: ${step.name}`) : [job.name];
+                        });
+
+                    if (failedJobs.length > 0) {
+                        failureReason = failedJobs.slice(0, 3).join("; ");
+                        if (failedJobs.length > 3) failureReason += `; and ${failedJobs.length - 3} more`;
+                    }
+                }
+            } catch (error) {
+                console.warn("[github-api] Unable to fetch failed workflow jobs:", error);
+            }
+
+            failureReason ??= `Workflow concluded with ${run.conclusion}`;
+        }
+
+        return { conclusion: run.conclusion, failureReason, htmlUrl: run.html_url };
+    };
 
     while (Date.now() - start < timeoutMs) {
         // First, look for in-progress or queued runs created after dispatch
@@ -239,7 +272,7 @@ export async function waitForWorkflowCompletion(params: {
                     foundRun = true;
                     // If already completed, return conclusion
                     if (recentRun.status === "completed") {
-                        return recentRun.conclusion as string | null;
+                        return await toWorkflowResult(recentRun);
                     }
                 }
             }
@@ -254,20 +287,20 @@ export async function waitForWorkflowCompletion(params: {
                     return runCreated >= dispatchedAt;
                 });
                 if (completedRun) {
-                    return completedRun.conclusion as string | null;
+                    return await toWorkflowResult(completedRun);
                 }
             }
         }
         await new Promise((r) => setTimeout(r, pollIntervalMs));
     }
-    return null; // timed out
+    return { conclusion: null, failureReason: "Workflow did not finish before the timeout.", htmlUrl: undefined };
 }
 
 export async function runConvertToolWorkflow(params: { owner: string; repo: string; token: string; inputs: ConvertWorkflowInputs; ref?: string; timeoutMs?: number; pollIntervalMs?: number }) {
     const dispatchedAt = new Date();
     const workflowFile = "convert-tool.yml";
     await dispatchConvertToolWorkflow({ owner: params.owner, repo: params.repo, token: params.token, workflowFile: workflowFile, inputs: params.inputs, ref: params.ref });
-    const conclusion = await waitForWorkflowCompletion({
+    const result = await waitForWorkflowCompletion({
         owner: params.owner,
         repo: params.repo,
         token: params.token,
@@ -276,14 +309,14 @@ export async function runConvertToolWorkflow(params: { owner: string; repo: stri
         pollIntervalMs: params.pollIntervalMs,
         dispatchedAt,
     });
-    return conclusion;
+    return result;
 }
 
 export async function runUpdateToolWorkflow(params: { owner: string; repo: string; token: string; inputs: UpdateWorkflowInputs; ref?: string; timeoutMs?: number; pollIntervalMs?: number }) {
     const dispatchedAt = new Date();
     const workflowFile = "update-convert-tool.yml";
     await dispatchConvertToolWorkflow({ owner: params.owner, repo: params.repo, token: params.token, workflowFile: workflowFile, inputs: params.inputs, ref: params.ref });
-    const conclusion = await waitForWorkflowCompletion({
+    const result = await waitForWorkflowCompletion({
         owner: params.owner,
         repo: params.repo,
         token: params.token,
@@ -292,7 +325,7 @@ export async function runUpdateToolWorkflow(params: { owner: string; repo: strin
         pollIntervalMs: params.pollIntervalMs,
         dispatchedAt,
     });
-    return conclusion;
+    return result;
 }
 
 // --- GitHub Sponsors API helpers ---

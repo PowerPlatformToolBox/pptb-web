@@ -72,6 +72,7 @@ interface SubmittedIdea {
 type ToolUpdateState = {
     status: "updating" | "success" | "error";
     message: string;
+    detailsUrl?: string;
 };
 
 type VerificationRequestState = {
@@ -240,17 +241,25 @@ export default function DashboardPage() {
                 const errorData = await response.json();
                 if (errorData.step === "validation" && errorData.details) {
                     const tool = tools.find((t) => t.id === toolId);
+                    const errors = errorData.details.errors || [];
                     setValidationModal({
                         packageName: tool?.packagename || toolId,
-                        errors: errorData.details.errors || [],
+                        errors,
                         warnings: errorData.details.warnings || [],
                     });
                     setToolUpdateStates((current) => ({
                         ...current,
-                        [toolId]: { status: "error", message: "Validation failed" },
+                        [toolId]: { status: "error", message: errors[0] || errorData.error || "Package validation failed" },
                     }));
                 } else {
-                    throw new Error(errorData.error || "Failed to trigger update");
+                    setToolUpdateStates((current) => ({
+                        ...current,
+                        [toolId]: {
+                            status: "error",
+                            message: errorData.details || errorData.error || "Failed to trigger update",
+                            detailsUrl: errorData.workflowUrl,
+                        },
+                    }));
                 }
                 return;
             }
@@ -840,7 +849,10 @@ export default function DashboardPage() {
                                                                                 <span className="text-slate-400">--</span>
                                                                             )}
                                                                             {resubmitStates[tool.id] && resubmitStates[tool.id].status !== "updating" && (
-                                                                                <p role="status" className={`mt-1 text-xs ${resubmitStates[tool.id].status === "error" ? "text-red-600" : "text-green-600"}`}>
+                                                                                <p
+                                                                                    role="status"
+                                                                                    className={`mt-1 text-xs ${resubmitStates[tool.id].status === "error" ? "text-red-600" : "text-green-600"}`}
+                                                                                >
                                                                                     {resubmitStates[tool.id].message}
                                                                                 </p>
                                                                             )}
@@ -980,6 +992,16 @@ export default function DashboardPage() {
                                                                                     )}
                                                                                     {updateState.status === "updating" ? "Updating" : updateState.status === "success" ? "Triggered" : "Failed"}
                                                                                 </span>
+                                                                            )}
+                                                                            {viewMode === "my" && updateState?.status === "error" && (
+                                                                                <div className="max-w-48 whitespace-normal break-words text-xs text-red-700" role="status">
+                                                                                    <span>{updateState.message}</span>
+                                                                                    {updateState.detailsUrl && (
+                                                                                        <a href={updateState.detailsUrl} target="_blank" rel="noreferrer" className="mt-1 block font-medium underline">
+                                                                                            View workflow
+                                                                                        </a>
+                                                                                    )}
+                                                                                </div>
                                                                             )}
                                                                             <div className="flex items-center gap-2">
                                                                                 {viewMode === "my" ? (
