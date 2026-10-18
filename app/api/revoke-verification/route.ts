@@ -1,3 +1,4 @@
+import { notifyDiscordAfterResponse, toDiscordTool } from "@/lib/discord-notify";
 import { sendEmail } from "@/lib/resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -102,7 +103,11 @@ export async function POST(request: NextRequest) {
         }
 
         // The tool/developer pair is verified against the database so the endpoint cannot be used to email arbitrary users.
-        const { data: tool, error: toolError } = await supabase.from("tools").select("id, name, user_id").eq("id", toolId).maybeSingle();
+        const { data: tool, error: toolError } = await supabase
+            .from("tools")
+            .select("id, name, user_id, packagename, version, description, icon, tool_contributors (contributors (name))")
+            .eq("id", toolId)
+            .maybeSingle();
 
         if (toolError) {
             throw toolError;
@@ -133,6 +138,10 @@ export async function POST(request: NextRequest) {
 
         if (!emailResult.success) {
             console.warn(`[maturity] Verification ${maturityEvent.variant} email was not sent for tool ${toolId}: ${emailResult.error}`);
+        }
+
+        if (maturityEvent.variant === "revoked") {
+            notifyDiscordAfterResponse("verify.revoked", () => ({ tool: toDiscordTool(tool), reason: maturityEvent.reason }));
         }
 
         return NextResponse.json({ success: true, notificationSent: emailResult.success });

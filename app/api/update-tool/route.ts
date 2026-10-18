@@ -1,3 +1,4 @@
+import { notifyDiscordAfterResponse, toDiscordTool, truncate } from "@/lib/discord-notify";
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { cancelActiveVerificationRequest } from "@/lib/maturity";
 import { sendEmail } from "@/lib/resend";
@@ -24,6 +25,12 @@ interface UpdateToolRequest {
     packageName: string;
     cspExceptions?: CspExceptions | string;
     features?: Features | string;
+}
+
+// Links to the GitHub releases page when the tool repository is hosted on GitHub.
+function getReleaseNotesUrl(repository?: string | null): string | undefined {
+    const match = repository?.trim().match(/^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i);
+    return match ? `https://github.com/${match[1]}/${match[2]}/releases` : undefined;
 }
 
 function parseOptionalJsonObject<T>(value: unknown): T | undefined {
@@ -212,6 +219,23 @@ export async function POST(request: NextRequest) {
                 }
             }
 
+            // Mirrors the email de-duplication so each failed version is announced once.
+            if (notificationSentThisRequest) {
+                notifyDiscordAfterResponse("tool.update-failed", async () => {
+                    const { data: failedTool } = await supabase
+                        .from("tools")
+                        .select("id, name, packagename, version, description, icon, tool_contributors (contributors (name))")
+                        .eq("packagename", packageJson.name)
+                        .maybeSingle();
+                    if (!failedTool) return null;
+                    return {
+                        tool: toDiscordTool(failedTool),
+                        attemptedVersion: packageJson.version || undefined,
+                        errors: validationErrors.slice(0, 20).map((error) => truncate(String(error), 500)),
+                    };
+                });
+            }
+
             return NextResponse.json(
                 {
                     error: "Package validation failed",
@@ -231,6 +255,8 @@ export async function POST(request: NextRequest) {
 
         const { minAPI, mcpEnabled, warnings: configWarnings } = versionInfoResult.data;
 
+        const { data: previousTool } = await supabase.from("tools").select("version").eq("packagename", packageJson.name).maybeSingle();
+
         // Update tool table entry with latest validated package info
         const { data: updatedTool, error: toolUpdateError } = await supabase
             .from("tools")
@@ -248,7 +274,7 @@ export async function POST(request: NextRequest) {
                 min_api: minAPI,
             })
             .eq("packagename", packageJson.name)
-            .select("id, name, version, current_release_id")
+            .select("id, name, version, current_release_id, packagename, description, icon, repository, tool_contributors (contributors (name))")
             .maybeSingle();
 
         if (toolUpdateError) {
@@ -317,6 +343,13 @@ export async function POST(request: NextRequest) {
             console.warn(`[update-tool] Conversion workflow failed for ${packageJson.name}@${packageJson.version}: ${failureReason}`);
             return NextResponse.json({ error: failureReason, workflowUrl: workflowResult.htmlUrl }, { status: 500 });
         }
+
+        const previousVersion = typeof previousTool?.version === "string" && previousTool.version !== packageJson.version ? previousTool.version : undefined;
+        notifyDiscordAfterResponse("tool.update", () => ({
+            tool: { ...toDiscordTool(updatedTool), version: packageJson.version },
+            previousVersion,
+            releaseNotesUrl: getReleaseNotesUrl(updatedTool.repository),
+        }));
 
         return NextResponse.json({
             success: true,

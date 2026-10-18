@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getDiscordActor, notifyDiscordAfterResponse, toDiscordTool, truncate } from "@/lib/discord-notify";
 import { sendEmail } from "@/lib/resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -104,6 +105,17 @@ export async function POST(request: NextRequest) {
                     submittedOn: updatedIntake.created_at || new Date().toISOString(),
                     reviewComments: reviewerNotes || "Please address the requested changes.",
                 },
+            });
+        }
+
+        if (action === "approve" || action === "reject") {
+            const reviewerId = userId;
+            notifyDiscordAfterResponse(action === "approve" ? "tool-submission.approved" : "tool-submission.rejected", async () => {
+                const { data: contributorLinks } = await supabase.from("tool_intake_contributors").select("contributors(name)").eq("tool_intake_id", updatedIntake.id);
+                const tool = toDiscordTool({ ...updatedIntake, tool_intake_contributors: contributorLinks }, { includeUrl: false });
+                const reviewer = await getDiscordActor(supabase, reviewerId);
+                const reason = reviewerNotes?.trim() ? truncate(reviewerNotes.trim(), 1000) : undefined;
+                return action === "approve" ? { tool, approvedBy: reviewer } : { tool, reason, rejectedBy: reviewer };
             });
         }
 

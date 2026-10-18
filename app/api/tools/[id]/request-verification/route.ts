@@ -1,3 +1,4 @@
+import { getSiteUrl, notifyDiscordAfterResponse, toDiscordActor, toDiscordTool } from "@/lib/discord-notify";
 import { ACTIVE_VERIFICATION_STATUSES } from "@/lib/maturity";
 import { sendEmail } from "@/lib/resend";
 import { createClient } from "@supabase/supabase-js";
@@ -31,8 +32,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         const { id: toolId } = await params;
         const [{ data: tool, error: toolError }, { data: profile, error: profileError }] = await Promise.all([
-            supabase.from("tools").select("id, name, description, user_id, status").eq("id", toolId).maybeSingle(),
-            supabase.from("user_profiles").select("name, email, is_tool_developer").eq("id", user.id).maybeSingle(),
+            supabase.from("tools").select("id, name, description, user_id, status, packagename, version, icon, tool_contributors (contributors (name))").eq("id", toolId).maybeSingle(),
+            supabase.from("user_profiles").select("name, email, is_tool_developer, discord_handle").eq("id", user.id).maybeSingle(),
         ]);
 
         if (toolError || !tool) {
@@ -83,6 +84,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             }
             throw insertError;
         }
+
+        notifyDiscordAfterResponse("verify.requested", () => ({
+            tool: toDiscordTool(tool),
+            requestedBy: toDiscordActor(profile, user),
+            reviewUrl: `${getSiteUrl()}/admin/verification-requests`,
+        }));
 
         const emailResult = await sendEmail({
             type: "verification-request-submitted",

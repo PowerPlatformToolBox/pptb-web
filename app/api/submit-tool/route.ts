@@ -1,3 +1,4 @@
+import { getDiscordActor, getSiteUrl, notifyDiscordAfterResponse, toDiscordTool } from "@/lib/discord-notify";
 import { sendEmail } from "@/lib/resend";
 import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
@@ -448,6 +449,19 @@ export async function POST(request: NextRequest) {
                 submittedBy: user.email || user.id,
             },
         });
+
+        notifyDiscordAfterResponse("tool-submission.new", async () => ({
+            tool: toDiscordTool(
+                {
+                    ...intakeValues,
+                    id: intakeData.id,
+                    authors: (packageInfo.contributors || []).map((contributor) => (typeof contributor === "string" ? contributor : contributor.name)),
+                },
+                { includeUrl: false },
+            ),
+            submittedBy: await getDiscordActor(supabase, user.id, user),
+            reviewUrl: `${getSiteUrl()}/admin/tool-intakes`,
+        }));
 
         return NextResponse.json({
             success: true,

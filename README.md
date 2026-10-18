@@ -78,6 +78,17 @@ npm install -g vercel
 vercel
 ```
 
+### Discord Notifications
+
+Tool submission, update and verification events can be posted to the PPTB Agent Discord bot. Set both variables in the deployment environment (for example, Vercel → Project Settings → Environment Variables):
+
+| Variable                | Description                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `DISCORD_EVENTS_URL`    | The bot's signed event endpoint.                                                                   |
+| `DISCORD_EVENTS_SECRET` | Shared secret for request signing. It must match the secret configured on the bot.                 |
+
+If either variable is missing, notifications are skipped. Each request is a JSON body `{ type, id, occurredAt, data }` with the headers `X-PPTB-Timestamp` (Unix seconds) and `X-PPTB-Signature` (`sha256=` + hex HMAC-SHA256 of `${timestamp}.${body}`). Notifications are sent after the response with Next.js `after()`, use a 5 second timeout, and never affect the API response. Failures are logged with `console.error`. `NEXT_PUBLIC_SITE_URL` is used to build tool and admin review links.
+
 ## Features
 
 ### OS Detection

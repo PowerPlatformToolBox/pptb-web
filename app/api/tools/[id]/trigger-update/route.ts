@@ -1,3 +1,4 @@
+import { getDiscordActor, notifyDiscordAfterResponse, toDiscordTool } from "@/lib/discord-notify";
 import { runUpdateToolWorkflow } from "@/lib/github-api";
 import { fetchNpmPackageInfo, ToolPackageJson } from "@/lib/tool-validation";
 import { extractVersionInfo } from "@/lib/version-extraction";
@@ -54,7 +55,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
 
         // Fetch the tool and verify ownership
-        const { data: tool, error: fetchError } = await supabase.from("tools").select("id, user_id, packagename, version").eq("id", toolId).single();
+        const { data: tool, error: fetchError } = await supabase
+            .from("tools")
+            .select("id, user_id, packagename, version, name, description, icon, tool_contributors (contributors (name))")
+            .eq("id", toolId)
+            .single();
 
         if (fetchError || !tool) {
             return NextResponse.json({ error: "Tool not found" }, { status: 404 });
@@ -159,6 +164,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             console.warn(`[trigger-update] Update workflow failed for ${packageJson.name}@${packageJson.version}: ${failureReason}`);
             return NextResponse.json({ error: failureReason, workflowUrl: workflowResult.htmlUrl }, { status: 500 });
         }
+
+        const requesterId = userId;
+        notifyDiscordAfterResponse("tool.manual-update", async () => ({
+            tool: toDiscordTool(tool),
+            requestedBy: await getDiscordActor(supabase, requesterId),
+            targetVersion: packageJson.version || undefined,
+            workflowUrl: workflowResult.htmlUrl || undefined,
+        }));
 
         return NextResponse.json({
             success: true,

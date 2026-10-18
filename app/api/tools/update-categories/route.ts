@@ -1,3 +1,4 @@
+import { getDiscordActor, notifyDiscordAfterResponse, toDiscordTool } from "@/lib/discord-notify";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -77,7 +78,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify the tool exists and belongs to the user
-        const { data: tool, error: fetchError } = await supabase.from("tools").select("id, user_id").eq("id", toolId).single();
+        const { data: tool, error: fetchError } = await supabase
+            .from("tools")
+            .select("id, user_id, name, packagename, version, description, icon, tool_contributors (contributors (name))")
+            .eq("id", toolId)
+            .single();
 
         if (fetchError || !tool) {
             return NextResponse.json({ error: "Tool not found" }, { status: 404 });
@@ -149,6 +154,17 @@ export async function POST(request: NextRequest) {
         }
 
         const categories = finalCategories.map((category) => ({ id: category.id, name: category.name }));
+
+        const categoryNameById = new Map(finalCategories.map((category) => [category.id, category.name as string]));
+        const newCategoryNames = finalCategoryIds.flatMap((id) => categoryNameById.get(id) ?? []);
+        const previousCategoryNames = currentCategoryIds.flatMap((id) => categoryNameById.get(id) ?? []);
+        const updaterId = userId;
+        notifyDiscordAfterResponse("tool.update-categories", async () => ({
+            tool: toDiscordTool(tool),
+            categories: newCategoryNames,
+            previousCategories: previousCategoryNames.length > 0 ? previousCategoryNames : undefined,
+            updatedBy: await getDiscordActor(supabase, updaterId),
+        }));
 
         return NextResponse.json({
             success: true,

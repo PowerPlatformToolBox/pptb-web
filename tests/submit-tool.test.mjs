@@ -49,6 +49,7 @@ async function submit({
     let contributorLinks = original ? [{ tool_intake_id: "intake-id", contributor_id: "old-contributor" }] : [];
     const calls = [];
     const emails = [];
+    const discordEvents = [];
     const packageInfo = {
         name: "test-tool",
         version: "2.0.0",
@@ -142,6 +143,15 @@ async function submit({
                 return { validatePackageJson: async () => ({ valid: validPackage, packageInfo, errors: ["Invalid package"], warnings: ["Package warning"] }) };
             if (name === "@pptb/validate/npm")
                 return { validatePackageStructure: async () => ({ success: true, data: { hasDistFolder: true, hasDistIndexHtml: true } }) };
+            if (name === "@/lib/discord-notify")
+                return {
+                    notifyDiscordAfterResponse: (type, build) => discordEvents.push({ type, build }),
+                    toDiscordTool: (tool) => ({ id: tool.id, name: tool.name || tool.display_name }),
+                    toDiscordActor: () => ({ name: "Actor" }),
+                    getDiscordActor: async () => ({ name: "Actor" }),
+                    getSiteUrl: () => "https://site.test",
+                    truncate: (value) => value,
+                };
             if (name === "@supabase/supabase-js") return { createClient: () => supabase };
             if (name === "next/server") return { NextResponse: { json: (body, options) => Response.json(body, options) } };
             return require(name);
@@ -156,7 +166,7 @@ async function submit({
                 ? { intakeId: "intake-id" }
                 : { packageName: " Test-Tool ", categoryIds: [2], linkedinProfileUrl: "https://linkedin.com/in/developer", toolIdeaId: "idea-id" },
     });
-    return { status: response.status, body: await response.json(), calls, intake, original, categories, contributorLinks, emails };
+    return { status: response.status, body: await response.json(), calls, intake, original, categories, contributorLinks, emails, discordEvents };
 }
 
 test("resubmission refreshes the existing intake and replaces categories and contributors", async () => {
@@ -205,6 +215,14 @@ test("new submissions still insert a pending-review intake", async () => {
     assert.equal(result.body.data.id, "new-intake-id");
     assert.equal(result.intake.status, "pending_review");
     assert.ok(result.calls.some(({ table, method }) => table === "tool_intakes" && method === "insert"));
+    assert.deepEqual(
+        result.discordEvents.map(({ type }) => type),
+        ["tool-submission.new"],
+    );
+    const discordData = await result.discordEvents[0].build();
+    assert.equal(discordData.tool.id, "new-intake-id");
+    assert.equal(discordData.reviewUrl, "https://site.test/admin/tool-intakes");
+    assert.deepEqual(discordData.submittedBy, { name: "Actor" });
 });
 
 for (const status of ["pending_review", "approved", "rejected", "converted_to_tool"]) {
@@ -214,6 +232,7 @@ for (const status of ["pending_review", "approved", "rejected", "converted_to_to
         assert.equal(result.body.step, "duplicate_check");
         assert.deepEqual(result.intake, result.original);
         assert.equal(result.emails.length, 0);
+        assert.equal(result.discordEvents.length, 0);
     });
 }
 

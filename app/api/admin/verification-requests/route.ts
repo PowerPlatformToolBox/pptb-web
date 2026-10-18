@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getDiscordActor, getSiteUrl, notifyDiscordAfterResponse, toDiscordTool, truncate } from "@/lib/discord-notify";
 import { sendEmail } from "@/lib/resend";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -165,6 +166,22 @@ export async function POST(request: NextRequest) {
             if (startError) throw startError;
             if (!started) return NextResponse.json({ error: "This request could not be started" }, { status: 409 });
 
+            if (!(verificationRequest.reviewer_ids || []).includes(admin.id)) {
+                notifyDiscordAfterResponse("verify.assigned", async () => {
+                    const { data: tool } = await supabase
+                        .from("tools")
+                        .select("id, name, packagename, version, description, icon, tool_contributors (contributors (name))")
+                        .eq("id", started.tool_id)
+                        .maybeSingle();
+                    if (!tool) return null;
+                    return {
+                        tool: toDiscordTool(tool),
+                        assignee: await getDiscordActor(supabase, admin.id, admin),
+                        reviewUrl: `${getSiteUrl()}/admin/verification-requests`,
+                    };
+                });
+            }
+
             const admins = await getAdminIdentities(supabase, reviewerIds);
             return NextResponse.json({ success: true, request: started, admins });
         }
@@ -238,7 +255,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Checklist results or waiver are invalid" }, { status: 400 });
         }
 
-        const { data: tool, error: toolError } = await supabase.from("tools").select("id, name, csp_exceptions, tool_analytics(downloads, mau)").eq("id", verificationRequest.tool_id).single();
+        const { data: tool, error: toolError } = await supabase
+            .from("tools")
+            .select("id, name, csp_exceptions, packagename, version, description, icon, tool_analytics(downloads, mau), tool_contributors (contributors (name))")
+            .eq("id", verificationRequest.tool_id)
+            .single();
         if (toolError) throw toolError;
 
         const usageResult = resultByKey.get("usage_thresholds");
@@ -320,6 +341,20 @@ export async function POST(request: NextRequest) {
             }
             throw decisionError || new Error("Verification request changed before the decision was saved");
         }
+
+        notifyDiscordAfterResponse(body.decision === "approve" ? "verify.approved" : "verify.rejected", async () => {
+            const reviewer = await getDiscordActor(supabase, admin.id, admin);
+            const discordTool = toDiscordTool(tool);
+            if (body.decision === "approve") return { tool: discordTool, reviewer };
+
+            const reason = failedRequiredCriteria
+                .map((criterion) => {
+                    const comment = resultByKey.get(criterion.key)?.comment?.trim();
+                    return comment ? `${criterion.label}: ${comment}` : criterion.label;
+                })
+                .join("; ");
+            return { tool: discordTool, reason: reason ? truncate(reason, 1000) : undefined, reviewer };
+        });
 
         const emailResult =
             body.decision === "approve"

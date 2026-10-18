@@ -13,6 +13,7 @@ const compiled = ts.transpileModule(source, {
 
 async function notify({ event, details, tool = { id: "22222222-2222-4222-8222-222222222222", name: "Test Tool", user_id: "11111111-1111-4111-8111-111111111111" } }) {
     const emailCalls = [];
+    const discordEvents = [];
     const query = {
         select() {
             return this;
@@ -28,6 +29,15 @@ async function notify({ event, details, tool = { id: "22222222-2222-4222-8222-22
         exports,
         require(name) {
             if (name === "@/lib/resend") return { sendEmail: async (options) => (emailCalls.push(options), { success: true }) };
+            if (name === "@/lib/discord-notify")
+                return {
+                    notifyDiscordAfterResponse: (type, build) => discordEvents.push({ type, build }),
+                    toDiscordTool: (tool) => ({ id: tool.id, name: tool.name || tool.display_name }),
+                    toDiscordActor: () => ({ name: "Actor" }),
+                    getDiscordActor: async () => ({ name: "Actor" }),
+                    getSiteUrl: () => "https://site.test",
+                    truncate: (value) => value,
+                };
             if (name === "@supabase/supabase-js") return { createClient: () => supabase };
             if (name === "next/server") return { NextResponse: { json: (body, options) => Response.json(body, options) } };
             return require(name);
@@ -44,7 +54,7 @@ async function notify({ event, details, tool = { id: "22222222-2222-4222-8222-22
             details,
         }),
     });
-    return { status: response.status, body: await response.json(), emailCalls };
+    return { status: response.status, body: await response.json(), emailCalls, discordEvents };
 }
 
 test("CVE grace start sends the deadline and severity counts through the verification email", async () => {
@@ -72,6 +82,11 @@ test("expired CVE grace sends a revocation notice with its deadline", async () =
     assert.equal(result.emailCalls[0].data.variant, "revoked");
     assert.equal(result.emailCalls[0].data.deadlineAt, "2026-10-20");
     assert.match(result.emailCalls[0].data.reason, /expired with unresolved high or critical/);
+    assert.equal(result.discordEvents.length, 1);
+    assert.equal(result.discordEvents[0].type, "verify.revoked");
+    const discordData = await result.discordEvents[0].build();
+    assert.equal(discordData.tool.id, "22222222-2222-4222-8222-222222222222");
+    assert.match(discordData.reason, /expired with unresolved high or critical/);
 });
 
 for (const [name, event, details] of [
@@ -95,4 +110,5 @@ test("existing bug-health grace event keeps its existing email behavior", async 
     assert.match(result.emailCalls[0].data.reason, /bug health has breached/);
     assert.equal(result.emailCalls[0].data.threshold, "5 open bugs");
     assert.equal(result.emailCalls[0].data.highCount, undefined);
+    assert.equal(result.discordEvents.length, 0);
 });
