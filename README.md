@@ -43,6 +43,8 @@ Open [http://localhost:3000](http://localhost:3000) to view the website.
 
 Before deploying intake resubmission, apply `scripts/resubmit-tool-intake.sql` in the Supabase SQL editor. It installs the service-role-only function that atomically refreshes a `needs_changes` intake and its category/contributor relationships.
 
+Before deploying the combined Ideas board, follow the [Ideas rollout guide](docs/IDEAS_BOARD_ROLLOUT.md). Apply its database migration first; it preserves the legacy desktop RPC contracts and adds maintainer status management and GitHub issue linking.
+
 ### Running a Fork Without Supabase
 
 If you are testing from a fork and do not have Supabase credentials, you can still run the app locally:

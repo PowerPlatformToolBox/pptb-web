@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
         const cleanToolIdeaId = typeof toolIdeaId === "string" && toolIdeaId.trim() ? toolIdeaId.trim() : null;
         if (cleanToolIdeaId) {
-            const { data: toolIdea, error: toolIdeaError } = await supabase.from("tool_ideas").select("id").eq("id", cleanToolIdeaId).maybeSingle();
+            const { data: toolIdea, error: toolIdeaError } = await supabase.from("tool_ideas").select("id").eq("id", cleanToolIdeaId).eq("idea_type", "tool").maybeSingle();
             if (toolIdeaError || !toolIdea) {
                 return NextResponse.json({ error: "The selected tool idea could not be found" }, { status: 400 });
             }

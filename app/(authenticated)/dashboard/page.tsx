@@ -1,11 +1,13 @@
 "use client";
 
-import { ChevronLeftIcon, ChevronRightIcon, LightBulbIcon, Squares2X2Icon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ChevronRightIcon, ClipboardDocumentCheckIcon, LightBulbIcon, PlusIcon, ShieldCheckIcon, Squares2X2Icon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Container } from "@/components/Container";
+import { IdeaBadges, IdeaLinks } from "@/components/IdeaDetails";
+import type { Idea } from "@/lib/ideas";
 import { FadeIn, SlideIn } from "@/components/animations";
 import { TOOL_STATUSES } from "@/lib/constants/tool-statuses";
 
@@ -60,14 +62,7 @@ interface FailedToolUpdate {
     validation_warnings: string[] | null;
 }
 
-interface SubmittedIdea {
-    id: string;
-    title: string;
-    description: string;
-    status: string;
-    created_at: string;
-    upvotes: number;
-}
+type SubmittedIdea = Omit<Idea, "has_upvoted">;
 
 type ToolUpdateState = {
     status: "updating" | "success" | "error";
@@ -460,32 +455,39 @@ export default function DashboardPage() {
                     <div className="mx-auto max-w-2xl lg:max-w-7xl">
                         {/* Welcome Header */}
                         <header className="mb-12">
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
                                     <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
                                         Welcome back{user?.user_metadata?.name ? `, ${user.user_metadata.name.split(" ")[0]}` : ""}!
                                     </h1>
                                     <p className="mt-4 text-lg text-slate-700">Here&apos;s an overview of all available Power Platform tools with their analytics.</p>
                                 </div>
-                                <div className="flex gap-3">
-                                    {isAdmin && (
-                                        <>
-                                            <Link href="/admin/verification-requests" className="btn-secondary">
-                                                Verification Queue
-                                            </Link>
-                                            <Link href="/admin/tool-intakes" className="btn-secondary">
-                                                Review Intakes
-                                            </Link>
-                                        </>
-                                    )}
-                                    <Link href="/submit-tool" className="btn-primary flex items-center gap-2">
-                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        Submit Tool
-                                    </Link>
-                                </div>
+                                <Link href="/submit-tool" className="btn-primary inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700">
+                                    <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                                    Submit Tool
+                                </Link>
                             </div>
+                            {isAdmin && (
+                                <nav aria-label="Administration" className="mt-7 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                                    <span className="px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Administration</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { href: "/admin/verification-requests", label: "Verification Queue", Icon: ShieldCheckIcon },
+                                            { href: "/admin/tool-intakes", label: "Review Intakes", Icon: ClipboardDocumentCheckIcon },
+                                            { href: "/admin/ideas", label: "Manage Ideas", Icon: LightBulbIcon },
+                                        ].map(({ href, label, Icon }) => (
+                                            <Link
+                                                key={href}
+                                                href={href}
+                                                className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                                            >
+                                                <Icon className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                                                {label}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </nav>
+                            )}
                         </header>
 
                         <div role="group" aria-label="Dashboard view" className="mb-8 flex w-full gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1.5 sm:w-fit">
@@ -516,10 +518,10 @@ export default function DashboardPage() {
                             <section aria-labelledby="my-ideas-heading" className="pb-16">
                                 <div className="flex flex-wrap items-center justify-between gap-4">
                                     <h2 id="my-ideas-heading" className="text-2xl font-semibold text-slate-900">
-                                        My tool ideas
+                                        My Ideas
                                     </h2>
-                                    <Link href="/tool-ideas" className="text-sm font-semibold text-blue-700 hover:underline">
-                                        Browse ideas and suggest a tool
+                                    <Link href="/ideas" className="text-sm font-semibold text-blue-700 hover:underline">
+                                        Browse ideas and share your own
                                     </Link>
                                 </div>
                                 {toolIdeasError ? (
@@ -527,7 +529,7 @@ export default function DashboardPage() {
                                         Your submitted ideas could not be loaded right now.
                                     </p>
                                 ) : toolIdeas.length === 0 ? (
-                                    <p className="mt-4 text-sm text-slate-600">You haven&apos;t submitted any tool ideas yet.</p>
+                                    <p className="mt-4 text-sm text-slate-600">You haven&apos;t submitted any ideas yet.</p>
                                 ) : (
                                     <>
                                         <p className="mt-2 text-sm text-slate-500">
@@ -560,19 +562,20 @@ export default function DashboardPage() {
                                                             <span className="font-semibold tabular-nums text-blue-700">
                                                                 {idea.upvotes} {idea.upvotes === 1 ? "vote" : "votes"}
                                                             </span>
-                                                            <span className="font-medium capitalize text-slate-600">{idea.status.replaceAll("_", " ")}</span>
+                                                            <IdeaBadges idea={idea} />
                                                             <time dateTime={idea.created_at} className="text-slate-500">
                                                                 {new Date(idea.created_at).toLocaleDateString()}
                                                             </time>
                                                         </span>
                                                     </button>
-                                                    <p
+                                                    <div
                                                         id={`idea-description-${idea.id}`}
                                                         hidden={expandedIdeaId !== idea.id}
-                                                        className="wrap-break-word whitespace-pre-wrap pb-5 pl-7 text-sm leading-6 text-slate-700"
+                                                        className="space-y-3 pb-5 pl-7 text-sm leading-6 text-slate-700"
                                                     >
-                                                        {idea.description}
-                                                    </p>
+                                                        <p className="wrap-break-word whitespace-pre-wrap">{idea.description}</p>
+                                                        <IdeaLinks idea={idea} />
+                                                    </div>
                                                 </li>
                                             ))}
                                         </ul>

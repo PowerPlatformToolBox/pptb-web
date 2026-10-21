@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn, SlideIn } from "@/components/animations";
+import { canVoteForIdea, type Idea } from "@/lib/ideas";
 import { useSupabase } from "@/lib/useSupabase";
 
 interface Category {
@@ -87,12 +88,12 @@ export default function SubmitToolPage() {
 
         let active = true;
         async function fetchToolIdeas() {
-            const { data, error } = await supabase!.rpc("get_tool_ideas", { p_install_id: "" });
+            const { data, error } = await supabase!.rpc("get_ideas", { p_install_id: "" });
             if (!active) return;
             if (error) {
                 console.error("Error fetching tool ideas:", error);
             } else {
-                setToolIdeas(data ?? []);
+                setToolIdeas((data ?? []).filter((idea: Idea) => idea.idea_type === "tool" && canVoteForIdea(idea.status)));
             }
             setLoadingIdeas(false);
         }

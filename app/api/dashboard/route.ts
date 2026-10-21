@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { MOCK_AUTH_TOKEN, MOCK_USER, MOCK_USER_ID } from "@/lib/mock-auth";
 import { mockTools, toToolSummaryApiRecord } from "@/lib/mock-tools";
+import type { Idea } from "@/lib/ideas";
 
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
@@ -252,12 +253,12 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        let toolIdeas: Array<{ id: string; title: string; description: string; status: string; created_at: string; upvotes: number }> = [];
+        let toolIdeas: Array<Omit<Idea, "has_upvoted">> = [];
         let toolIdeasError = false;
         if (user) {
             const { data, error: ideasError } = await supabase
                 .from("tool_ideas")
-                .select("id, title, description, status, created_at")
+                .select("id, title, description, idea_type, status, resolution, public_note, duplicate_of, github_issue_url, created_at, updated_at")
                 .eq("install_id", user.id)
                 .order("created_at", { ascending: false });
             if (ideasError) {

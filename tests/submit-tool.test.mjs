@@ -112,7 +112,7 @@ async function submit({
                     } else if (table === "contributors") {
                         result.data = failure === "contributors:insert" ? null : { id: "new-contributor" };
                     } else if (table === "tool_ideas") {
-                        result.data = { id: "idea-id" };
+                        result.data = failure === "pptb_idea" ? null : { id: "idea-id" };
                     }
                     return Promise.resolve(result).then(resolve, reject);
                 },
@@ -201,6 +201,13 @@ test("inline resubmission reuses saved categories and idea without overwriting t
     assert.equal(result.intake.tool_idea_id, "idea-id");
     assert.deepEqual(Array.from(result.categories, (relation) => relation.category_id), [1]);
     assert.ok(!result.calls.some(({ table, method }) => table === "user_profiles" && method === "upsert"));
+});
+
+test("tool submission enforces Tool Ideas only before writing an intake", async () => {
+    const result = await submit({ status: null, failure: "pptb_idea" });
+    assert.equal(result.status, 400);
+    assert.ok(result.calls.some(({ table, method, args }) => table === "tool_ideas" && method === "eq" && args[0] === "idea_type" && args[1] === "tool"));
+    assert.ok(!result.calls.some(({ table, method }) => table === "tool_intakes" && method === "insert"));
 });
 
 test("resubmission removes stale contributor links even when the new package has none", async () => {
