@@ -43,6 +43,12 @@ Open [http://localhost:3000](http://localhost:3000) to view the website.
 
 Before deploying intake resubmission, apply `scripts/resubmit-tool-intake.sql` in the Supabase SQL editor. It installs the service-role-only function that atomically refreshes a `needs_changes` intake and its category/contributor relationships.
 
+### Intake icon previews
+
+The intake form previews the SVG declared by `package.json`'s `icon` field, relative to the package's `dist/` folder (for example, `icons/tool.svg` resolves to `dist/icons/tool.svg`; an explicit `dist/` prefix is also supported, matching desktop). Light and dark previews reproduce the desktop app's compact tool card: a 20px SVG in a 30px icon container, beside the package display name and version. All SVGs retain their authored colors; unlike desktop's monochrome fallback, the preview never uses theme-color masks or recolors an icon. The cards use desktop theme colors independently of the site's theme and stack on narrow screens. After submission and during admin review, previews use the submitted npm version rather than `latest`. Reviewers can describe visibility/contrast issues in the existing review notes and request changes.
+
+The authenticated `/api/package-icon` endpoint reads regular files from the npm tarball without extracting files to disk. Previews support npm-registry-hosted tarballs up to 25 MB (100 MB expanded) and SVGs up to 256 KB. Missing, oversized, unavailable or unrenderable icons show an explicit error; they do not change existing intake validation rules. SVGs are rendered as isolated images, not injected into the page.
+
 Before deploying the combined Ideas board, follow the [Ideas rollout guide](docs/IDEAS_BOARD_ROLLOUT.md). Apply its database migration first; it preserves the legacy desktop RPC contracts and adds maintainer status management and GitHub issue linking.
 
 ### Running a Fork Without Supabase
