@@ -8,6 +8,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
+const reviewTextExports = {};
+vm.runInNewContext(ts.transpileModule(
+    await readFile(new URL("../components/ReviewText.tsx", import.meta.url), "utf8"),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } },
+).outputText, { exports: reviewTextExports, require, URL });
 const source = await readFile(new URL("../app/api/ratings/[toolId]/route.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -62,10 +67,10 @@ test("public reviews return only a trimmed profile name and public review fields
     assert.equal(result.status, 200);
     assert.equal(result.headers.get("cache-control"), "no-store");
     assert.deepEqual(result.body, {
-        ratings: [{ id: rating.id, toolId: rating.tool_id, userName: "Jane Reviewer", rating: 5, comment: rating.comment, createdAt: rating.created_at }],
+        ratings: [{ id: rating.id, toolId: rating.tool_id, userName: "Jane Reviewer", rating: 5, comment: rating.comment, toolVersion: null, createdAt: rating.created_at, authorReply: null }],
     });
     assert.deepEqual(result.selections, [
-        { table: "ratings", columns: "id, tool_id, user_id, rating, comment, created_at" },
+        { table: "ratings", columns: "id, tool_id, user_id, rating, comment, tool_version, created_at, rating_author_replies(reply, created_at, updated_at)" },
         { table: "user_profiles", columns: "id, name" },
     ]);
 });
@@ -124,6 +129,9 @@ function renderReviews(review, error = null) {
             if (name === "next/link") return { default: wrapper };
             if (name === "@/components/Container") return { Container: wrapper };
             if (name === "@/components/animations") return { FadeIn: wrapper };
+            if (name === "@/lib/useSupabase") return { useSupabase: () => ({ supabase: null }) };
+            if (name === "@/components/ReviewAuthorReply") return { ReviewAuthorReply: () => null };
+            if (name === "@/components/ReviewText") return reviewTextExports;
             return require(name);
         },
     });
@@ -147,4 +155,31 @@ test("review lookup failures display an error rather than claiming there are no 
     assert.match(html, /role="alert"/);
     assert.match(html, /Unable to load reviews/);
     assert.equal(html.includes("No reviews yet"), false);
+});
+
+test("public reviews expose version and author response without private fields", async () => {
+    for (const relation of [
+        { reply: "Thank you!", created_at: rating.created_at, updated_at: rating.created_at, user_id: "private-author" },
+        [{ reply: "Thank you!", created_at: rating.created_at, updated_at: rating.created_at, user_id: "private-author" }],
+    ]) {
+        const result = await getRatings({ ratings: [{ ...rating, tool_version: "1.2.3", rating_author_replies: relation }] });
+        assert.equal(result.body.ratings[0].toolVersion, "1.2.3");
+        assert.deepEqual(result.body.ratings[0].authorReply, { reply: "Thank you!", createdAt: rating.created_at, updatedAt: rating.created_at });
+        assert.equal(JSON.stringify(result.body).includes("private"), false);
+    }
+});
+
+test("review cards distinguish versioned and legacy reviews", () => {
+    assert.match(renderReviews({ id: rating.id, rating: 5, createdAt: rating.created_at, toolVersion: "1.2.3" }), /Version 1\.2\.3/);
+    assert.match(renderReviews({ id: rating.id, rating: 5, createdAt: rating.created_at }), /Version not specified/);
+});
+
+test("review comments render clickable links and preserve line breaks", () => {
+    const html = renderReviews({
+        id: rating.id, rating: 5, createdAt: rating.created_at,
+        comment: "See this issue:\nhttps://github.com/owner/tool/issues/42",
+    });
+    assert.ok(html.includes('href="https://github.com/owner/tool/issues/42"'));
+    assert.match(html, /target="_blank" rel="noopener noreferrer"/);
+    assert.match(html, /whitespace-pre-wrap/);
 });

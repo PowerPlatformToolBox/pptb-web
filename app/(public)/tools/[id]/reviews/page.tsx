@@ -6,15 +6,10 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
-
-interface Rating {
-    id: string;
-    toolId: string;
-    userName?: string | null;
-    rating: number;
-    comment?: string;
-    createdAt: string;
-}
+import { ReviewAuthorReply } from "@/components/ReviewAuthorReply";
+import { ReviewText } from "@/components/ReviewText";
+import type { PublicRating as Rating } from "@/lib/reviews";
+import { useSupabase } from "@/lib/useSupabase";
 
 export default function ToolReviewsPage() {
     const params = useParams();
@@ -33,6 +28,35 @@ export default function ToolReviewsPage() {
         2: 0,
         1: 0,
     });
+    const { supabase } = useSupabase();
+    const [canReply, setCanReply] = useState(false);
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!supabase || !toolId) return;
+        let active = true;
+        let permissionRequest = 0;
+        async function checkPermission(token?: string) {
+            if (!active) return;
+            const currentRequest = ++permissionRequest;
+            setCanReply(false);
+            setPermissionError(null);
+            if (!token) return;
+            try {
+                const response = await fetch(`/api/ratings/${toolId}/reply`, { headers: { Authorization: `Bearer ${token}` } });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Failed to check reply permission");
+                if (active && currentRequest === permissionRequest) setCanReply(result.canReply);
+            } catch (error) {
+                console.error("Error checking author permissions:", error);
+                if (active && currentRequest === permissionRequest) setPermissionError("Unable to check author reply permissions. Please reload to try again.");
+            }
+        }
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            void checkPermission(session?.access_token);
+        });
+        return () => { active = false; subscription.unsubscribe(); };
+    }, [supabase, toolId]);
 
     useEffect(() => {
         if (!toolId) {
@@ -130,6 +154,7 @@ export default function ToolReviewsPage() {
                             <p className="text-lg text-slate-600">See what users think about this tool</p>
                         </header>
 
+                        {permissionError && <p role="alert" className="mb-6 text-sm text-red-700">{permissionError}</p>}
                         {error ? (
                             <div className="card p-12 text-center" role="alert">
                                 <p className="text-slate-600 text-lg">{error}</p>
@@ -197,7 +222,9 @@ export default function ToolReviewsPage() {
                                                         <div>{renderStars(rating.rating)}</div>
                                                     </div>
 
-                                                    {rating.comment && <p className="text-slate-700 leading-relaxed">{rating.comment}</p>}
+                                                    {rating.comment && <p className="whitespace-pre-wrap text-slate-700 leading-relaxed"><ReviewText text={rating.comment} /></p>}
+                                                    <p className="mt-2 text-sm text-slate-500">{rating.toolVersion ? `Version ${rating.toolVersion}` : "Version not specified"}</p>
+                                                    <ReviewAuthorReply toolId={toolId} ratingId={rating.id} authorReply={rating.authorReply ?? null} canReply={canReply} />
                                                 </div>
                                             </FadeIn>
                                         ))}

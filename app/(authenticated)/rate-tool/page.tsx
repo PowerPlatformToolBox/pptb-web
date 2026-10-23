@@ -8,6 +8,7 @@ import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
 import { MOCK_AUTH_TOKEN, MOCK_USER } from "@/lib/mock-auth";
 import { useSupabase } from "@/lib/useSupabase";
+import { getToolIssuesUrl } from "@/lib/reviews";
 import Image from "next/image";
 
 interface Tool {
@@ -15,6 +16,7 @@ interface Tool {
     name: string;
     description: string;
     icon: string;
+    repository?: string;
 }
 
 const mockTools: Record<string, Tool> = {
@@ -42,6 +44,7 @@ export default function RateToolPage() {
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [authToken, setAuthToken] = useState<string>("");
+    const [toolVersion, setToolVersion] = useState("");
 
     useEffect(() => {
         if (!toolId) {
@@ -84,6 +87,7 @@ export default function RateToolPage() {
                             name: toolData.name,
                             description: toolData.description,
                             icon: toolData.icon,
+                            repository: toolData.repository,
                         });
                     } else if (mockTools[toolId]) {
                         setTool(mockTools[toolId]);
@@ -113,6 +117,11 @@ export default function RateToolPage() {
             return;
         }
 
+        if (!toolVersion.trim() || toolVersion.trim().length > 100) {
+            setError("Please specify the tool version you used (up to 100 characters)");
+            return;
+        }
+
         if (!user || !tool || !authToken) {
             setError("Unable to submit rating at this time");
             return;
@@ -131,12 +140,14 @@ export default function RateToolPage() {
                 body: JSON.stringify({
                     toolId: tool.id,
                     rating,
+                    toolVersion: toolVersion.trim(),
                     comment: comment.trim() || null,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error("Failed to submit rating");
+                const result = await response.json();
+                throw new Error(result.error || "Failed to submit rating");
             }
 
             setSuccess(true);
@@ -167,6 +178,8 @@ export default function RateToolPage() {
     if (!tool) {
         return null;
     }
+
+    const issuesUrl = getToolIssuesUrl(tool.repository);
 
     return (
         <main>
@@ -247,6 +260,23 @@ export default function RateToolPage() {
                                     )}
                                 </div>
 
+                                <div className="mb-6">
+                                    <label htmlFor="toolVersion" className="block text-sm font-medium text-slate-700 mb-2">
+                                        Tool version used <span className="text-red-500">*</span>
+                                    </label>
+                                    <input id="toolVersion" required maxLength={100} value={toolVersion} onChange={(e) => setToolVersion(e.target.value)}
+                                        placeholder="For example, 1.2.3"
+                                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900" />
+                                    <p className="mt-1 text-sm text-slate-500">Enter the version you actually used, not necessarily the latest release.</p>
+                                </div>
+
+                                <p className="mb-6 rounded-lg bg-blue-50 p-4 text-sm text-slate-700">
+                                    Reviews are for sharing your experience. Please log bugs and issues on the tool&apos;s GitHub page, not in a review.
+                                    {issuesUrl && (
+                                        <> <a href={issuesUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Open tool GitHub issues</a></>
+                                    )}
+                                </p>
+
                                 {/* Comment */}
                                 <div className="mb-6">
                                     <label htmlFor="comment" className="block text-sm font-medium text-slate-700 mb-2">
@@ -266,7 +296,7 @@ export default function RateToolPage() {
 
                                 {/* Submit Button */}
                                 <div className="flex gap-4">
-                                    <button type="submit" disabled={submitting || rating === 0} className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="submit" disabled={submitting || rating === 0 || !toolVersion.trim()} className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
                                         {submitting ? (
                                             <span className="flex items-center justify-center gap-2">
                                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent"></div>

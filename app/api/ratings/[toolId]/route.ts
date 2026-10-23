@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // Fetch ratings for the tool
         const { data: ratingsData, error: ratingsError } = await supabase
             .from("ratings")
-            .select("id, tool_id, user_id, rating, comment, created_at")
+            .select("id, tool_id, user_id, rating, comment, tool_version, created_at, rating_author_replies(reply, created_at, updated_at)")
             .eq("tool_id", toolId)
             .order("created_at", { ascending: false });
 
@@ -60,14 +60,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         // Enrich ratings with user info
-        const enrichedRatings = ratingsData.map((r) => ({
-            id: r.id,
-            toolId: r.tool_id,
-            userName: userMap.get(r.user_id) || "Anonymous reviewer",
-            rating: r.rating,
-            comment: r.comment,
-            createdAt: r.created_at,
-        }));
+        const enrichedRatings = ratingsData.map((r) => {
+            const reply = Array.isArray(r.rating_author_replies) ? r.rating_author_replies[0] : r.rating_author_replies;
+            return {
+                id: r.id,
+                toolId: r.tool_id,
+                userName: userMap.get(r.user_id) || "Anonymous reviewer",
+                rating: r.rating,
+                comment: r.comment,
+                toolVersion: r.tool_version ?? null,
+                createdAt: r.created_at,
+                authorReply: reply ? {
+                    reply: reply.reply,
+                    createdAt: reply.created_at,
+                    updatedAt: reply.updated_at,
+                } : null,
+            };
+        });
 
         return NextResponse.json({ ratings: enrichedRatings }, { headers: { "Cache-Control": "no-store" } });
     } catch (error) {
