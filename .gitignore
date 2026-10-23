@@ -148,3 +148,4 @@ next-env.d.ts
 
 # Avoid committing scripts
 scripts/
+.playwright-mcp/element-2026-10-23T01-40-58-206Z.png

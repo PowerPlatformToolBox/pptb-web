@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
+import { PackageIconPreview } from "@/components/PackageIconPreview";
 import { FadeIn, SlideIn } from "@/components/animations";
 import { canVoteForIdea, type Idea } from "@/lib/ideas";
 import { useSupabase } from "@/lib/useSupabase";
@@ -289,6 +290,8 @@ export default function SubmitToolPage() {
                                     <p className="mt-2 text-xs text-slate-500">Enter the exact npm package name as published on npmjs.com</p>
                                 </div>
 
+                                <PackageIconPreview packageName={packageName} />
+
                                 <div className="mb-6">
                                     <label htmlFor="linkedinProfileUrl" className="block text-sm font-medium text-slate-700 mb-2">
                                         LinkedIn Profile <span className="text-red-500">*</span>
@@ -464,6 +467,9 @@ export default function SubmitToolPage() {
                                             <p className="text-sm text-green-800 mt-1">
                                                 Your tool <strong>{success.displayName}</strong> (v{success.version}) has been submitted for review.
                                             </p>
+                                            <div className="mt-4">
+                                                <PackageIconPreview packageName={success.packageName} version={success.version} />
+                                            </div>
                                             <p className="text-sm text-green-700 mt-2">
                                                 Status: <span className="font-medium capitalize">{success.status.replace(/_/g, " ")}</span>
                                             </p>
