@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 import { MOCK_AUTH_TOKEN } from "@/lib/mock-auth";
+import { sendEmail } from "@/lib/resend";
 
 // Create Supabase client with service role for server-side operations
 function getSupabaseClient() {
@@ -60,6 +61,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        const { data: tool, error: toolError } = await supabase.from("tools").select("id, name, user_id").eq("id", toolId).maybeSingle();
+        if (toolError) throw toolError;
+        if (!tool) return NextResponse.json({ error: "Tool not found" }, { status: 404 });
+
         const { error: submitError } = await supabase.from("ratings").insert({
             tool_id: toolId,
             user_id: user.id,
@@ -71,6 +76,25 @@ export async function POST(request: NextRequest) {
 
         if (submitError) {
             throw submitError;
+        }
+
+        if (typeof tool.user_id === "string" && tool.user_id) {
+            const emailResult = await sendEmail({
+                type: "tool-review-submitted",
+                supabase,
+                data: {
+                    developerId: tool.user_id,
+                    toolId: tool.id,
+                    toolName: tool.name,
+                    rating,
+                    comment: comment?.trim() || null,
+                },
+            });
+            if (!emailResult.success) {
+                console.warn(`[ratings] Review notification was not sent for tool ${toolId}: ${emailResult.error}`);
+            }
+        } else {
+            console.warn(`[ratings] Review notification was not sent because tool ${toolId} has no owner`);
         }
 
         return NextResponse.json({ success: true });

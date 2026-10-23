@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.11",
-    "@react-email/ui": "^6.9.5",
+    "@react-email/ui": "^6.11.3",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4",
@@ -51,14 +51,9 @@
     "tailwindcss": "^4.1.17",
     "typescript": "^5"
   },
-  "overrides": {
-    "@react-email/ui": {
-      "next": "$next"
-    }
-  },
   "allowScripts": {
-    "esbuild@0.28.1": true,
     "sharp@0.34.3": true,
-    "unrs-resolver@1.12.2": true
+    "unrs-resolver@1.12.2": true,
+    "esbuild@0.28.2": true
   }
 }

@@ -196,6 +196,35 @@ export function ToolReviewChangeRequestEmail({ toolName, submittedOn, reviewComm
     );
 }
 
+export function ToolReviewSubmittedEmail({ toolName, rating, comment, reviewUrl }: { toolName: string; rating: number; comment: string | null; reviewUrl: string }) {
+    return (
+        <EmailLayout preview={`A new review was submitted for ${toolName}`} eyebrow="Marketplace review" title="New review submitted">
+            <Text style={styles.text}>
+                A reviewer left feedback for <strong>{toolName}</strong>.
+            </Text>
+            <Section style={styles.detail}>
+                <Detail label="Rating">{rating} out of 5</Detail>
+                <Detail label="Review" last>{comment || "No written comment was provided."}</Detail>
+            </Section>
+            <Button href={reviewUrl} style={styles.button}>View reviews</Button>
+        </EmailLayout>
+    );
+}
+
+export function ToolReviewResponseEmail({ toolName, reply, reviewUrl }: { toolName: string; reply: string; reviewUrl: string }) {
+    return (
+        <EmailLayout preview={`The author responded to your ${toolName} review`} eyebrow="Marketplace review" title="The tool author responded">
+            <Text style={styles.text}>
+                The author of <strong>{toolName}</strong> responded to your review.
+            </Text>
+            <Section style={styles.detail}>
+                <Detail label="Author response" last>{reply}</Detail>
+            </Section>
+            <Button href={reviewUrl} style={styles.button}>View response</Button>
+        </EmailLayout>
+    );
+}
+
 export function ToolConversionSuccessEmail({ toolName, packageName, toolLink }: { toolName: string; packageName: string; toolLink: string }) {
     return (
         <EmailLayout preview={`${toolName} is now live on PPTB`} eyebrow="Marketplace update" title="Your tool is live">

@@ -1,104 +1,116 @@
 # Desktop implementation prompt
 
 ```text
-Update tool reviews in PowerPlatformToolBox/desktop-app to match the website:
-required tool version, a reminder to report issues on the tool's GitHub page,
-and one editable tool-author response per review (not a conversation thread).
+Update tool review submission in PowerPlatformToolBox/desktop-app:
+- Only installed tools can be rated.
+- Capture the actual installed tool version with the review.
+- Remind reviewers to report bugs and issues on the tool's GitHub page.
 
-Inspect existing review UI, database/API calls, authentication and installation
-identity handling, localization, safe external-link helpers, and tests first.
-Implement desktop changes only; do not create a competing schema or ship a
-service-role key. Preserve existing rating/installation identity behavior.
+The desktop currently only captures reviews; it does not display reviews.
+Do not add review lists, review details, author responses, or response editing.
+Do not add website API calls. Retain the existing direct database/RPC submission
+path and authentication/installation identity model. Do not ship a service-role
+key or create a competing database schema.
 
-Shared database contract (apply the attached SQL before using new fields):
-- ratings.tool_version: nullable text for backward compatibility. When supplied,
-  it must be trimmed, 1-100 characters. Require it in the updated desktop UI,
-  just as the new web UI does. Older clients may omit it or send NULL.
-  Display "Version not specified" for NULL. Never backfill old reviews using
-  today's tool version.
-- rating_author_replies: rating_id uuid PK/FK to ratings(id), reply text
-  (trimmed, 1-2000 characters), created_at and updated_at timestamptz.
-  Public read only; direct client inserts/updates are not allowed.
-- Save/edit using RPC save_rating_author_reply(p_rating_id uuid, p_reply text),
-  with the signed-in user's JWT. Returns a single record containing rating_id,
-  reply, created_at, updated_at. The database checks tools.user_id = auth.uid()
-  through ratings.tool_id, including when editing an existing response.
-  One response per rating; editing preserves created_at and updates updated_at.
-  Review deletion cascades to its response. There is no delete-response feature.
-- Author means the authenticated owner (tools.user_id), NOT contributor name,
-  GitHub username, email, or a client-supplied identity.
+Inspect existing rating entry points, review dialog, submission handlers,
+installed-tool state, version metadata, database/RPC calls, localization,
+external-link helpers, and tests before implementing.
 
-Website API alternative if the desktop already uses these endpoints:
-- POST /api/ratings/submit with Bearer JWT and JSON
-  { toolId, rating, comment, toolVersion }. Rating is an integer 1-5;
-  comment is optional, maximum 500 characters. The endpoint accepts omitted/NULL
-  toolVersion for older clients; updated clients must always supply it.
-- GET /api/ratings/{toolId} returns { ratings: [...] }, with id, toolId,
-  userName, rating, comment, toolVersion (nullable), createdAt,
-  authorReply: null | { reply, createdAt, updatedAt }.
-  No user IDs, installation IDs or emails are returned.
-- GET /api/ratings/{toolId}/reply with Bearer JWT returns { canReply }.
-- POST /api/ratings/{toolId}/reply with Bearer JWT and
-  { ratingId, reply } returns { authorReply: { reply, createdAt, updatedAt } }.
+Installation eligibility:
+1. Permit rating from both the installed-sidepane tool card and tool details
+   page only when that specific tool is installed locally. Hide the rating
+   action for uninstalled tools. Preserve existing aggregate rating displays.
+2. Use the canonical installed-tool state and stable tool identity shared by
+   the app, not display names, catalog availability, or the currently selected
+   tool. Reuse or extract one eligibility helper so entry points stay aligned.
+3. Guard opening the review dialog AND submitting the review. Hiding a button
+   is not enough: alternate entry points and stale UI must not bypass the rule.
+   Put the final check in the existing trusted submission handler/main-process
+   boundary when that is where installation state is authoritative.
+4. Resolve installation state before enabling review entry. If state cannot
+   be loaded, keep rating unavailable and surface the error using existing UX;
+   do not assume the tool is installed.
+5. Recheck installation status and installed version immediately before
+   submitting. If the tool was uninstalled while the dialog was open, prevent
+   submission and explain that the tool must be installed to submit a review.
+   Handle installs/uninstalls without requiring an app restart.
+6. Keep any existing authentication, duplicate-review, and rating eligibility
+   rules; being installed is an additional condition, not a replacement.
 
-UX:
-1. Require the actual tool version used. Preselect the installed version only
-   when reliably known; allow correction. Never substitute the desktop-app
-   version or silently assume the latest catalog version.
-2. Show the reviewed version on all review lists/details.
-3. Beside review entry, remind users: "Reviews are for sharing your experience.
-   Please log bugs and issues on the tool's GitHub page, not in a review."
-   Link to the reviewed tool's repository /issues, NOT the desktop repository
-   unless it really is that tool's repository. Validate HTTPS github.com URLs
-   and use the existing safe external opener. If no valid repository exists,
-   show the reminder without inventing a link.
-4. Display public responses as "Tool author response", with response text and
-   date. Only the signed-in tool owner sees Reply/Edit controls. Preserve the
-   draft on errors, prevent duplicate saves, support cancel and show explicit
-   authentication, authorization, validation, and database failure messages.
-   Refresh permissions on sign-in/out. Server/database checks remain mandatory.
-5. Keep review/reply text safely escaped, not unsanitized HTML. Make HTTP/HTTPS
-   URLs clickable using the safe external opener, preserve line breaks, and
-   exclude trailing prose punctuation from links. Never link unsafe schemes.
-6. Use a shared date-formatting utility for reviewer and author response dates.
-   Both use the long English format, e.g. "October 23, 2026", not numeric dates.
-   Continue using review created_at and response updated_at respectively.
+Version capture and database contract:
+- ratings.tool_version is nullable text for backward compatibility. When
+  supplied, it must be trimmed and contain 1-100 characters.
+- The updated desktop review form must capture and require the actual
+  installed tool version. Populate it from reliable local installation
+  metadata, not the latest catalog version or desktop-app version.
+- Show the version being reviewed in the dialog. If local version metadata
+  is unavailable, require explicit entry; do not invent or silently omit it.
+- If the installed version changes while the dialog is open, update the
+  displayed version and ask the reviewer to confirm before submitting, rather
+  than silently associating their review with a different version.
+- Persist tool_version alongside the existing review fields through the
+  existing database/RPC submission path. If a rating RPC needs updating, supply
+  backward-compatible SQL and preserve existing signatures/callers. An older
+  call omitting the version must still work; do not introduce overload ambiguity.
+- Older desktop clients may omit tool_version or send NULL. Never add a
+  NOT NULL constraint or require versions globally in the database.
+- Do not backfill historical reviews using today's installed/catalog version.
+- Preserve existing review validation, identity handling, and rating aggregates.
 
-Test version validation and persistence; reliable installed-version defaults;
-legacy NULL versions and old-client submissions with omitted/NULL versions;
-the correct GitHub link and missing/invalid repositories;
-public response display; owner create/edit, non-owner and anonymous rejection;
-ownership changes; cross-tool review IDs; one response per review; cancellation,
-failed saves, privacy (no emails/IDs), and unchanged rating aggregates.
-Run focused tests, lint, type-check/build. Summarize implementation and rollout
-requirements, including the effect on old desktop clients below.
+GitHub reminder:
+Beside review entry, show:
+"Reviews are for sharing your experience. Please log bugs and issues on the
+tool's GitHub page, not in a review."
+Link to the reviewed tool's repository /issues, not the desktop repository
+unless that really is the tool's repository. Validate HTTPS github.com
+repository URLs and use the app's existing safe external opener. If no valid
+repository exists, show the reminder without inventing a link.
+
+Submission UX:
+- Prevent duplicate submissions while saving.
+- Preserve the draft on failure and allow cancellation.
+- Show explicit installation, validation, authentication, and database errors
+  through the existing notification/form patterns.
+- Do not report success until the database confirms persistence.
+
+Tests:
+- Installed tools can open and submit a review from both the installed-sidepane
+  card and tool details page.
+- Uninstalled/catalog-only tools have no rating action and cannot open or
+  submit reviews via alternate handlers.
+- A different installed tool does not make the current tool eligible.
+- Unknown/failed installation state does not enable rating.
+- Installing/uninstalling updates both entry points; uninstalling while the
+  dialog is open prevents submission.
+- Version comes from the installed tool, even when the catalog advertises a
+  newer release. Missing version metadata requires entry; blank and overlong
+  versions are rejected. Version changes require confirmation.
+- The actual database/RPC payload persists tool_version and existing identity
+  fields correctly; older calls with omitted/NULL versions still succeed.
+- Correct GitHub issues link, missing/invalid repositories, safe external open,
+  cancellation, failed saves, and duplicate-submit prevention.
+- No new website API dependency, review-display UI, or author-reply features.
+
+Run focused tests, lint, and type-check/build. Summarize changes, any database
+RPC migration needed, and staging validation results.
 ```
 
 ## Rollout
 
-Attach [tool-review-versions-replies.sql](./sql/tool-review-versions-replies.sql).
-Back up and apply it to staging first, then deploy both clients and validate
-against the real schema before production. The migration is transactional and
-rerunnable. It does not invent versions for historical reviews or change rating
-aggregation. Existing rows can still receive unrelated updates without a version.
+Attach [tool-review-versions-replies.sql](./sql/tool-review-versions-replies.sql)
+for the shared database contract. Author-reply objects in this migration support
+the website only; they do not require desktop UI or desktop integration.
 
-**Backward compatibility:** both the database and website submission endpoint
-accept omitted/NULL `tool_version` so older desktop versions can still submit
-reviews. The updated web and desktop forms require a version; supplied versions
-are validated at the API/database boundary. Do not invent a version for older
-clients. Confirm existing rating RPCs forward the supplied version for new
-clients while preserving their legacy signatures. Old clients can continue
-reading pre-existing fields. The desktop release need not be simultaneous with
-the migration. If the earlier strict migration was already applied, rerun this
-updated SQL and deploy the updated website API to restore legacy submissions.
+Apply the migration to staging before testing submissions with `tool_version`.
+Validate the desktop's actual database/RPC path against the real schema. The
+existing website migration does not modify desktop-specific rating RPCs; inspect
+those before deciding whether additional backward-compatible SQL is needed.
 
-The website uses the existing `tools.user_id` ownership model. A transferred tool's
-current owner can edit its response; previous owners cannot. Historical responses
-remain labeled as tool-author responses, with no personal identifiers exposed.
+The database accepts omitted/NULL versions so older desktop clients can still
+submit reviews. Requiring an installed tool and capturing its version are rules
+for the updated desktop client; this migration cannot enforce local installation
+state for older clients. No coordinated desktop upgrade is required.
 
-Local validation:
-
-```sh
-node --test tests/ratings-privacy.test.mjs tests/tool-review-*.test.mjs
-npx tsc --noEmit
-```
+The shared migration is transactional and rerunnable. If the earlier strict
+version was already applied, rerun the updated SQL to restore submissions without
+a version. Never invent versions or change rating aggregates for compatibility.

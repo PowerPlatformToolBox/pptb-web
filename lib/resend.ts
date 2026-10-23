@@ -1,6 +1,8 @@
 import {
     ToolConversionSuccessEmail,
     ToolReviewChangeRequestEmail,
+    ToolReviewResponseEmail,
+    ToolReviewSubmittedEmail,
     ToolSubmissionAdminEmail,
     ToolUpdateAdminEmail,
     ToolUpdateDeveloperEmail,
@@ -42,6 +44,21 @@ interface ToolReviewChangeRequestPayload {
     toolName: string;
     submittedOn: string;
     reviewComments: string;
+}
+
+interface ToolReviewSubmittedPayload {
+    developerId: string;
+    toolId: string;
+    toolName: string;
+    rating: number;
+    comment: string | null;
+}
+
+interface ToolReviewResponsePayload {
+    reviewerId: string;
+    toolId: string;
+    toolName: string;
+    reply: string;
 }
 
 interface ToolConversionSuccessPayload {
@@ -100,6 +117,16 @@ type SendEmailOptions =
     | {
           type: "tool-review-change-request";
           data: ToolReviewChangeRequestPayload;
+          supabase: SupabaseClient;
+      }
+    | {
+          type: "tool-review-submitted";
+          data: ToolReviewSubmittedPayload;
+          supabase: SupabaseClient;
+      }
+    | {
+          type: "tool-review-response";
+          data: ToolReviewResponsePayload;
           supabase: SupabaseClient;
       }
     | {
@@ -163,6 +190,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
             return sendToolUpdateDeveloperEmail(options.supabase, options.data);
         case "tool-review-change-request":
             return sendToolReviewChangeRequestEmail(options.supabase, options.data);
+        case "tool-review-submitted":
+            return sendToolReviewSubmittedEmail(options.supabase, options.data);
+        case "tool-review-response":
+            return sendToolReviewResponseEmail(options.supabase, options.data);
         case "tool-conversion-success":
             return sendToolConversionSuccessEmail(options.supabase, options.data);
         case "verification-request-submitted":
@@ -224,6 +255,29 @@ async function sendToolReviewChangeRequestEmail(supabase: SupabaseClient, data: 
         subject: `Changes requested: ${data.toolName}`,
         react: createElement(ToolReviewChangeRequestEmail, { toolName: data.toolName, submittedOn: data.submittedOn, reviewComments: data.reviewComments }),
         to: [recipientEmail],
+    });
+}
+
+async function sendToolReviewSubmittedEmail(supabase: SupabaseClient, data: ToolReviewSubmittedPayload): Promise<EmailResult> {
+    return deliverDeveloperEmail(supabase, data.developerId, {
+        subject: `New review for ${data.toolName}`,
+        react: createElement(ToolReviewSubmittedEmail, {
+            toolName: data.toolName,
+            rating: data.rating,
+            comment: data.comment,
+            reviewUrl: `${getSiteUrl()}/tools/${encodeURIComponent(data.toolId)}/reviews`,
+        }),
+    });
+}
+
+async function sendToolReviewResponseEmail(supabase: SupabaseClient, data: ToolReviewResponsePayload): Promise<EmailResult> {
+    return deliverDeveloperEmail(supabase, data.reviewerId, {
+        subject: `The author responded to your ${data.toolName} review`,
+        react: createElement(ToolReviewResponseEmail, {
+            toolName: data.toolName,
+            reply: data.reply,
+            reviewUrl: `${getSiteUrl()}/tools/${encodeURIComponent(data.toolId)}/reviews`,
+        }),
     });
 }
 
@@ -406,4 +460,8 @@ async function getSubmitterEmail(supabase: SupabaseClient, submitterId: string):
         console.error("[supabase] Unexpected error fetching submitter email", error);
         return null;
     }
+}
+
+function getSiteUrl(): string {
+    return (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://www.powerplatformtoolbox.com").replace(/\/+$/, "");
 }
