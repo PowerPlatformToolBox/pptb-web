@@ -10,6 +10,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
+import { ProfileReminder } from "@/components/ProfileReminder";
 import discordLogo from "@/images/logos/discord.png";
 import githubLogo from "@/images/logos/github.png";
 import linkedinLogo from "@/images/logos/linkedin.png";
@@ -130,7 +131,7 @@ function MobileNavLink({ href, children, onClick, target, rel, icon: Icon }: Mob
 
 function MobileNavButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
     return (
-        <button type="button" onClick={onClick} className="flex w-full items-center rounded-2xl px-3 py-2 text-base font-semibold text-slate-700 transition hover:bg-slate-100">
+        <button type="button" onClick={onClick} className="flex w-full cursor-pointer items-center rounded-2xl px-3 py-2 text-base font-semibold text-slate-700 transition hover:bg-slate-100">
             {children}
         </button>
     );
@@ -147,10 +148,9 @@ function MobileNavIcon({ open }: { open: boolean }) {
 
 interface MobileNavigationProps {
     isAuthenticated: boolean;
-    onSignOut: () => void;
 }
 
-function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps) {
+function MobileNavigation({ isAuthenticated }: MobileNavigationProps) {
     return (
         <Popover>
             {({ open, close }) => (
@@ -190,21 +190,7 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
                                 </div>
                             ))}
                             <hr className="m-2 border-slate-300/40" />
-                            {isAuthenticated ? (
-                                <>
-                                    <MobileNavLink href="/dashboard" onClick={() => close()}>
-                                        Dashboard
-                                    </MobileNavLink>
-                                    <MobileNavButton
-                                        onClick={() => {
-                                            close();
-                                            onSignOut();
-                                        }}
-                                    >
-                                        Sign out
-                                    </MobileNavButton>
-                                </>
-                            ) : (
+                            {!isAuthenticated && (
                                 <MobileNavLink href="/auth/signin" onClick={() => close()}>
                                     Sign in
                                 </MobileNavLink>
@@ -217,10 +203,38 @@ function MobileNavigation({ isAuthenticated, onSignOut }: MobileNavigationProps)
     );
 }
 
+function AccountNavigation({ avatarUrl, onSignOut }: { avatarUrl: string | null; onSignOut: () => void }) {
+    const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+    return (
+        <Popover className="relative">
+            {({ close }) => (
+                <>
+                    <PopoverButton aria-label="Account menu" className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-600 transition hover:ring-2 hover:ring-blue-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                        {avatarUrl && avatarUrl !== failedAvatar ? (
+                            <Image src={avatarUrl} alt="" width={40} height={40} unoptimized referrerPolicy="no-referrer" onError={() => setFailedAvatar(avatarUrl)} className="h-full w-full object-cover" />
+                        ) : (
+                            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-6 w-6">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a8 8 0 0 1 16 0v2" />
+                            </svg>
+                        )}
+                    </PopoverButton>
+                    <PopoverPanel transition className="absolute right-0 z-50 mt-3 w-48 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl ring-1 ring-slate-900/5 data-closed:opacity-0 data-enter:duration-150 data-leave:duration-100">
+                        <Link href="/profile" onClick={() => close()} className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Profile</Link>
+                        <Link href="/dashboard" onClick={() => close()} className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Dashboard</Link>
+                        <div className="my-1 border-t border-slate-100" />
+                        <MobileNavButton onClick={() => { close(); onSignOut(); }}>Sign out</MobileNavButton>
+                    </PopoverPanel>
+                </>
+            )}
+        </Popover>
+    );
+}
+
 export function Header() {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const { supabase } = useSupabase();
 
     useEffect(() => {
@@ -233,6 +247,8 @@ export function Header() {
                     data: { user },
                 } = await supabase.auth.getUser();
                 setIsAuthenticated(!!user);
+                const avatar = user?.user_metadata?.avatar_url;
+                setAvatarUrl(typeof avatar === "string" && avatar.startsWith("https://") ? avatar : null);
             } catch (error) {
                 console.error("Error checking auth:", error);
                 setIsAuthenticated(false);
@@ -243,6 +259,8 @@ export function Header() {
 
         const authListener = supabase.auth.onAuthStateChange((_event, session) => {
             setIsAuthenticated(!!session);
+            const avatar = session?.user.user_metadata?.avatar_url;
+            setAvatarUrl(typeof avatar === "string" && avatar.startsWith("https://") ? avatar : null);
         });
         subscription = authListener.data.subscription;
 
@@ -283,30 +301,15 @@ export function Header() {
                         </div>
                     </div>
                     <div className="flex items-center gap-x-5 md:gap-x-8">
-                        <div className="hidden md:flex md:items-center md:gap-x-6">
-                            {!loading && (
-                                <>
-                                    {isAuthenticated ? (
-                                        <>
-                                            <NavLink href="/dashboard">Dashboard</NavLink>
-                                            <button
-                                                onClick={handleSignOut}
-                                                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
-                                            >
-                                                Sign out
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <NavLink href="/auth/signin">Sign in</NavLink>
-                                    )}
-                                </>
-                            )}
-                        </div>
+                        {!loading && (isAuthenticated
+                            ? <AccountNavigation avatarUrl={avatarUrl} onSignOut={handleSignOut} />
+                            : <div className="hidden md:block"><NavLink href="/auth/signin">Sign in</NavLink></div>)}
                         <div className="-mr-1 md:hidden">
-                            <MobileNavigation isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
+                            <MobileNavigation isAuthenticated={isAuthenticated} />
                         </div>
                     </div>
                 </nav>
+                {isAuthenticated && <ProfileReminder />}
             </Container>
         </header>
     );

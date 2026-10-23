@@ -59,6 +59,33 @@ If you are testing from a fork and do not have Supabase credentials, you can sti
 - Public tool endpoints automatically return built-in mock data.
 - Protected pages now enter a local mock-auth mode automatically, so pages like `/dashboard`, `/submit-tool`, and `/rate-tool` can be exercised without Supabase credentials.
 
+### User profiles
+
+Signed-in users can open `/profile` from the circular avatar menu on desktop or mobile to edit
+their public display name, optional LinkedIn profile URL, and Discord handle.
+The avatar menu includes Profile, Dashboard, and Sign out. It uses the account's
+avatar when available and a user icon when the avatar is missing or cannot load.
+A persistent reminder appears in the header when the display name is missing or
+email-like. Completion is optional: reviews remain allowed and anonymous until
+a valid name is saved. Saving a name also updates the attribution of existing
+reviews. The reminder refreshes immediately after a successful save.
+
+Before deploying profile editing, run
+[profile-name-sync.sql](docs/sql/profile-name-sync.sql) in the Supabase SQL editor.
+If you ran an earlier version, run this updated version too. Profile names now
+take precedence over provider metadata, so later auth updates cannot overwrite
+a user's chosen name. The script preserves the current trigger bindings and
+does not invent names or backfill missing ones. Deliberately changing or clearing
+auth name metadata no longer replaces a nonblank profile name; use `/profile`.
+
+`GET /api/profile` and `PATCH /api/profile` require a verified user token. They
+read/write only the caller's editable fields, never accept a target user ID, and
+return uncached responses. Names are required when saving the form (1-100
+characters, no email address); contact fields can be cleared. Email, avatar, and
+developer status cannot be edited here. This feature requires Supabase and has no
+mock-success save path. Keep the profile privacy RLS restrictions in place; this
+feature does not grant public access to profiles.
+
 ## Available Scripts
 
 - `npm run dev` - Start the development server
