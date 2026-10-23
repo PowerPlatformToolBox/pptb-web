@@ -2,6 +2,9 @@
   "name": "pptb-web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -23,7 +26,7 @@
     "github-markdown-css": "^5.9.0",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
-    "next": "16.3.8",
+    "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
@@ -33,7 +36,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.11",
-    "@react-email/ui": "^6.9.5",
+    "@react-email/ui": "^6.11.3",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4",
@@ -43,11 +46,10 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.2",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
-    "sharp": "0.34.3",
     "tailwindcss": "^4.1.17",
     "typescript": "^5"
   },
@@ -57,8 +59,7 @@
     }
   },
   "allowScripts": {
-    "esbuild@0.28.1": true,
-    "sharp@0.34.3": true,
+    "esbuild@0.28.2": true,
     "unrs-resolver@1.12.2": true
   }
 }
