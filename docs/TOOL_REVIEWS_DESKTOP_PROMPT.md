@@ -60,6 +60,9 @@ UX:
 5. Keep review/reply text safely escaped, not unsanitized HTML. Make HTTP/HTTPS
    URLs clickable using the safe external opener, preserve line breaks, and
    exclude trailing prose punctuation from links. Never link unsafe schemes.
+6. Use a shared date-formatting utility for reviewer and author response dates.
+   Both use the long English format, e.g. "October 23, 2026", not numeric dates.
+   Continue using review created_at and response updated_at respectively.
 
 Test version validation and persistence; reliable installed-version defaults;
 legacy NULL versions and old-client submissions with omitted/NULL versions;

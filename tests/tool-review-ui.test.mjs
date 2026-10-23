@@ -8,6 +8,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
+const dateExports = {};
+vm.runInNewContext(ts.transpileModule(
+    await readFile(new URL("../lib/date.ts", import.meta.url), "utf8"),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
+).outputText, { exports: dateExports });
 const reviewTextExports = {};
 vm.runInNewContext(ts.transpileModule(
     await readFile(new URL("../components/ReviewText.tsx", import.meta.url), "utf8"),
@@ -39,6 +44,7 @@ async function mount(path, props, initialStates = [], response = { ok: true, jso
             if (name === "@/components/Container") return { Container: wrapper };
             if (name === "@/components/animations") return { FadeIn: wrapper };
             if (name === "@/components/ReviewText") return reviewTextExports;
+            if (name === "@/lib/date") return dateExports;
             if (name === "@/lib/mock-auth") return {};
             if (name === "@/lib/reviews") return { getToolIssuesUrl: (repo) => repo ? `${repo}/issues` : null };
             return require(name);
@@ -72,6 +78,22 @@ test("public author responses render safely with no non-owner controls", async (
     assert.match(html, /&lt;script&gt;/);
     assert.equal(html.includes("<script>"), false);
     assert.equal(html.includes("Edit author response"), false);
+});
+
+test("shared date formatter uses the long English date format", () => {
+    assert.equal(dateExports.formatDate("2026-10-23T12:00:00"), "October 23, 2026");
+    assert.equal(dateExports.formatDate("2026-01-02T12:00:00"), "January 2, 2026");
+});
+
+test("author response dates match reviewer date format and retain the updated timestamp", async () => {
+    const ui = await mount("../components/ReviewAuthorReply.tsx", {
+        toolId: "tool", ratingId: "review", canReply: false,
+        authorReply: { reply: "Thanks", createdAt: "2026-10-22T12:00:00", updatedAt: "2026-10-23T12:00:00" },
+    });
+    const html = renderToStaticMarkup(ui.tree());
+    assert.match(html, /October 23, 2026/);
+    assert.equal(html.includes("October 22, 2026"), false);
+    assert.equal(html.includes("10/23/2026"), false);
 });
 
 test("existing author response URLs render as clickable external links", async () => {

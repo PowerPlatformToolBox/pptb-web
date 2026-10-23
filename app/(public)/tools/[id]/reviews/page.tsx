@@ -8,6 +8,7 @@ import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
 import { ReviewAuthorReply } from "@/components/ReviewAuthorReply";
 import { ReviewText } from "@/components/ReviewText";
+import { formatDate } from "@/lib/date";
 import type { PublicRating as Rating } from "@/lib/reviews";
 import { useSupabase } from "@/lib/useSupabase";
 
@@ -212,11 +213,7 @@ export default function ToolReviewsPage() {
                                                         <div>
                                                             <h3 className="font-semibold text-slate-900">{rating.userName?.trim() && !rating.userName.includes("@") ? rating.userName : "Anonymous reviewer"}</h3>
                                                             <p className="text-sm text-slate-500">
-                                                                {new Date(rating.createdAt).toLocaleDateString("en-US", {
-                                                                    year: "numeric",
-                                                                    month: "long",
-                                                                    day: "numeric",
-                                                                })}
+                                                                {formatDate(rating.createdAt)}
                                                             </p>
                                                         </div>
                                                         <div>{renderStars(rating.rating)}</div>

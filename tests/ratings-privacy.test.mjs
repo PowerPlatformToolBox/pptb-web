@@ -8,6 +8,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
+const dateExports = {};
+vm.runInNewContext(ts.transpileModule(
+    await readFile(new URL("../lib/date.ts", import.meta.url), "utf8"),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
+).outputText, { exports: dateExports });
 const reviewTextExports = {};
 vm.runInNewContext(ts.transpileModule(
     await readFile(new URL("../components/ReviewText.tsx", import.meta.url), "utf8"),
@@ -132,6 +137,7 @@ function renderReviews(review, error = null) {
             if (name === "@/lib/useSupabase") return { useSupabase: () => ({ supabase: null }) };
             if (name === "@/components/ReviewAuthorReply") return { ReviewAuthorReply: () => null };
             if (name === "@/components/ReviewText") return reviewTextExports;
+            if (name === "@/lib/date") return dateExports;
             return require(name);
         },
     });
@@ -155,6 +161,12 @@ test("review lookup failures display an error rather than claiming there are no 
     assert.match(html, /role="alert"/);
     assert.match(html, /Unable to load reviews/);
     assert.equal(html.includes("No reviews yet"), false);
+});
+
+test("reviewer dates use the shared long English date format", () => {
+    const html = renderReviews({ id: rating.id, rating: 5, createdAt: "2026-10-19T12:00:00" });
+    assert.match(html, /October 19, 2026/);
+    assert.equal(html.includes("10/19/2026"), false);
 });
 
 test("public reviews expose version and author response without private fields", async () => {

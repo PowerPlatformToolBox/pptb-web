@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDate } from "@/lib/date";
 import type { AuthorReply } from "@/lib/reviews";
 import { useSupabase } from "@/lib/useSupabase";
 import { ReviewText } from "@/components/ReviewText";
@@ -53,7 +54,7 @@ export function ReviewAuthorReply({ toolId, ratingId, authorReply, canReply }: {
             {saved && (
                 <div className="mt-4 border-l-4 border-blue-200 bg-blue-50 p-4">
                     <h4 className="font-semibold text-slate-900">Tool author response</h4>
-                    <p className="text-xs text-slate-500">{new Date(saved.updatedAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500">{formatDate(saved.updatedAt)}</p>
                     <p className="mt-2 whitespace-pre-wrap text-slate-700"><ReviewText text={saved.reply} /></p>
                 </div>
             )}
