@@ -10,9 +10,7 @@ import { FadeIn } from "@/components/animations";
 interface Rating {
     id: string;
     toolId: string;
-    userId: string;
     userName?: string | null;
-    userEmail?: string | null;
     rating: number;
     comment?: string;
     createdAt: string;
@@ -26,6 +24,7 @@ export default function ToolReviewsPage() {
     const [toolName, setToolName] = useState<string>("");
     const [ratings, setRatings] = useState<Rating[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [averageRating, setAverageRating] = useState<number>(0);
     const [ratingDistribution, setRatingDistribution] = useState<Record<number, number>>({
         5: 0,
@@ -42,6 +41,8 @@ export default function ToolReviewsPage() {
         }
 
         (async () => {
+            setLoading(true);
+            setError(null);
             try {
                 // Fetch tool name and ratings using APIs
                 const toolResponse = await fetch(`/api/tools/${toolId}`);
@@ -78,6 +79,7 @@ export default function ToolReviewsPage() {
                 }
             } catch (err) {
                 console.error("Error fetching ratings:", err);
+                setError("Unable to load reviews. Please try again later.");
             } finally {
                 setLoading(false);
             }
@@ -128,7 +130,11 @@ export default function ToolReviewsPage() {
                             <p className="text-lg text-slate-600">See what users think about this tool</p>
                         </header>
 
-                        {ratings.length === 0 ? (
+                        {error ? (
+                            <div className="card p-12 text-center" role="alert">
+                                <p className="text-slate-600 text-lg">{error}</p>
+                            </div>
+                        ) : ratings.length === 0 ? (
                             <div className="card p-12 text-center">
                                 <p className="text-slate-600 text-lg mb-4">No reviews yet</p>
                                 <p className="text-slate-500 mb-6">Be the first to share your experience with this tool</p>
@@ -179,7 +185,7 @@ export default function ToolReviewsPage() {
                                                 <div className="card p-6 shadow-md hover:shadow-lg transition-shadow">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div>
-                                                            <h3 className="font-semibold text-slate-900">{rating.userName || rating.userEmail || rating.userId}</h3>
+                                                            <h3 className="font-semibold text-slate-900">{rating.userName?.trim() && !rating.userName.includes("@") ? rating.userName : "Anonymous reviewer"}</h3>
                                                             <p className="text-sm text-slate-500">
                                                                 {new Date(rating.createdAt).toLocaleDateString("en-US", {
                                                                     year: "numeric",
