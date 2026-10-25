@@ -43,6 +43,12 @@ Open [http://localhost:3000](http://localhost:3000) to view the website.
 
 Before deploying intake resubmission, apply `scripts/resubmit-tool-intake.sql` in the Supabase SQL editor. It installs the service-role-only function that atomically refreshes a `needs_changes` intake and its category/contributor relationships.
 
+### Intake icon previews
+
+The intake form previews the SVG declared by `package.json`'s `icon` field, relative to the package's `dist/` folder (for example, `icons/tool.svg` resolves to `dist/icons/tool.svg`; an explicit `dist/` prefix is also supported, matching desktop). Light and dark previews reproduce the desktop app's compact tool card: a 20px SVG in a 30px icon container, beside the package display name and version. All SVGs retain their authored colors; unlike desktop's monochrome fallback, the preview never uses theme-color masks or recolors an icon. The cards use desktop theme colors independently of the site's theme and stack on narrow screens. After submission and during admin review, previews use the submitted npm version rather than `latest`. Reviewers can describe visibility/contrast issues in the existing review notes and request changes.
+
+The authenticated `/api/package-icon` endpoint reads regular files from the npm tarball without extracting files to disk. Previews support npm-registry-hosted tarballs up to 25 MB (100 MB expanded) and SVGs up to 256 KB. Missing, oversized, unavailable or unrenderable icons show an explicit error; they do not change existing intake validation rules. SVGs are rendered as isolated images, not injected into the page.
+
 Before deploying the combined Ideas board, follow the [Ideas rollout guide](docs/IDEAS_BOARD_ROLLOUT.md). Apply its database migration first; it preserves the legacy desktop RPC contracts and adds maintainer status management and GitHub issue linking.
 
 ### Running a Fork Without Supabase
@@ -52,6 +58,33 @@ If you are testing from a fork and do not have Supabase credentials, you can sti
 - Leave `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` unset.
 - Public tool endpoints automatically return built-in mock data.
 - Protected pages now enter a local mock-auth mode automatically, so pages like `/dashboard`, `/submit-tool`, and `/rate-tool` can be exercised without Supabase credentials.
+
+### User profiles
+
+Signed-in users can open `/profile` from the circular avatar menu on desktop or mobile to edit
+their public display name, optional LinkedIn profile URL, and Discord handle.
+The avatar menu includes Profile, Dashboard, and Sign out. It uses the account's
+avatar when available and a user icon when the avatar is missing or cannot load.
+A persistent reminder appears in the header when the display name is missing or
+email-like. Completion is optional: reviews remain allowed and anonymous until
+a valid name is saved. Saving a name also updates the attribution of existing
+reviews. The reminder refreshes immediately after a successful save.
+
+Before deploying profile editing, run
+[profile-name-sync.sql](docs/sql/profile-name-sync.sql) in the Supabase SQL editor.
+If you ran an earlier version, run this updated version too. Profile names now
+take precedence over provider metadata, so later auth updates cannot overwrite
+a user's chosen name. The script preserves the current trigger bindings and
+does not invent names or backfill missing ones. Deliberately changing or clearing
+auth name metadata no longer replaces a nonblank profile name; use `/profile`.
+
+`GET /api/profile` and `PATCH /api/profile` require a verified user token. They
+read/write only the caller's editable fields, never accept a target user ID, and
+return uncached responses. Names are required when saving the form (1-100
+characters, no email address); contact fields can be cleared. Email, avatar, and
+developer status cannot be edited here. This feature requires Supabase and has no
+mock-success save path. Keep the profile privacy RLS restrictions in place; this
+feature does not grant public access to profiles.
 
 ## Available Scripts
 

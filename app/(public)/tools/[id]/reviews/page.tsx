@@ -6,17 +6,11 @@ import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
 import { FadeIn } from "@/components/animations";
-
-interface Rating {
-    id: string;
-    toolId: string;
-    userId: string;
-    userName?: string | null;
-    userEmail?: string | null;
-    rating: number;
-    comment?: string;
-    createdAt: string;
-}
+import { ReviewAuthorReply } from "@/components/ReviewAuthorReply";
+import { ReviewText } from "@/components/ReviewText";
+import { formatDate } from "@/lib/date";
+import type { PublicRating as Rating } from "@/lib/reviews";
+import { useSupabase } from "@/lib/useSupabase";
 
 export default function ToolReviewsPage() {
     const params = useParams();
@@ -26,6 +20,7 @@ export default function ToolReviewsPage() {
     const [toolName, setToolName] = useState<string>("");
     const [ratings, setRatings] = useState<Rating[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [averageRating, setAverageRating] = useState<number>(0);
     const [ratingDistribution, setRatingDistribution] = useState<Record<number, number>>({
         5: 0,
@@ -34,6 +29,35 @@ export default function ToolReviewsPage() {
         2: 0,
         1: 0,
     });
+    const { supabase } = useSupabase();
+    const [canReply, setCanReply] = useState(false);
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!supabase || !toolId) return;
+        let active = true;
+        let permissionRequest = 0;
+        async function checkPermission(token?: string) {
+            if (!active) return;
+            const currentRequest = ++permissionRequest;
+            setCanReply(false);
+            setPermissionError(null);
+            if (!token) return;
+            try {
+                const response = await fetch(`/api/ratings/${toolId}/reply`, { headers: { Authorization: `Bearer ${token}` } });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Failed to check reply permission");
+                if (active && currentRequest === permissionRequest) setCanReply(result.canReply);
+            } catch (error) {
+                console.error("Error checking author permissions:", error);
+                if (active && currentRequest === permissionRequest) setPermissionError("Unable to check author reply permissions. Please reload to try again.");
+            }
+        }
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            void checkPermission(session?.access_token);
+        });
+        return () => { active = false; subscription.unsubscribe(); };
+    }, [supabase, toolId]);
 
     useEffect(() => {
         if (!toolId) {
@@ -42,6 +66,8 @@ export default function ToolReviewsPage() {
         }
 
         (async () => {
+            setLoading(true);
+            setError(null);
             try {
                 // Fetch tool name and ratings using APIs
                 const toolResponse = await fetch(`/api/tools/${toolId}`);
@@ -78,6 +104,7 @@ export default function ToolReviewsPage() {
                 }
             } catch (err) {
                 console.error("Error fetching ratings:", err);
+                setError("Unable to load reviews. Please try again later.");
             } finally {
                 setLoading(false);
             }
@@ -128,7 +155,12 @@ export default function ToolReviewsPage() {
                             <p className="text-lg text-slate-600">See what users think about this tool</p>
                         </header>
 
-                        {ratings.length === 0 ? (
+                        {permissionError && <p role="alert" className="mb-6 text-sm text-red-700">{permissionError}</p>}
+                        {error ? (
+                            <div className="card p-12 text-center" role="alert">
+                                <p className="text-slate-600 text-lg">{error}</p>
+                            </div>
+                        ) : ratings.length === 0 ? (
                             <div className="card p-12 text-center">
                                 <p className="text-slate-600 text-lg mb-4">No reviews yet</p>
                                 <p className="text-slate-500 mb-6">Be the first to share your experience with this tool</p>
@@ -179,19 +211,17 @@ export default function ToolReviewsPage() {
                                                 <div className="card p-6 shadow-md hover:shadow-lg transition-shadow">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div>
-                                                            <h3 className="font-semibold text-slate-900">{rating.userName || rating.userEmail || rating.userId}</h3>
+                                                            <h3 className="font-semibold text-slate-900">{rating.userName?.trim() && !rating.userName.includes("@") ? rating.userName : "Anonymous reviewer"}</h3>
                                                             <p className="text-sm text-slate-500">
-                                                                {new Date(rating.createdAt).toLocaleDateString("en-US", {
-                                                                    year: "numeric",
-                                                                    month: "long",
-                                                                    day: "numeric",
-                                                                })}
+                                                                {formatDate(rating.createdAt)}
                                                             </p>
                                                         </div>
                                                         <div>{renderStars(rating.rating)}</div>
                                                     </div>
 
-                                                    {rating.comment && <p className="text-slate-700 leading-relaxed">{rating.comment}</p>}
+                                                    {rating.comment && <p className="whitespace-pre-wrap text-slate-700 leading-relaxed"><ReviewText text={rating.comment} /></p>}
+                                                    <p className="mt-2 text-sm text-slate-500">{rating.toolVersion ? `Version ${rating.toolVersion}` : "Version not specified"}</p>
+                                                    <ReviewAuthorReply toolId={toolId} ratingId={rating.id} authorReply={rating.authorReply ?? null} canReply={canReply} />
                                                 </div>
                                             </FadeIn>
                                         ))}

@@ -3,14 +3,23 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 
 let cachedClient: SupabaseClient | null = null;
+let pendingClient: Promise<SupabaseClient> | null = null;
 
 async function initClient(): Promise<SupabaseClient> {
     if (cachedClient) return cachedClient;
-    const res = await fetch("/api/supabase-config");
-    if (!res.ok) throw new Error("Failed to retrieve Supabase configuration");
-    const { url, anonKey } = await res.json();
-    cachedClient = createClient(url, anonKey);
-    return cachedClient;
+    if (!pendingClient) {
+        pendingClient = (async () => {
+            const res = await fetch("/api/supabase-config");
+            if (!res.ok) throw new Error("Failed to retrieve Supabase configuration");
+            const { url, anonKey } = await res.json();
+            cachedClient = createClient(url, anonKey);
+            return cachedClient;
+        })().catch((error) => {
+            pendingClient = null;
+            throw error;
+        });
+    }
+    return pendingClient;
 }
 
 export function useSupabase() {

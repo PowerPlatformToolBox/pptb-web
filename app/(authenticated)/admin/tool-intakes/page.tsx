@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/Container";
+import { PackageIconPreview } from "@/components/PackageIconPreview";
 import { FadeIn, SlideIn } from "@/components/animations";
 import type { Features } from "@/lib/tool-validation";
 import { useSupabase } from "@/lib/useSupabase";
@@ -383,6 +384,11 @@ export default function AdminToolIntakesPage() {
                                             {selectedIntake?.id === intake.id && (
                                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                                     <h4 className="font-medium text-slate-900 mb-3">Review Actions</h4>
+                                                    {intake.version ? (
+                                                        <PackageIconPreview packageName={intake.package_name} version={intake.version} />
+                                                    ) : (
+                                                        <p role="alert" className="mb-4 text-sm text-red-700">The submitted version is missing; the original package icon cannot be previewed.</p>
+                                                    )}
 
                                                     {/* Package Details */}
                                                     {intake.tool_idea && (

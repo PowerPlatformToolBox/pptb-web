@@ -34,6 +34,7 @@ export interface Rating {
     user_id: string;
     rating: number;
     comment?: string;
+    tool_version?: string | null;
     created_at: string;
     updated_at?: string;
 }
