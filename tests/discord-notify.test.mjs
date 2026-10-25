@@ -40,6 +40,17 @@ function load({ env = { DISCORD_EVENTS_URL: URL_ENV, DISCORD_EVENTS_SECRET: SECR
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
+test("durable idea events retain their ID/time across retries and fail explicitly when unconfigured", async () => {
+    const { lib, fetchCalls } = load();
+    const event = { id: "stable-idea-event", occurredAt: "2026-10-23T10:00:00Z" };
+    await lib.deliverDiscordEvent("idea.claimed", { idea: { title: "My idea" } }, event);
+    await lib.deliverDiscordEvent("idea.claimed", { idea: { title: "My idea" } }, event);
+    assert.equal(fetchCalls[0].init.body, fetchCalls[1].init.body);
+    assert.equal(JSON.parse(fetchCalls[0].init.body).id, event.id);
+    await assert.rejects(load({ env: {} }).lib.deliverDiscordEvent("idea.claimed", {}, event), /not configured/);
+    await assert.rejects(load({ fetchImpl: async () => new Response("Unavailable", { status: 503 }) }).lib.deliverDiscordEvent("idea.claimed", {}, event), /503/);
+});
+
 test("signs the exact body bytes with HMAC-SHA256 over `${timestamp}.${body}`", async () => {
     const { lib, fetchCalls, errors } = load();
     const before = Math.floor(Date.now() / 1000);

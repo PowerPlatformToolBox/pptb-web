@@ -37,9 +37,9 @@ const validReview = {
 
 test("idea filters compose all three types with every status", () => {
     const entries = Object.keys(ideas.IDEA_TYPES).flatMap((idea_type) => Object.keys(ideas.IDEA_STATUSES).map((status) => ({ idea_type, status })));
-    assert.equal(ideas.filterIdeas(entries, "all", "all").length, 15);
+    assert.equal(ideas.filterIdeas(entries, "all", "all").length, 18);
     for (const type of Object.keys(ideas.IDEA_TYPES)) {
-        assert.equal(ideas.filterIdeas(entries, type, "all").length, 5);
+        assert.equal(ideas.filterIdeas(entries, type, "all").length, 6);
         for (const status of Object.keys(ideas.IDEA_STATUSES)) {
             assert.equal(ideas.filterIdeas(entries, type, status).length, 1);
         }
@@ -48,7 +48,7 @@ test("idea filters compose all three types with every status", () => {
 });
 
 test("vote eligibility excludes closed and duplicate ideas", () => {
-    for (const status of ["open", "under_review", "planned"]) assert.equal(ideas.canVoteForIdea(status), true);
+    for (const status of ["open", "under_review", "planned", "in_progress"]) assert.equal(ideas.canVoteForIdea(status), true);
     for (const status of ["closed", "duplicate"]) assert.equal(ideas.canVoteForIdea(status), false);
 });
 
@@ -113,7 +113,7 @@ async function call({ method = "PATCH", token = "token", admin = true, authentic
         },
         rpc: async (name, args) => {
             calls.push({ name, args });
-            return { data: name === "get_ideas" ? [] : null, error: rpcError };
+            return { data: name === "get_ideas_with_claims" ? [] : null, error: rpcError };
         },
     };
     const route = load(routeSource, {
@@ -165,7 +165,7 @@ test("admin API forwards verified identity and exact timestamp to database autho
     assert.equal(result.configs[1].global.headers.Authorization, "Bearer token");
     assert.deepEqual(JSON.parse(JSON.stringify(result.calls)), [
         {
-            name: "review_idea",
+            name: "review_idea_with_claim",
             args: {
                 p_id: id,
                 p_expected_updated_at: validReview.expectedUpdatedAt,
@@ -174,6 +174,8 @@ test("admin API forwards verified identity and exact timestamp to database autho
                 p_public_note: null,
                 p_duplicate_of: null,
                 p_github_issue_url: null,
+                p_repository_url: null,
+                p_release_claim: false,
             },
         },
     ]);
@@ -182,7 +184,7 @@ test("admin API forwards verified identity and exact timestamp to database autho
 test("admin GET uses the public-safe combined board projection", async () => {
     const result = await call({ method: "GET" });
     assert.equal(result.status, 200);
-    assert.equal(result.calls[0].name, "get_ideas");
+    assert.equal(result.calls[0].name, "get_ideas_with_claims");
     assert.deepEqual(result.body.data, []);
 });
 

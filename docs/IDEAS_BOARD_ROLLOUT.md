@@ -1,5 +1,13 @@
 # Combined Ideas board rollout
 
+This guide describes the historical baseline. The current website additionally
+requires the [breaking generic Ideas rename](./IDEAS_RENAME_ROLLOUT.md), applied
+after claiming and its cleanups. Do not run baseline scripts after the rename.
+
+For Tool Idea reservations and the new In progress status, apply the subsequent
+[claiming rollout](./IDEAS_CLAIMING_ROLLOUT.md) after this baseline. That guide
+includes the Supabase migration order and Discord receiver integration prompt.
+
 ## Scope
 
 The public board is `/ideas`; `/tool-ideas` permanently redirects to it.

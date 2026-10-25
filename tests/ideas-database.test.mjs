@@ -6,6 +6,12 @@ import { PGlite } from "@electric-sql/pglite";
 const migration = await readFile(new URL("../docs/sql/ideas-migration.sql", import.meta.url), "utf8");
 const removeVoteMigration = await readFile(new URL("../docs/sql/ideas-remove-vote.sql", import.meta.url), "utf8");
 const backendEditsMigration = await readFile(new URL("../docs/sql/ideas-backend-edits.sql", import.meta.url), "utf8");
+const claimingMigration = await readFile(new URL("../docs/sql/ideas-claiming.sql", import.meta.url), "utf8");
+const claimingVerification = await readFile(new URL("../docs/sql/ideas-claiming-verification.sql", import.meta.url), "utf8");
+const removeNotifications = await readFile(new URL("../docs/sql/ideas-claiming-remove-notifications.sql", import.meta.url), "utf8");
+const removeReviewHistory = await readFile(new URL("../docs/sql/ideas-remove-review-history.sql", import.meta.url), "utf8");
+const renameIdeas = await readFile(new URL("../docs/sql/ideas-rename.sql", import.meta.url), "utf8");
+const renameVerification = await readFile(new URL("../docs/sql/ideas-rename-verification.sql", import.meta.url), "utf8");
 const preflight = await readFile(new URL("../docs/sql/ideas-preflight.sql", import.meta.url), "utf8");
 const verification = await readFile(new URL("../docs/sql/ideas-verification.sql", import.meta.url), "utf8");
 const admin = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -346,5 +352,227 @@ test("ideas migration preserves legacy contracts and enforces the combined board
         assert.equal((await row(vscode)).idea_type, "pptb_vscode");
         await assert.rejects(db.query("UPDATE public.tool_ideas SET status='invalid' WHERE id=$1", [vscode]), /ideas_status_check/);
         assert.deepEqual((await db.query("SELECT * FROM public.tool_idea_votes ORDER BY idea_id, voter_id")).rows, votesBefore);
+    });
+
+    let claimable;
+    let claimId;
+    const repository = "https://github.com/new-builder/first-tool";
+    const claim = (user, id = claimable, url = repository) => as(user ? "authenticated" : "anon", user,
+        () => db.query("SELECT * FROM public.claim_tool_idea($1,$2)", [id, url]));
+    const manageClaim = async (status, { release = false, url = repository, revision, resolution = null, note = null } = {}) => {
+        const current = await row(claimable);
+        return as("authenticated", admin, () => db.query(
+            "SELECT public.review_idea_with_claim($1,$2,$3,$4,$5,null,null,$6,$7)",
+            [claimable, revision ?? current.updated_at, status, resolution, note, url, release],
+        ));
+    };
+
+    await t.test("claiming migration is additive, reapplicable and does not infer creators", async () => {
+        await db.exec(`CREATE TABLE public.user_profiles(id uuid PRIMARY KEY, name text, is_tool_developer boolean DEFAULT false);
+            INSERT INTO public.user_profiles(id,name) VALUES ('${member}','New builder');`);
+        await db.exec(claimingMigration);
+        await db.exec(claimingMigration);
+        const checked = await db.exec(claimingVerification);
+        assert.ok(Object.values(checked[0].rows[0]).every(Boolean));
+        assert.equal(checked[1].rows[0].invalid_claims, 0);
+        assert.equal((await row(second)).creator_user_id, null);
+        claimable = "33333333-3333-4333-8333-333333333333";
+        await as("authenticated", member, () => db.query(
+            "INSERT INTO public.tool_ideas(id,title,description,install_id,app_version,creator_user_id) VALUES ($1,'Claimable','D','other-install','web',$2)",
+            [claimable, admin],
+        ));
+        assert.equal((await row(claimable)).creator_user_id, member);
+        await as("anon", null, () => db.query(
+            "INSERT INTO public.tool_ideas(title,description,install_id,app_version,creator_user_id) VALUES ('Anonymous','D',$1::text,'desktop',$1::uuid)",
+            [admin],
+        ));
+        assert.equal((await db.query("SELECT creator_user_id FROM public.tool_ideas WHERE title='Anonymous'")).rows[0].creator_user_id, null);
+        assert.equal((await db.query("SELECT is_tool_developer FROM public.user_profiles WHERE id=$1", [member])).rows[0].is_tool_developer, false);
+    });
+
+    await t.test("claims enforce sign-in, Tool Ideas-only scope and canonical repository URLs", async () => {
+        await assert.rejects(claim(null), /permission denied/);
+        await assert.rejects(claim(member, desktop), /no longer available/);
+        await assert.rejects(claim(member, first, "https://github.com/a/b/issues/1"), /repository URL/);
+        for (const url of [repository + "/", repository + "\n", repository + ".git", repository + "?x=1",
+            "http://github.com/a/b", "https://github.com/a/..", "https://github.com/a/.",
+            "https://github.com/-bad/repo", "https://github.com/a/b/tree/main", "https://user@github.com/a/b"]) {
+            assert.equal((await db.query("SELECT public.is_idea_repository_url($1) AS valid", [url])).rows[0].valid, false, url);
+        }
+        await assert.rejects(claim(member, "ffffffff-ffff-4fff-8fff-ffffffffffff"), /Idea not found/);
+        for (const status of ["under_review", "planned", "closed", "duplicate"]) {
+            await review(claimable, status, status === "closed" ? { resolution: "implemented", note: "Done" }
+                : status === "duplicate" ? { duplicate: first } : {});
+            await assert.rejects(claim(member), /no longer available/);
+        }
+        await review(claimable, "open");
+        await assert.rejects(review(claimable, "in_progress"), /ideas_claim_status_check/);
+    });
+
+    await t.test("cleanup removes the old notification table/function and preserves the claim contract", async () => {
+        await db.exec(`CREATE TABLE public.idea_claim_notifications(id uuid);
+            CREATE FUNCTION public.take_idea_claim_notifications(integer,uuid)
+            RETURNS SETOF public.idea_claim_notifications LANGUAGE sql AS $$ SELECT * FROM public.idea_claim_notifications $$;`);
+        await db.exec(removeNotifications);
+        await db.exec(removeNotifications);
+        assert.equal((await db.query("SELECT to_regclass('public.idea_claim_notifications') AS relation")).rows[0].relation, null);
+        const definition = (await db.query("SELECT pg_get_functiondef('public.claim_tool_idea(uuid,text)'::regprocedure) AS definition")).rows[0].definition;
+        assert.equal(definition.includes("idea_claim_notifications"), false);
+    });
+
+    await t.test("a first-time builder claims once with history and private creator linkage without a notification table", async () => {
+        const revision = (await row(claimable)).updated_at;
+        const result = await claim(member);
+        claimId = result.rows[0].claim_id;
+        assert.equal(result.rows[0].already_claimed, false);
+        assert.equal((await row(claimable)).status, "in_progress");
+        assert.equal((await row(claimable)).updated_by, member);
+        const repeated = await claim(member);
+        assert.equal(repeated.rows[0].claim_id, claimId);
+        assert.equal(repeated.rows[0].already_claimed, true);
+        await assert.rejects(claim(admin), /no longer available/);
+        await assert.rejects(claim(member, claimable, "https://github.com/a/different"), /no longer available/);
+        await assert.rejects(manageClaim("closed", { revision, resolution: "implemented", note: "Stale" }), /Idea changed/);
+        const publicRow = (await as("anon", null, () => db.query("SELECT * FROM public.get_ideas_with_claims('') WHERE id=$1", [claimable]))).rows[0];
+        assert.equal(publicRow.claimant_name, "New builder");
+        assert.equal(publicRow.repository_url, repository);
+        for (const privateField of ["creator_user_id", "claimant_id", "email", "install_id"]) assert.ok(!(privateField in publicRow));
+        assert.ok(!(await db.query("SELECT id FROM public.get_tool_ideas('')")).rows.some(({ id }) => id === claimable));
+        assert.equal((await db.query("SELECT is_tool_developer FROM public.user_profiles WHERE id=$1", [member])).rows[0].is_tool_developer, false);
+        assert.equal((await as("authenticated", member, () => db.query("SELECT * FROM public.idea_claims"))).rows.length, 0);
+        await assert.rejects(as("authenticated", member, () => db.query(
+            "INSERT INTO public.tool_ideas(title,description,install_id,app_version,claim_id) VALUES ('Forged','D','i','web',$1)", [claimId],
+        )), /cannot be submitted with a claim/);
+        await assert.rejects(db.query("UPDATE public.tool_ideas SET claim_id=$1,status='in_progress' WHERE id=$2", [claimId, second]), /own active claim/);
+    });
+
+    await t.test("in-progress voting preserves identity-scoped add/remove behavior", async () => {
+        const result = await as("authenticated", admin, () => db.query("SELECT * FROM public.upvote_tool_idea($1,'')", [claimable]));
+        assert.equal(result.rows[0].has_upvoted, true);
+        const removed = await as("authenticated", admin, () => db.query("SELECT * FROM public.remove_tool_idea_vote($1,'')", [claimable]));
+        assert.equal(removed.rows[0].has_upvoted, false);
+    });
+
+    await t.test("maintainers can correct repositories, close, release and allow a new claim without losing provenance", async () => {
+        await assert.rejects(as("authenticated", member, () => db.query(
+            "SELECT public.review_idea_with_claim($1,now(),'open',null,null,null,null,null,true)", [claimable],
+        )), /Admin access required/);
+        await assert.rejects(review(claimable, "open"), /ideas_claim_status_check/);
+        await assert.rejects(db.query("UPDATE public.tool_ideas SET status='open',claim_id=null WHERE id=$1", [claimable]), /Release the previous claim/);
+        const corrected = "https://github.com/new-builder/corrected-tool";
+        await manageClaim("in_progress", { url: corrected });
+        assert.equal((await db.query("SELECT repository_url FROM public.idea_claims WHERE id=$1", [claimId])).rows[0].repository_url, corrected);
+        const history = await db.query("SELECT * FROM public.idea_review_history WHERE idea_id=$1 AND new_review->>'repository_url'=$2", [claimable, corrected]);
+        assert.equal(history.rows.length, 1);
+        assert.equal(history.rows[0].changed_by, admin);
+        await manageClaim("closed", { url: corrected, resolution: "implemented", note: "Published" });
+        assert.equal((await row(claimable)).claim_id, claimId);
+        await assert.rejects(claim(admin), /no longer available/);
+        await manageClaim("open", { release: true, url: corrected });
+        assert.equal((await row(claimable)).claim_id, null);
+        assert.ok((await db.query("SELECT released_at FROM public.idea_claims WHERE id=$1", [claimId])).rows[0].released_at);
+        const next = await claim(admin);
+        assert.notEqual(next.rows[0].claim_id, claimId);
+    });
+
+    await t.test("legacy list columns remain unchanged", async () => {
+        const originalColumns = (await db.query("SELECT * FROM public.get_tool_ideas('')")).fields.map(({ name }) => name);
+        assert.deepEqual(originalColumns, oldColumns);
+    });
+
+    await t.test("history removal preserves claims, votes, review permissions and claim management", async () => {
+        const counts = async () => (await db.query(`SELECT
+            (SELECT count(*) FROM public.tool_ideas) AS ideas,
+            (SELECT count(*) FROM public.idea_claims) AS claims,
+            (SELECT count(*) FROM public.tool_idea_votes) AS votes`)).rows[0];
+        const before = await counts();
+        await db.exec(removeReviewHistory);
+        await db.exec(removeReviewHistory);
+        assert.deepEqual(await counts(), before);
+        assert.equal((await db.query("SELECT to_regclass('public.idea_review_history') AS relation")).rows[0].relation, null);
+        await assert.rejects(as("authenticated", member, () => db.query(
+            "SELECT public.review_idea_with_claim($1,now(),'open',null,null,null,null,null,true)", [claimable],
+        )), /Admin access required/);
+        const revision = (await row(claimable)).updated_at;
+        await manageClaim("in_progress", { url: "https://github.com/builder/corrected" });
+        await assert.rejects(manageClaim("open", { release: true, revision }), /Idea changed/);
+        await manageClaim("closed", { resolution: "implemented", note: "Delivered" });
+        await manageClaim("open", { release: true });
+        assert.equal((await row(claimable)).claim_id, null);
+        await claim(member);
+        assert.equal((await row(claimable)).status, "in_progress");
+        await review(first, "planned");
+        assert.equal((await row(first)).status, "planned");
+    });
+
+    await t.test("breaking rename preserves data, permissions, triggers and all idea operations", async () => {
+        const snapshot = async (ideasTable, votesTable, ideaColumn) => ({
+            ideas: (await db.query(`SELECT * FROM public.${ideasTable} ORDER BY id`)).rows,
+            votes: (await db.query(`SELECT * FROM public.${votesTable} ORDER BY idea_id,voter_id`)).rows,
+            claims: (await db.query("SELECT * FROM public.idea_claims ORDER BY id")).rows,
+            links: (await db.query(`SELECT id,${ideaColumn} AS idea_id FROM public.tool_intakes ORDER BY id`)).rows,
+        });
+        const before = await snapshot("tool_ideas", "tool_idea_votes", "tool_idea_id");
+        // Intake resubmission functions also contain column names in JSON keys.
+        await db.exec(`CREATE FUNCTION public.test_intake_idea_json(p_values jsonb) RETURNS uuid
+            LANGUAGE sql SET search_path = '' AS $$
+            SELECT i.id FROM public.tool_ideas i WHERE i.id=(p_values->>'tool_idea_id')::uuid $$;`);
+        await db.exec(renameIdeas);
+        await db.exec(renameIdeas);
+        assert.deepEqual(await snapshot("ideas", "idea_votes", "idea_id"), before);
+        const verified = await db.exec(renameVerification);
+        assert.ok(Object.values(verified[0].rows[0]).every(Boolean));
+        assert.equal(verified[2].rows.length, 0);
+        assert.equal((await db.query("SELECT public.test_intake_idea_json($1) AS id", [JSON.stringify({ idea_id: first })])).rows[0].id, first);
+        for (const signature of ["upvote_tool_idea(uuid,text)", "remove_tool_idea_vote(uuid,text)", "claim_tool_idea(uuid,text)", "get_tool_ideas(text)"]) {
+            assert.equal((await db.query("SELECT to_regprocedure($1) AS fn", [`public.${signature}`])).rows[0].fn, null);
+        }
+        assert.equal((await db.query("SELECT count(*) FROM pg_constraint WHERE conrelid='public.tool_intakes'::regclass AND conname='tool_intakes_idea_id_fkey'")).rows[0].count, 1);
+        await assert.rejects(as("anon", null, () => db.query("SELECT * FROM public.claim_idea($1,$2)", [first, repository])), /permission denied/);
+        assert.equal((await as("authenticated", member, () => db.query("SELECT * FROM public.ideas"))).rows.length, 0);
+        const newId = "44444444-4444-4444-8444-444444444444";
+        await as("authenticated", member, () => db.query(
+            "INSERT INTO public.ideas(id,title,description,install_id,app_version) VALUES ($1,'Renamed idea','D','i','web')", [newId],
+        ));
+        const renamedRow = async (id) => (await db.query("SELECT * FROM public.ideas WHERE id=$1", [id])).rows[0];
+        assert.equal((await renamedRow(newId)).creator_user_id, member);
+        const voteResult = await as("authenticated", member, () => db.query("SELECT * FROM public.upvote_idea($1,'')", [newId]));
+        assert.equal(voteResult.rows[0].has_upvoted, true);
+        const claimResult = await as("authenticated", member, () => db.query("SELECT * FROM public.claim_idea($1,$2)", [newId, repository]));
+        assert.equal(claimResult.rows[0].already_claimed, false);
+        const repeat = await as("authenticated", member, () => db.query("SELECT * FROM public.claim_idea($1,$2)", [newId, repository]));
+        assert.equal(repeat.rows[0].already_claimed, true);
+        await assert.rejects(as("authenticated", admin, () => db.query("SELECT * FROM public.claim_idea($1,$2)", [newId, repository])), /no longer available/);
+        const claimedView = (await as("anon", null, () => db.query("SELECT * FROM public.get_ideas_with_claims('') WHERE id=$1", [newId]))).rows[0];
+        assert.equal(claimedView.status, "in_progress");
+        assert.equal(claimedView.claim_id, claimResult.rows[0].claim_id);
+        assert.equal(claimedView.repository_url, repository);
+        const newDesktopId = "55555555-5555-4555-8555-555555555555";
+        await as("authenticated", member, () => db.query(
+            "INSERT INTO public.ideas(id,title,description,install_id,app_version,idea_type) VALUES ($1,'PPTB idea','D','i','web','pptb_desktop')", [newDesktopId],
+        ));
+        assert.equal((await renamedRow(newDesktopId)).status, "open");
+        await assert.rejects(as("authenticated", member, () => db.query("SELECT * FROM public.claim_idea($1,$2)", [newDesktopId, repository])), /no longer available/);
+        const unvoteResult = await as("authenticated", member, () => db.query("SELECT * FROM public.remove_idea_vote($1,'')", [newId]));
+        assert.equal(unvoteResult.rows[0].has_upvoted, false);
+        const revision = (await renamedRow(newId)).updated_at;
+        await assert.rejects(as("authenticated", member, () => db.query(
+            "SELECT public.review_idea_with_claim($1,$2,'open',null,null,null,null,null,true)", [newId, revision],
+        )), /Admin access required/);
+        await as("authenticated", admin, () => db.query(
+            "SELECT public.review_idea_with_claim($1,$2,'open',null,null,null,null,null,true)", [newId, revision],
+        ));
+        assert.equal((await renamedRow(newId)).claim_id, null);
+        const desktopRow = await renamedRow(desktop);
+        await as("authenticated", admin, () => db.query("SELECT public.review_idea($1,$2,'planned',null,null,null,null)", [desktop, desktopRow.updated_at]));
+        await assert.rejects(db.query("INSERT INTO public.tool_intakes(idea_id) VALUES ($1)", [desktop]), /only link to Tool Ideas/);
+        await db.query("INSERT INTO public.tool_intakes(idea_id) VALUES ($1)", [newId]);
+        const openIdeas = await as("anon", null, () => db.query("SELECT * FROM public.get_open_tool_ideas('')"));
+        assert.ok(openIdeas.rows.some(({ id }) => id === newId));
+        assert.ok(!openIdeas.rows.some(({ id }) => id === desktop));
+        const publicIdea = (await as("anon", null, () => db.query("SELECT * FROM public.get_ideas_with_claims('') WHERE id=$1", [newId]))).rows[0];
+        assert.equal(publicIdea.status, "open");
+        assert.equal("creator_user_id" in publicIdea, false);
+        assert.equal((await db.query("SELECT to_regclass('public.idea_review_history') AS relation")).rows[0].relation, null);
     });
 });

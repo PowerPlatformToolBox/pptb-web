@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { Container } from "@/components/Container";
 import { IdeaBadges, IdeaLinks } from "@/components/IdeaDetails";
+import { IdeaClaimForm } from "@/components/IdeaClaimForm";
 import { canVoteForIdea, filterIdeas, IDEA_STATUSES, IDEA_TYPES, type Idea, type IdeaStatus, type IdeaType } from "@/lib/ideas";
 import { useSupabase } from "@/lib/useSupabase";
 
@@ -30,10 +31,15 @@ export default function IdeasPage() {
     const [email, setEmail] = useState("");
 
     useEffect(() => {
+        if (checkingAuth || loading) return;
+        const returnedIdea = new URLSearchParams(window.location.search).get("idea");
+        if (returnedIdea && /^[0-9a-f-]{36}$/i.test(returnedIdea)) {
+            window.history.replaceState(null, "", `/ideas#idea-${returnedIdea}`);
+        }
         if (ideas.length && window.location.hash.startsWith("#idea-")) {
             document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
         }
-    }, [ideas, typeFilter, statusFilter]);
+    }, [ideas, typeFilter, statusFilter, checkingAuth, loading]);
 
     function showOriginalIdea(id: string) {
         setTypeFilter("all");
@@ -67,7 +73,7 @@ export default function IdeasPage() {
         if (!supabase || checkingAuth) return;
         let active = true;
         async function loadIdeas() {
-            const { data, error } = await supabase!.rpc("get_ideas", { p_install_id: "" });
+            const { data, error } = await supabase!.rpc("get_ideas_with_claims", { p_install_id: "" });
             if (!active) return;
             setLoading(false);
             if (error) {
@@ -103,7 +109,7 @@ export default function IdeasPage() {
         setSubmitting(true);
         setActionError("");
         setSuccess("");
-        const { error } = await supabase.from("tool_ideas").insert({
+        const { error } = await supabase.from("ideas").insert({
             title: cleanTitle,
             description: cleanDescription,
             email: email.trim() || null,
@@ -120,7 +126,7 @@ export default function IdeasPage() {
             setEmail("");
             setIdeaType("");
             setSuccess("Your idea has been submitted.");
-            const { data, error: reloadError } = await supabase.rpc("get_ideas", { p_install_id: "" });
+            const { data, error: reloadError } = await supabase.rpc("get_ideas_with_claims", { p_install_id: "" });
             if (reloadError) setListError("Ideas could not be refreshed. Please reload the page.");
             else {
                 setIdeas(data ?? []);
@@ -144,7 +150,7 @@ export default function IdeasPage() {
                 return;
             }
             const shouldHaveVote = !idea.has_upvoted;
-            const { data, error } = await supabase.rpc(idea.has_upvoted ? "remove_tool_idea_vote" : "upvote_tool_idea", { p_idea_id: idea.id, p_install_id: "" });
+            const { data, error } = await supabase.rpc(idea.has_upvoted ? "remove_idea_vote" : "upvote_idea", { p_idea_id: idea.id, p_install_id: "" });
             const result = data?.[0];
             if (error) throw error;
             if (!result || result.has_upvoted !== shouldHaveVote || !Number.isSafeInteger(result.upvotes) || result.upvotes < 0) throw new Error("Missing or invalid vote confirmation");
@@ -162,6 +168,15 @@ export default function IdeasPage() {
         }
     }
 
+    async function refreshClaims() {
+        if (!supabase) throw new Error("Database connection is unavailable.");
+        const { data, error } = await supabase.rpc("get_ideas_with_claims", { p_install_id: "" });
+        if (error) throw error;
+        setIdeas(data ?? []);
+        setStatusFilter("all");
+        setListError("");
+    }
+
     return (
         <main className="py-10 sm:py-16">
             <Container>
@@ -174,6 +189,7 @@ export default function IdeasPage() {
                         <h1 className="mt-4 text-4xl font-bold text-slate-900 sm:text-5xl">Ideas</h1>
                         <p className="mt-4 max-w-2xl text-lg text-slate-600">Help shape PPTB Desktop, the PPTB VSCode Extension, and community-built tools. Share an idea or vote for one.</p>
                         <p className="mt-3 text-sm text-slate-500">Maintainers manage idea statuses here. Linked GitHub issues are the source of truth for PPTB implementation progress.</p>
+                        <p className="mt-3 text-sm text-slate-600">Want to build a tool? Any signed-in user can pick up an open Tool Idea and share a GitHub repository. No existing developer profile is needed.</p>
                     </header>
 
                     <div className="grid gap-12 py-10 lg:grid-cols-[minmax(0,1fr)_19rem]">
@@ -265,6 +281,7 @@ export default function IdeasPage() {
                                             </time>
                                             <div className="mt-3">
                                                 <IdeaLinks idea={idea} onOriginalIdea={showOriginalIdea} />
+                                                {idea.idea_type === "tool" && <IdeaClaimForm idea={idea} userId={userId} supabase={supabase} onChanged={refreshClaims} />}
                                             </div>
                                         </div>
                                     </article>

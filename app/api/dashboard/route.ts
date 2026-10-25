@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
                 isAdmin: isMockAuthRequest,
                 tools,
                 failedToolUpdates: [],
-                toolIdeas: [],
+                ideas: [],
             });
         }
         let user = null;
@@ -253,24 +253,26 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        let toolIdeas: Array<Omit<Idea, "has_upvoted">> = [];
-        let toolIdeasError = false;
+        let ideas: Array<Omit<Idea, "has_upvoted">> = [];
+        let ideasError = false;
         if (user) {
-            const { data, error: ideasError } = await supabase
-                .from("tool_ideas")
-                .select("id, title, description, idea_type, status, resolution, public_note, duplicate_of, github_issue_url, created_at, updated_at")
-                .eq("install_id", user.id)
+            const { data, error: lookupError } = await supabase
+                .from("ideas")
+                .select("id")
+                .or(`creator_user_id.eq.${user.id},and(creator_user_id.is.null,install_id.eq.${user.id})`)
                 .order("created_at", { ascending: false });
-            if (ideasError) {
-                console.error("Error fetching submitted tool ideas:", ideasError);
-                toolIdeasError = true;
+            if (lookupError) {
+                console.error("Error fetching submitted ideas:", lookupError);
+                ideasError = true;
             } else {
-                const counts = await Promise.all((data || []).map((idea) => supabase.from("tool_idea_votes").select("idea_id", { count: "exact", head: true }).eq("idea_id", idea.id)));
-                if (counts.some(({ error }) => error)) {
-                    console.error("Error counting submitted tool idea votes:", counts.find(({ error }) => error)?.error);
-                    toolIdeasError = true;
+                const { data: publicIdeas, error: boardError } = await supabase.rpc("get_ideas_with_claims", { p_install_id: "" });
+                if (boardError) {
+                    console.error("Error loading submitted idea progress:", boardError);
+                    ideasError = true;
                 } else {
-                    toolIdeas = (data || []).map((idea, index) => ({ ...idea, upvotes: counts[index].count ?? 0 }));
+                    const submittedIds = new Set((data || []).map((idea) => idea.id));
+                    const boardIdeas: Idea[] = publicIdeas ?? [];
+                    ideas = boardIdeas.filter((idea) => submittedIds.has(idea.id)).sort((first, second) => second.created_at.localeCompare(first.created_at));
                 }
             }
         }
@@ -280,8 +282,8 @@ export async function GET(request: NextRequest) {
             isAdmin,
             tools: [...intakeTools, ...transformedTools],
             failedToolUpdates,
-            toolIdeas,
-            toolIdeasError,
+            ideas,
+            ideasError,
         });
     } catch (error) {
         console.error("Error fetching dashboard data:", error);

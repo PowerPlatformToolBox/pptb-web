@@ -86,8 +86,8 @@ export default function DashboardPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tools, setTools] = useState<Tool[]>([]);
     const [failedToolUpdates, setFailedToolUpdates] = useState<FailedToolUpdate[]>([]);
-    const [toolIdeas, setToolIdeas] = useState<SubmittedIdea[]>([]);
-    const [toolIdeasError, setToolIdeasError] = useState(false);
+    const [ideas, setIdeas] = useState<SubmittedIdea[]>([]);
+    const [ideasError, setIdeasError] = useState(false);
     const [ideaPage, setIdeaPage] = useState(1);
     const [expandedIdeaId, setExpandedIdeaId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -131,14 +131,14 @@ export default function DashboardPage() {
 
                 if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
-                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates, toolIdeas: submittedIdeas, toolIdeasError: ideasError } = await response.json();
+                const { user: dashUser, isAdmin: admin, tools: dashTools, failedToolUpdates: failedUpdates, ideas: submittedIdeas, ideasError } = await response.json();
 
                 setUser(dashUser || null);
                 setIsAdmin(Boolean(admin));
                 setTools(dashTools || []);
                 setFailedToolUpdates(failedUpdates || []);
-                setToolIdeas(submittedIdeas || []);
-                setToolIdeasError(Boolean(ideasError));
+                setIdeas(submittedIdeas || []);
+                setIdeasError(Boolean(ideasError));
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
                 setTools([]);
@@ -430,10 +430,10 @@ export default function DashboardPage() {
 
     const publishedTools = filteredTools.filter((tool) => !tool.isIntake);
     const hasRows = sortedTools.length > 0;
-    const ideaPageCount = Math.max(1, Math.ceil(toolIdeas.length / IDEAS_PAGE_SIZE));
+    const ideaPageCount = Math.max(1, Math.ceil(ideas.length / IDEAS_PAGE_SIZE));
     const currentIdeaPage = Math.min(ideaPage, ideaPageCount);
     const ideaPageStart = (currentIdeaPage - 1) * IDEAS_PAGE_SIZE;
-    const visibleIdeas = toolIdeas.slice(ideaPageStart, ideaPageStart + IDEAS_PAGE_SIZE);
+    const visibleIdeas = ideas.slice(ideaPageStart, ideaPageStart + IDEAS_PAGE_SIZE);
 
     if (loading) {
         return (
@@ -507,8 +507,8 @@ export default function DashboardPage() {
                                 >
                                     <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden="true" />
                                     {label}
-                                    {mode === "ideas" && !toolIdeasError && (
-                                        <span className={`hidden text-xs tabular-nums sm:inline ${viewMode === mode ? "text-blue-100" : "text-slate-500"}`}>{toolIdeas.length}</span>
+                                    {mode === "ideas" && !ideasError && (
+                                        <span className={`hidden text-xs tabular-nums sm:inline ${viewMode === mode ? "text-blue-100" : "text-slate-500"}`}>{ideas.length}</span>
                                     )}
                                 </button>
                             ))}
@@ -524,16 +524,16 @@ export default function DashboardPage() {
                                         Browse ideas and share your own
                                     </Link>
                                 </div>
-                                {toolIdeasError ? (
+                                {ideasError ? (
                                     <p role="alert" className="mt-4 text-sm text-red-700">
                                         Your submitted ideas could not be loaded right now.
                                     </p>
-                                ) : toolIdeas.length === 0 ? (
+                                ) : ideas.length === 0 ? (
                                     <p className="mt-4 text-sm text-slate-600">You haven&apos;t submitted any ideas yet.</p>
                                 ) : (
                                     <>
                                         <p className="mt-2 text-sm text-slate-500">
-                                            {toolIdeas.length} submitted {toolIdeas.length === 1 ? "idea" : "ideas"}
+                                            {ideas.length} submitted {ideas.length === 1 ? "idea" : "ideas"}
                                         </p>
                                         <ul className="mt-6 divide-y divide-slate-200 border-y border-slate-200">
                                             {visibleIdeas.map((idea) => (
@@ -582,7 +582,7 @@ export default function DashboardPage() {
                                         {ideaPageCount > 1 && (
                                             <nav aria-label="My ideas pages" className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm">
                                                 <span className="text-slate-600">
-                                                    Showing {ideaPageStart + 1}-{Math.min(ideaPageStart + IDEAS_PAGE_SIZE, toolIdeas.length)} of {toolIdeas.length}
+                                                    Showing {ideaPageStart + 1}-{Math.min(ideaPageStart + IDEAS_PAGE_SIZE, ideas.length)} of {ideas.length}
                                                 </span>
                                                 <div className="flex items-center gap-3">
                                                     <button

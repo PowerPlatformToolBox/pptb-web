@@ -14,6 +14,14 @@ export default function SignIn() {
     const [emailSent, setEmailSent] = useState(false);
     const { supabase } = useSupabase();
 
+    function redirectTo() {
+        const next = new URLSearchParams(window.location.search).get("next");
+        // Only accept the idea-board return path, not arbitrary redirect URLs.
+        const path = next && /^\/ideas#idea-[0-9a-f-]{36}$/i.test(next)
+            ? `/ideas?idea=${next.slice("/ideas#idea-".length)}` : "/dashboard";
+        return `${window.location.origin}${path}`;
+    }
+
     const handleOAuthSignIn = async (provider: "google" | "github" | "azure") => {
         if (!supabase) {
             setError("Authentication is not configured. Please check your environment variables.");
@@ -27,7 +35,7 @@ export default function SignIn() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
-                    redirectTo: `${window.location.origin}/dashboard`,
+                    redirectTo: redirectTo(),
                 },
             });
 
@@ -59,7 +67,7 @@ export default function SignIn() {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/dashboard`,
+                    emailRedirectTo: redirectTo(),
                 },
             });
 

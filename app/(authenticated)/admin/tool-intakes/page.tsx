@@ -19,7 +19,7 @@ interface Category {
     name: string;
 }
 
-interface ToolIdea {
+interface IdeaOption {
     id: string;
     title: string;
     description: string;
@@ -52,7 +52,7 @@ interface ToolIntake {
     created_at: string;
     updated_at: string;
     categories?: Category[];
-    tool_idea?: ToolIdea | null;
+    idea?: IdeaOption | null;
 }
 
 type StatusFilter = "all" | "pending_review" | "approved" | "rejected" | "needs_changes";
@@ -324,10 +324,10 @@ export default function AdminToolIntakesPage() {
                                                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(intake.status)}`}>{intake.status.replace(/_/g, " ")}</span>
                                                     </div>
                                                     <p className="text-sm text-slate-600 mb-2">{intake.description}</p>
-                                                    {intake.tool_idea && (
+                                                    {intake.idea && (
                                                         <div className="mb-3 border-l-2 border-blue-500 bg-blue-50 px-3 py-2 text-sm">
-                                                            <strong className="text-blue-900">Community idea:</strong> <span className="text-blue-800">{intake.tool_idea.title}</span>
-                                                            <p className="mt-1 text-xs text-blue-700">{intake.tool_idea.description}</p>
+                                                            <strong className="text-blue-900">Community idea:</strong> <span className="text-blue-800">{intake.idea.title}</span>
+                                                            <p className="mt-1 text-xs text-blue-700">{intake.idea.description}</p>
                                                         </div>
                                                     )}
                                                     <div className="flex flex-wrap gap-4 text-xs text-slate-500">
@@ -391,10 +391,10 @@ export default function AdminToolIntakesPage() {
                                                     )}
 
                                                     {/* Package Details */}
-                                                    {intake.tool_idea && (
+                                                    {intake.idea && (
                                                         <div className="mb-4 border border-blue-200 bg-blue-50 p-3 text-sm">
-                                                            <strong className="text-blue-900">Linked tool idea: {intake.tool_idea.title}</strong>
-                                                            <p className="mt-1 text-blue-800">{intake.tool_idea.description}</p>
+                                                            <strong className="text-blue-900">Linked tool idea: {intake.idea.title}</strong>
+                                                            <p className="mt-1 text-blue-800">{intake.idea.description}</p>
                                                         </div>
                                                     )}
                                                     <div className="mb-4 grid grid-cols-2 gap-4 text-sm">

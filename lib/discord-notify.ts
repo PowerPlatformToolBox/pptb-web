@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { createHmac, randomUUID } from "node:crypto";
 
 export type DiscordEventType =
+    | "idea.claimed"
     | "tool-submission.new"
     | "tool-submission.approved"
     | "tool-submission.rejected"
@@ -133,30 +134,35 @@ export function signDiscordPayload(secret: string, timestamp: string, body: stri
     return `sha256=${createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex")}`;
 }
 
-export async function notifyDiscord(type: DiscordEventType, data: Record<string, unknown>): Promise<void> {
+export async function deliverDiscordEvent(type: DiscordEventType, data: Record<string, unknown>, event: { id: string; occurredAt: string }): Promise<void> {
     const url = process.env.DISCORD_EVENTS_URL;
     const secret = process.env.DISCORD_EVENTS_SECRET;
-    if (!url || !secret) return;
+    if (!url || !secret) throw new Error("Discord event delivery is not configured");
 
+    const body = JSON.stringify({ type, id: event.id, occurredAt: event.occurredAt, data });
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-PPTB-Timestamp": timestamp,
+            "X-PPTB-Signature": signDiscordPayload(secret, timestamp, body),
+        },
+        body,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`Discord returned status ${response.status}: ${truncate(text, 500)}`);
+    }
+}
+
+export async function notifyDiscord(type: DiscordEventType, data: Record<string, unknown>): Promise<void> {
+    if (!isDiscordNotifyConfigured()) return;
     try {
-        const body = JSON.stringify({ type, id: randomUUID(), occurredAt: new Date().toISOString(), data });
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-PPTB-Timestamp": timestamp,
-                "X-PPTB-Signature": signDiscordPayload(secret, timestamp, body),
-            },
-            body,
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        });
-
-        if (!response.ok) {
-            const text = await response.text().catch(() => "");
-            console.error(`[discord-notify] ${type} failed with status ${response.status}: ${truncate(text, 500)}`);
-        }
+        await deliverDiscordEvent(type, data, { id: randomUUID(), occurredAt: new Date().toISOString() });
     } catch (error) {
         console.error(`[discord-notify] ${type} failed:`, error instanceof Error ? error.message : error);
     }

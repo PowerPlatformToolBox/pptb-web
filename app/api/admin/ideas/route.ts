@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     try {
         const auth = await authorize(request);
         if (auth.response) return auth.response;
-        const { data, error } = await auth.client!.rpc("get_ideas", { p_install_id: "" });
+        const { data, error } = await auth.client!.rpc("get_ideas_with_claims", { p_install_id: "" });
         if (error) {
             console.error("Error loading admin ideas:", error);
             return NextResponse.json({ error: "Ideas could not be loaded" }, { status: 500 });
@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest) {
         const validationError = validateIdeaReview(body);
         if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
         const review = body as IdeaReview;
-        const { error } = await auth.client!.rpc("review_idea", {
+        const { error } = await auth.client!.rpc("review_idea_with_claim", {
             p_id: review.id,
             p_expected_updated_at: review.expectedUpdatedAt,
             p_status: review.status,
@@ -66,6 +66,8 @@ export async function PATCH(request: NextRequest) {
             p_public_note: review.publicNote,
             p_duplicate_of: review.duplicateOf,
             p_github_issue_url: review.githubIssueUrl,
+            p_repository_url: review.repositoryUrl ?? null,
+            p_release_claim: review.releaseClaim ?? false,
         });
         if (error) {
             console.error("Error reviewing idea:", error);
@@ -74,7 +76,7 @@ export async function PATCH(request: NextRequest) {
                 status === 409
                     ? "This idea changed. Reload the list before saving again."
                     : status === 400
-                      ? "Invalid update. Check the resolution, duplicate target, and matching GitHub repository."
+                      ? "Invalid update. Check the resolution, duplicate target, and GitHub links. Claimed ideas must stay In progress or Closed unless explicitly released into Open."
                       : status === 403
                         ? "Admin access required"
                         : status === 404

@@ -23,7 +23,7 @@ interface SubmitToolRequest {
     intakeId?: string;
     packageName?: string;
     categoryIds?: number[];
-    toolIdeaId?: string | null;
+    ideaId?: string | null;
     linkedinProfileUrl?: string;
     discordHandle?: string;
 }
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         // Parse request body
         const body = (await request.json()) as SubmitToolRequest;
         const { intakeId, linkedinProfileUrl, discordHandle } = body;
-        let { packageName, categoryIds, toolIdeaId } = body;
+        let { packageName, categoryIds, ideaId } = body;
 
         const { data: existingIntake, error: intakeLookupError } = await supabase
             .from("tool_intakes")
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
             }
             packageName = existingIntake.package_name;
             categoryIds = data.map((relation) => relation.category_id);
-            toolIdeaId = existingIntake.tool_idea_id;
+            ideaId = existingIntake.idea_id;
         }
 
         if (!packageName || typeof packageName !== "string") {
@@ -173,10 +173,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Discord handle must be 100 characters or fewer" }, { status: 400 });
         }
 
-        const cleanToolIdeaId = typeof toolIdeaId === "string" && toolIdeaId.trim() ? toolIdeaId.trim() : null;
-        if (cleanToolIdeaId) {
-            const { data: toolIdea, error: toolIdeaError } = await supabase.from("tool_ideas").select("id").eq("id", cleanToolIdeaId).eq("idea_type", "tool").maybeSingle();
-            if (toolIdeaError || !toolIdea) {
+        const cleanIdeaId = typeof ideaId === "string" && ideaId.trim() ? ideaId.trim() : null;
+        if (cleanIdeaId) {
+            const { data: idea, error: ideaError } = await supabase.from("ideas").select("id").eq("id", cleanIdeaId).eq("idea_type", "tool").maybeSingle();
+            if (ideaError || !idea) {
                 return NextResponse.json({ error: "The selected tool idea could not be found" }, { status: 400 });
             }
         }
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
             icon: packageInfo.icon || null,
             csp_exceptions: packageInfo.cspExceptions || null,
             configurations: packageInfo.configurations,
-            tool_idea_id: cleanToolIdeaId,
+            idea_id: cleanIdeaId,
             submitted_by: user.id,
             status: "pending_review",
             validation_warnings: [...validationResult.warnings, ...configWarnings].length > 0 ? [...validationResult.warnings, ...configWarnings] : null,

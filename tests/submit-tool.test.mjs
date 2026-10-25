@@ -37,7 +37,7 @@ async function submit({
               features: null,
               min_api: null,
               mcp_enabled: false,
-              tool_idea_id: "idea-id",
+              idea_id: "idea-id",
               reviewer_notes: "Please fix",
               reviewed_by: "admin-id",
               reviewed_at: "2026-01-01T00:00:00Z",
@@ -111,7 +111,7 @@ async function submit({
                         result.data = failure === "invalid_category" ? [] : [{ id: 1 }, { id: 2 }];
                     } else if (table === "contributors") {
                         result.data = failure === "contributors:insert" ? null : { id: "new-contributor" };
-                    } else if (table === "tool_ideas") {
+                    } else if (table === "ideas") {
                         result.data = failure === "pptb_idea" ? null : { id: "idea-id" };
                     }
                     return Promise.resolve(result).then(resolve, reject);
@@ -164,7 +164,7 @@ async function submit({
         json: async () =>
             inline
                 ? { intakeId: "intake-id" }
-                : { packageName: " Test-Tool ", categoryIds: [2], linkedinProfileUrl: "https://linkedin.com/in/developer", toolIdeaId: "idea-id" },
+                : { packageName: " Test-Tool ", categoryIds: [2], linkedinProfileUrl: "https://linkedin.com/in/developer", ideaId: "idea-id" },
     });
     return { status: response.status, body: await response.json(), calls, intake, original, categories, contributorLinks, emails, discordEvents };
 }
@@ -198,7 +198,7 @@ test("resubmission refreshes the existing intake and replaces categories and con
 test("inline resubmission reuses saved categories and idea without overwriting the developer profile", async () => {
     const result = await submit({ inline: true });
     assert.equal(result.status, 200);
-    assert.equal(result.intake.tool_idea_id, "idea-id");
+    assert.equal(result.intake.idea_id, "idea-id");
     assert.deepEqual(Array.from(result.categories, (relation) => relation.category_id), [1]);
     assert.ok(!result.calls.some(({ table, method }) => table === "user_profiles" && method === "upsert"));
 });
@@ -206,7 +206,7 @@ test("inline resubmission reuses saved categories and idea without overwriting t
 test("tool submission enforces Tool Ideas only before writing an intake", async () => {
     const result = await submit({ status: null, failure: "pptb_idea" });
     assert.equal(result.status, 400);
-    assert.ok(result.calls.some(({ table, method, args }) => table === "tool_ideas" && method === "eq" && args[0] === "idea_type" && args[1] === "tool"));
+    assert.ok(result.calls.some(({ table, method, args }) => table === "ideas" && method === "eq" && args[0] === "idea_type" && args[1] === "tool"));
     assert.ok(!result.calls.some(({ table, method }) => table === "tool_intakes" && method === "insert"));
 });
 

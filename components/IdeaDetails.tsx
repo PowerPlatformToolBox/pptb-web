@@ -10,9 +10,17 @@ export function IdeaBadges({ idea }: { idea: Pick<Idea, "idea_type" | "status" |
     );
 }
 
-export function IdeaLinks({ idea, onOriginalIdea }: { idea: Pick<Idea, "public_note" | "duplicate_of" | "github_issue_url">; onOriginalIdea?: (id: string) => void }) {
+export function IdeaLinks({ idea, onOriginalIdea }: { idea: Pick<Idea, "public_note" | "duplicate_of" | "github_issue_url" | "claim_id" | "claimant_name" | "repository_url" | "claimed_at">; onOriginalIdea?: (id: string) => void }) {
     return (
         <div className="space-y-2 text-sm">
+            {idea.claim_id && (
+                <div className="rounded-md bg-blue-50 p-3 text-slate-700">
+                    <p>Picked up by <span className="font-semibold">{idea.claimant_name}</span>
+                        {idea.claimed_at && <> on <time dateTime={idea.claimed_at}>{new Date(idea.claimed_at).toLocaleDateString()}</time></>}.
+                    </p>
+                    {idea.repository_url && <a href={idea.repository_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 hover:underline">Follow development on GitHub</a>}
+                </div>
+            )}
             {idea.public_note && <p className="wrap-break-word whitespace-pre-wrap text-slate-700">Maintainer note: {idea.public_note}</p>}
             {idea.duplicate_of && (
                 <p>

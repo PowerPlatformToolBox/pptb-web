@@ -51,6 +51,10 @@ The authenticated `/api/package-icon` endpoint reads regular files from the npm 
 
 Before deploying the combined Ideas board, follow the [Ideas rollout guide](docs/IDEAS_BOARD_ROLLOUT.md). Apply its database migration first; it preserves the legacy desktop RPC contracts and adds maintainer status management and GitHub issue linking.
 
+For signed-in users claiming open Tool Ideas, follow the [claiming rollout guide](docs/IDEAS_CLAIMING_ROLLOUT.md). It includes the additional Supabase scripts, direct notification configuration, and the Discord receiver integration prompt. Claiming does not require or automatically enable a developer profile.
+
+The website now uses generic `ideas` / `idea_votes` tables and renamed vote/claim RPCs. Apply the [breaking Ideas rename](docs/IDEAS_RENAME_ROLLOUT.md) after existing migrations/cleanups, and coordinate the desktop update before deployment. Old table/RPC names have no compatibility aliases.
+
 ### Running a Fork Without Supabase
 
 If you are testing from a fork and do not have Supabase credentials, you can still run the app locally:
@@ -123,6 +127,8 @@ Tool submission, update and verification events can be posted to the PPTB Agent 
 | `DISCORD_EVENTS_SECRET` | Shared secret for request signing. It must match the secret configured on the bot.                 |
 
 If either variable is missing, notifications are skipped. Each request is a JSON body `{ type, id, occurredAt, data }` with the headers `X-PPTB-Timestamp` (Unix seconds) and `X-PPTB-Signature` (`sha256=` + hex HMAC-SHA256 of `${timestamp}.${body}`). Notifications are sent after the response with Next.js `after()`, use a 5 second timeout, and never affect the API response. Failures are logged with `console.error`. `NEXT_PUBLIC_SITE_URL` is used to build tool and admin review links.
+
+Tool Idea claim notifications use the same signed transport and are sent directly during the claim request after a new claim is committed. Repeated claims do not send again. There is no notification table or automatic retry; failures are logged and shown as a warning without undoing the claim. No cron or `CRON_SECRET` is required. Update the Discord receiver to accept `idea.claimed` before enabling claims. See the [claiming rollout guide](docs/IDEAS_CLAIMING_ROLLOUT.md) for the cleanup script needed on previously migrated databases and best-effort delivery limitations.
 
 ## Features
 

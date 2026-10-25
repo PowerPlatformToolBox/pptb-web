@@ -1,5 +1,9 @@
 # Desktop implementation prompt
 
+This prompt includes the breaking generic Ideas rename. Coordinate the desktop
+release with [the rename rollout](./IDEAS_RENAME_ROLLOUT.md); old table/RPC names
+will no longer work. Claiming remains a website flow for signed-in users.
+
 Use this prompt in the desktop repository after the database migration is finalized:
 
 ```text
@@ -20,6 +24,7 @@ Statuses:
 - open: Open
 - under_review: Under review
 - planned: Planned
+- in_progress: In progress (Tool Ideas only)
 - closed: Closed
 - duplicate: Duplicate
 
@@ -30,21 +35,28 @@ Closed resolutions:
 - withdrawn: Withdrawn
 
 Database contract:
-- Read get_ideas(p_install_id text DEFAULT '') using the existing installation ID.
+- Read get_ideas_with_claims(p_install_id text DEFAULT '') using the existing installation ID.
 - Result columns: id, title, description, idea_type, status, resolution,
   public_note, duplicate_of, github_issue_url, created_at, updated_at,
-  upvotes, has_upvoted. Nullable fields: resolution, public_note, duplicate_of,
-  github_issue_url. IDs are UUIDs, timestamps are timestamptz, upvotes is bigint.
-- Submit to tool_ideas using the existing fields plus an explicit idea_type.
+  upvotes, has_upvoted, claim_id, claimant_name, repository_url, claimed_at.
+  Nullable fields: resolution, public_note, duplicate_of, github_issue_url,
+  claim_id, claimant_name, repository_url, claimed_at.
+  IDs are UUIDs, timestamps are timestamptz, upvotes is bigint.
+- Submit to ideas using the existing fields plus an explicit idea_type.
   Do not write maintainer metadata or override the default open status.
-- Vote using upvote_tool_idea(p_idea_id uuid, p_install_id text), retaining the
+- Vote using upvote_idea(p_idea_id uuid, p_install_id text), retaining the
   current authenticated/installation identity model. Result remains
   upvotes bigint, has_upvoted boolean.
 - Remove the current identity's vote with
-  remove_tool_idea_vote(p_idea_id uuid, p_install_id text). It returns the same
-  upvotes/has_upvoted shape and is idempotent. Requires ideas-remove-vote.sql.
-- Legacy get_tool_ideas remains available for older versions; the updated UI
-  must use get_ideas to display all types and statuses.
+  remove_idea_vote(p_idea_id uuid, p_install_id text). It returns the same
+  upvotes/has_upvoted shape and is idempotent.
+- The vote table is idea_votes. Tool intake links use tool_intakes.idea_id,
+  and website submission payloads use ideaId (not toolIdeaId).
+- get_ideas remains available without claim fields; get_open_tool_ideas returns
+  only open Tool Ideas. Do not use either for the new board.
+- tool_ideas, tool_idea_votes, get_tool_ideas, upvote_tool_idea,
+  remove_tool_idea_vote, and claim_tool_idea have no compatibility aliases.
+  Update existing callers; do not silently fall back to obsolete contracts.
 
 UX requirements:
 1. Rename navigation/headings to Ideas.
@@ -53,7 +65,7 @@ UX requirements:
 3. Show type/status badges and closed resolution where present.
 4. Require explicit idea-type selection on submission.
 5. Preserve existing validation limits, identity handling, and repeat-vote rules.
-6. Permit adding AND removing votes only for open, under_review, and planned
+6. Permit adding AND removing votes only for open, under_review, planned, and in_progress
    ideas. A voted button removes the caller's vote; an unvoted button adds one.
    Disable vote changes for closed/duplicate ideas and retain their vote totals.
    Handle RPC rejection explicitly when a status changes after loading. Apply
@@ -71,6 +83,10 @@ UX requirements:
 11. Keep any tool-building/submission suggestion selectors Tool Ideas only,
     excluding closed/duplicate ideas from new suggestions.
 12. Do not add maintainer controls, issue creation, imports, or status syncing.
+13. When claim_id is present, show claimant_name, claimed_at, and a safe external
+    repository link. For open Tool Ideas, link to /ideas#idea-<id> on the website
+    to pick them up. Do not implement installation-based claims or require an
+    existing developer profile. Do not offer claims for Desktop/VSCode ideas.
 
 Testing:
 - Cover all types/statuses, composed filters, submissions, votes/repeat votes,
@@ -78,11 +94,11 @@ Testing:
   linked/unlinked issues, resolutions, duplicate navigation and error states.
 - Test against the migrated staging database, including anonymous installation
   identity if supported by the current client.
-- Preserve the existing database contracts for older released desktop versions.
+- This is an approved coordinated breaking change: do not preserve old RPC names.
 - Run relevant tests, lint, and type-check/build. Summarize changes and deployment
   prerequisites.
 ```
 
-Attach [IDEAS_BOARD_ROLLOUT.md](./IDEAS_BOARD_ROLLOUT.md) and
-[ideas-migration.sql](./sql/ideas-migration.sql), and
-[ideas-remove-vote.sql](./sql/ideas-remove-vote.sql) when handing off the prompt.
+Attach [IDEAS_RENAME_ROLLOUT.md](./IDEAS_RENAME_ROLLOUT.md),
+[ideas-rename.sql](./sql/ideas-rename.sql), and
+[IDEAS_CLAIMING_ROLLOUT.md](./IDEAS_CLAIMING_ROLLOUT.md) when handing off the prompt.

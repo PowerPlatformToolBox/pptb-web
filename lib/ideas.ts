@@ -8,6 +8,7 @@ export const IDEA_STATUSES = {
     open: "Open",
     under_review: "Under review",
     planned: "Planned",
+    in_progress: "In progress",
     closed: "Closed",
     duplicate: "Duplicate",
 } as const;
@@ -37,10 +38,33 @@ export interface Idea {
     updated_at: string;
     upvotes: number;
     has_upvoted: boolean;
+    claim_id: string | null;
+    claimant_name: string | null;
+    repository_url: string | null;
+    claimed_at: string | null;
 }
 
 export function canVoteForIdea(status: IdeaStatus): boolean {
-    return status === "open" || status === "under_review" || status === "planned";
+    return status === "open" || status === "under_review" || status === "planned" || status === "in_progress";
+}
+
+export function canClaimIdea(idea: Pick<Idea, "idea_type" | "status" | "claim_id">): boolean {
+    return idea.idea_type === "tool" && idea.status === "open" && !idea.claim_id;
+}
+
+export function isGithubRepositoryUrl(value: string): boolean {
+    return value === value.trim() && value.length <= 500
+        && /^https:\/\/github\.com\/[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/.test(value)
+        && ![".", ".."].includes(value.split("/")[4])
+        && !value.endsWith(".git");
+}
+
+export function validateIdeaClaim(value: unknown): string | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return "Claim details are required.";
+    const body = value as Record<string, unknown>;
+    if (typeof body.id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id)) return "A valid idea ID is required.";
+    if (typeof body.repositoryUrl !== "string" || !isGithubRepositoryUrl(body.repositoryUrl)) return "Use a GitHub repository URL such as https://github.com/owner/repository, without a trailing slash, .git suffix, query, or fragment.";
+    return null;
 }
 
 export function isGithubIssueUrl(value: string, type: IdeaType): boolean {
@@ -60,6 +84,8 @@ export interface IdeaReview {
     publicNote: string | null;
     duplicateOf: string | null;
     githubIssueUrl: string | null;
+    repositoryUrl?: string | null;
+    releaseClaim?: boolean;
 }
 
 export function validateIdeaReview(value: unknown): string | null {
@@ -79,5 +105,8 @@ export function validateIdeaReview(value: unknown): string | null {
     } else if (body.duplicateOf !== null) return "Only duplicate ideas can reference an original idea.";
     if (body.githubIssueUrl !== null && (typeof body.githubIssueUrl !== "string" || (!isGithubIssueUrl(body.githubIssueUrl, "pptb_desktop") && !isGithubIssueUrl(body.githubIssueUrl, "pptb_vscode"))))
         return "Use a GitHub issue URL from the PPTB desktop or VSCode extension repository.";
+    if (body.repositoryUrl !== undefined && body.repositoryUrl !== null && (typeof body.repositoryUrl !== "string" || !isGithubRepositoryUrl(body.repositoryUrl))) return "Use a canonical HTTPS GitHub repository URL.";
+    if (body.releaseClaim !== undefined && typeof body.releaseClaim !== "boolean") return "Invalid claim release.";
+    if (body.releaseClaim && body.status !== "open") return "Release the claim into Open status.";
     return null;
 }

@@ -83,6 +83,8 @@ export default function AdminIdeasPage() {
             publicNote: idea.public_note,
             duplicateOf: idea.duplicate_of,
             githubIssueUrl: idea.github_issue_url,
+            repositoryUrl: idea.repository_url,
+            releaseClaim: false,
         });
         setError("");
         setSuccess("");
@@ -102,7 +104,7 @@ export default function AdminIdeasPage() {
         try {
             await request("PATCH", review);
             setReview(null);
-            setSuccess("Idea updated. The review change has been recorded.");
+            setSuccess("Idea updated.");
             await loadIdeas();
         } catch (error) {
             console.error("Error saving idea review:", error);
@@ -210,13 +212,39 @@ export default function AdminIdeasPage() {
                                         }}
                                         className="mt-1 block w-full rounded-md border-slate-300"
                                     >
-                                        {Object.entries(IDEA_STATUSES).map(([value, label]) => (
+                                        {Object.entries(IDEA_STATUSES).filter(([value]) => {
+                                            if (value === "in_progress") return selectedIdea.idea_type === "tool" && !!selectedIdea.claim_id && !review.releaseClaim;
+                                            if (selectedIdea.claim_id) return review.releaseClaim ? value === "open" : value === "closed";
+                                            return true;
+                                        }).map(([value, label]) => (
                                             <option key={value} value={value}>
                                                 {label}
                                             </option>
                                         ))}
                                     </select>
                                 </label>
+                                {selectedIdea.claim_id && (
+                                    <div className="space-y-3">
+                                        <label className="flex items-start gap-2 text-sm">
+                                            <input type="checkbox" checked={review.releaseClaim ?? false}
+                                                onChange={(event) => setReview({
+                                                    ...review, releaseClaim: event.target.checked,
+                                                    status: event.target.checked ? "open" : selectedIdea.status,
+                                                    resolution: event.target.checked ? null : selectedIdea.resolution,
+                                                    duplicateOf: null,
+                                                })} className="mt-1 rounded border-slate-300" />
+                                            Release this claim and reopen the idea so another user can pick it up. The previous claim record will be retained with its release date.
+                                        </label>
+                                        {!review.releaseClaim && (
+                                            <label className="block text-sm font-medium">
+                                                GitHub repository URL
+                                                <input type="url" required maxLength={500} value={review.repositoryUrl ?? ""}
+                                                    onChange={(event) => setReview({ ...review, repositoryUrl: event.target.value.trim() || null })}
+                                                    className="mt-1 block w-full rounded-md border-slate-300" />
+                                            </label>
+                                        )}
+                                    </div>
+                                )}
                                 {review.status === "closed" && (
                                     <label className="block text-sm font-medium">
                                         Closed resolution
@@ -295,7 +323,7 @@ export default function AdminIdeasPage() {
                                     </div>
                                 )}
                                 <p className="text-xs text-slate-500">
-                                    Closed and duplicate ideas keep their votes but cannot receive new votes. Reopening clears the resolution or duplicate reference; history is retained.
+                                    Closed and duplicate ideas keep their votes but cannot receive new votes. Reopening clears the resolution or duplicate reference. Review changes are not stored in an audit history.
                                 </p>
                                 <div className="flex gap-4">
                                     <button type="submit" disabled={saving || loading} className="rounded-md bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-50">

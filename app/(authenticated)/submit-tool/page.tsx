@@ -16,7 +16,7 @@ interface Category {
     name: string;
 }
 
-interface ToolIdea {
+interface IdeaOption {
     id: string;
     title: string;
     description: string;
@@ -52,7 +52,7 @@ export default function SubmitToolPage() {
     const [discordHandle, setDiscordHandle] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [toolIdeas, setToolIdeas] = useState<ToolIdea[]>([]);
+    const [ideas, setIdeas] = useState<IdeaOption[]>([]);
     const [selectedIdeaId, setSelectedIdeaId] = useState("");
     const [ideaQuery, setIdeaQuery] = useState("");
     const [loadingCategories, setLoadingCategories] = useState(true);
@@ -61,9 +61,9 @@ export default function SubmitToolPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ValidationError | null>(null);
     const [success, setSuccess] = useState<SubmitSuccessResponse["data"] | null>(null);
-    const selectedIdea = toolIdeas.find((idea) => idea.id === selectedIdeaId);
-    const filteredIdeas = toolIdeas.filter((idea) => `${idea.title} ${idea.description}`.toLowerCase().includes(ideaQuery.trim().toLowerCase()));
-    const topIdeas = [...toolIdeas].sort((first, second) => second.upvotes - first.upvotes).slice(0, 3);
+    const selectedIdea = ideas.find((idea) => idea.id === selectedIdeaId);
+    const filteredIdeas = ideas.filter((idea) => `${idea.title} ${idea.description}`.toLowerCase().includes(ideaQuery.trim().toLowerCase()));
+    const topIdeas = [...ideas].sort((first, second) => second.upvotes - first.upvotes).slice(0, 3);
     const visibleIdeas = ideaQuery.trim() ? filteredIdeas : topIdeas;
 
     // Fetch categories from API on mount
@@ -88,18 +88,18 @@ export default function SubmitToolPage() {
         if (!supabase) return;
 
         let active = true;
-        async function fetchToolIdeas() {
+        async function fetchIdeas() {
             const { data, error } = await supabase!.rpc("get_ideas", { p_install_id: "" });
             if (!active) return;
             if (error) {
                 console.error("Error fetching tool ideas:", error);
             } else {
-                setToolIdeas((data ?? []).filter((idea: Idea) => idea.idea_type === "tool" && canVoteForIdea(idea.status)));
+                setIdeas((data ?? []).filter((idea: Idea) => idea.idea_type === "tool" && canVoteForIdea(idea.status)));
             }
             setLoadingIdeas(false);
         }
 
-        void fetchToolIdeas();
+        void fetchIdeas();
         return () => {
             active = false;
         };
@@ -193,7 +193,7 @@ export default function SubmitToolPage() {
                 body: JSON.stringify({
                     packageName: packageName.trim(),
                     categoryIds: selectedCategories,
-                    toolIdeaId: selectedIdeaId || null,
+                    ideaId: selectedIdeaId || null,
                     linkedinProfileUrl: linkedinProfileUrl.trim(),
                     discordHandle: discordHandle.trim(),
                 }),
@@ -332,7 +332,7 @@ export default function SubmitToolPage() {
                                 </div>
 
                                 <div className="mb-6">
-                                    <label htmlFor="toolIdeaId" className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label htmlFor="ideaId" className="block text-sm font-medium text-slate-700 mb-2">
                                         Related community idea <span className="font-normal text-slate-500">(optional)</span>
                                     </label>
                                     <Combobox
@@ -341,17 +341,17 @@ export default function SubmitToolPage() {
                                             setSelectedIdeaId(ideaId ?? "");
                                             setIdeaQuery("");
                                         }}
-                                        disabled={loading || loadingIdeas || toolIdeas.length === 0}
+                                        disabled={loading || loadingIdeas || ideas.length === 0}
                                     >
                                         <div className="relative">
                                             <ComboboxInput
-                                                id="toolIdeaId"
-                                                displayValue={(ideaId: string | null) => toolIdeas.find((idea) => idea.id === ideaId)?.title ?? ""}
+                                                id="ideaId"
+                                                displayValue={(ideaId: string | null) => ideas.find((idea) => idea.id === ideaId)?.title ?? ""}
                                                 onChange={(event) => {
                                                     setIdeaQuery(event.target.value);
                                                     if (selectedIdeaId) setSelectedIdeaId("");
                                                 }}
-                                                placeholder={supabase && loadingIdeas ? "Loading ideas..." : toolIdeas.length === 0 ? "No ideas available" : "Search ideas..."}
+                                                placeholder={supabase && loadingIdeas ? "Loading ideas..." : ideas.length === 0 ? "No ideas available" : "Search ideas..."}
                                                 className="w-full rounded-lg border border-slate-300 px-4 py-3 pr-12 text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 disabled:bg-slate-50 disabled:cursor-not-allowed"
                                             />
                                             {selectedIdeaId && (

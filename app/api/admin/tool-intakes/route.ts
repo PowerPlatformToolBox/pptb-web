@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
                 `*,
                 contributors:tool_intake_contributors(contributors(id, name, profile_url)),
                 categories:tool_intake_categories(categories(id, name)),
-                tool_idea:tool_ideas!tool_intakes_tool_idea_id_fkey(id, title, description)`,
+                idea:ideas!tool_intakes_idea_id_fkey(id, title, description)`,
             )
             .order("created_at", { ascending: false });
 

@@ -1,4 +1,6 @@
 import {
+    IdeaClaimedEmail,
+    type IdeaClaimedEmailProps,
     ToolConversionSuccessEmail,
     ToolReviewChangeRequestEmail,
     ToolReviewResponseEmail,
@@ -101,6 +103,11 @@ interface VerificationRevokedPayload extends VerificationDeveloperPayload {
 
 type SendEmailOptions =
     | {
+          type: "idea-claimed";
+          data: IdeaClaimedEmailProps & { creatorId: string; eventId: string };
+          supabase: SupabaseClient;
+      }
+    | {
           type: "tool-submission-admin";
           data: ToolSubmissionAdminPayload;
       }
@@ -162,6 +169,7 @@ type SendEmailOptions =
 interface EmailResult {
     success: boolean;
     error?: string;
+    skipped?: boolean;
 }
 
 const resendApiKey = process.env.RESEND_API_KEY;
@@ -182,6 +190,17 @@ function parseRecipients(recipients?: string): string[] {
 
 export async function sendEmail(options: SendEmailOptions): Promise<EmailResult> {
     switch (options.type) {
+        case "idea-claimed": {
+            const { data, error } = await options.supabase.auth.admin.getUserById(options.data.creatorId);
+            if (error && error.status !== 404) return { success: false, error: error.message };
+            if (!data.user?.email) return { success: true, skipped: true };
+            return deliverEmail({
+                subject: `Work has started on your idea: ${options.data.ideaTitle}`,
+                react: createElement(IdeaClaimedEmail, options.data),
+                to: [data.user.email],
+                idempotencyKey: `idea-claimed/${options.data.eventId}`,
+            });
+        }
         case "tool-submission-admin":
             return sendToolSubmissionEmail(options.data);
         case "tool-update-admin":
@@ -357,7 +376,7 @@ async function deliverDeveloperEmail(supabase: SupabaseClient, developerId: stri
     return deliverEmail({ ...message, to: [recipientEmail] });
 }
 
-async function deliverEmail({ subject, react, to }: { subject: string; react: ReactElement; to?: string[] }): Promise<EmailResult> {
+async function deliverEmail({ subject, react, to, idempotencyKey }: { subject: string; react: ReactElement; to?: string[]; idempotencyKey?: string }): Promise<EmailResult> {
     if (!resendClient) {
         return { success: false, error: "Resend API key not configured" };
     }
@@ -378,10 +397,8 @@ async function deliverEmail({ subject, react, to }: { subject: string; react: Re
             to: recipients,
             subject,
             react,
-        } as Record<string, unknown>;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await resendClient.emails.send(payload as any);
+        };
+        const { error } = await resendClient.emails.send(payload, idempotencyKey ? { idempotencyKey } : undefined);
 
         if (error) {
             throw new Error(error.message);

@@ -112,6 +112,30 @@ interface CriterionSummary {
 
 export type { CriterionSummary };
 
+export interface IdeaClaimedEmailProps {
+    ideaTitle: string;
+    claimantName: string;
+    repositoryUrl: string;
+    ideaUrl: string;
+}
+
+export function IdeaClaimedEmail({ ideaTitle, claimantName, repositoryUrl, ideaUrl }: IdeaClaimedEmailProps) {
+    return (
+        <EmailLayout preview={`Work has started on your idea: ${ideaTitle}`} eyebrow="Community ideas" title="Your idea is in progress">
+            <Text style={styles.text}>{claimantName} has started working on your Tool Idea.</Text>
+            <Section style={styles.detail}>
+                <Detail label="Idea">{ideaTitle}</Detail>
+                <Detail label="Picked up by" last>{claimantName}</Detail>
+            </Section>
+            <Text style={styles.text}>
+                Follow development in the <Link href={repositoryUrl}>GitHub repository</Link>.
+                This is a community development effort, not a guarantee of completion or marketplace approval.
+            </Text>
+            <Button href={ideaUrl} style={styles.button}>View your idea</Button>
+        </EmailLayout>
+    );
+}
+
 function CriteriaList({ criteria, showLabelWhenNoComment }: { criteria: CriterionSummary[]; showLabelWhenNoComment: boolean }) {
     const items = showLabelWhenNoComment ? criteria : criteria.filter((criterion) => Boolean(criterion.comment?.trim()));
     if (items.length === 0) return null;
