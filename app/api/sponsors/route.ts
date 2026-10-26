@@ -10,7 +10,7 @@ export async function GET() {
 
         if (!token) {
             console.warn("GH_CLASSIC_TOKEN not configured, returning empty sponsors list");
-            return NextResponse.json([]);
+            return NextResponse.json({ sponsors: [], privateSponsorCount: 0 });
         }
 
         const sponsors = await fetchGitHubSponsors("PowerPlatformToolBox", token);

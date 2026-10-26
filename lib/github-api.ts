@@ -336,11 +336,12 @@ export interface GitHubSponsor {
         name: string | null;
         avatarUrl: string;
         url: string;
-    };
+    } | null;
     tier: {
         name: string;
         monthlyPriceInDollars: number;
     } | null;
+    privacyLevel: "PUBLIC" | "PRIVATE";
     isActive: boolean;
     isOneTimePayment: boolean;
     createdAt: string;
@@ -358,19 +359,24 @@ export interface SponsorData {
     totalContributed: number;
 }
 
+export interface GitHubSponsorsData {
+    sponsors: SponsorData[];
+    privateSponsorCount: number;
+}
+
 /**
  * Fetches GitHub sponsors (active, past, and one-time) for an organization using GraphQL API.
  *
  * @param organizationLogin - The GitHub organization login (e.g., "PowerPlatformToolBox")
- * @param token - GitHub personal access token with appropriate permissions
- * @returns Array of sponsor data with active sponsors first, sorted by total contribution within each group
+ * @param token - GitHub personal access token with permission to view the organization's private sponsorships
+ * @returns Public sponsor data with active sponsors first, sorted by total contribution within each group, and a private sponsor count
  * @throws Error if the GraphQL query fails or returns errors
  */
-export async function fetchGitHubSponsors(organizationLogin: string, token: string): Promise<SponsorData[]> {
+export async function fetchGitHubSponsors(organizationLogin: string, token: string): Promise<GitHubSponsorsData> {
     const query = `
         query($login: String!) {
             organization(login: $login) {
-                sponsorshipsAsMaintainer(first: 100, activeOnly: false) {
+                sponsorshipsAsMaintainer(first: 100, activeOnly: false, includePrivate: true) {
                     nodes {
                         sponsorEntity {
                             ... on User {
@@ -386,6 +392,7 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
                                 url
                             }
                         }
+                        privacyLevel
                         tier {
                             name
                             monthlyPriceInDollars
@@ -425,17 +432,21 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
     const nodes = result.data?.organization?.sponsorshipsAsMaintainer?.nodes;
 
     if (!nodes || !Array.isArray(nodes)) {
-        return [];
+        return { sponsors: [], privateSponsorCount: 0 };
     }
 
+    const privateSponsorCount = nodes.filter((node: GitHubSponsor) => node.privacyLevel === "PRIVATE").length;
     const sponsors: SponsorData[] = nodes
-        .filter((node: GitHubSponsor) => node.sponsorEntity)
-        .map((node: GitHubSponsor) => {
+        .flatMap((node: GitHubSponsor) => {
+            if (node.privacyLevel !== "PUBLIC" || !node.sponsorEntity) {
+                return [];
+            }
+
             const monthlyAmount = node.tier?.monthlyPriceInDollars || 0;
             // GitHub doesn't expose lifetime totals, so approximate from months since the sponsorship started.
             const monthsSponsoring = Math.max(1, Math.round((Date.now() - new Date(node.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)));
 
-            return {
+            return [{
                 name: node.sponsorEntity.name || node.sponsorEntity.login,
                 login: node.sponsorEntity.login,
                 avatarUrl: node.sponsorEntity.avatarUrl,
@@ -445,12 +456,12 @@ export async function fetchGitHubSponsors(organizationLogin: string, token: stri
                 isActive: node.isActive,
                 isOneTime: node.isOneTimePayment,
                 totalContributed: node.isOneTimePayment ? monthlyAmount : monthlyAmount * monthsSponsoring,
-            };
+            }];
         })
         .sort((a: SponsorData, b: SponsorData) => {
             if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
             return b.totalContributed - a.totalContributed;
         });
 
-    return sponsors;
+    return { sponsors, privateSponsorCount };
 }
