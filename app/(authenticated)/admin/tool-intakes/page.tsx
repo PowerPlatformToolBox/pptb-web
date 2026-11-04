@@ -25,6 +25,8 @@ interface ToolIdea {
     description: string;
 }
 
+type CspException = string | { domain: string; exceptionReason: string };
+
 interface ToolIntake {
     id: string;
     package_name: string;
@@ -34,7 +36,7 @@ interface ToolIntake {
     license: string;
     icon: string | null;
     contributors: Contributor[];
-    csp_exceptions: Record<string, string[]> | null;
+    csp_exceptions: Record<string, CspException[]> | null;
     features: Features | null;
     mcp_enabled: boolean;
     configurations: {
@@ -496,7 +498,14 @@ export default function AdminToolIntakesPage() {
                                                                         <ul className="list-disc list-inside ml-4 mt-1">
                                                                             {values.map((value, idx) => (
                                                                                 <li key={idx} className="font-mono text-xs">
-                                                                                    {value}
+                                                                                    {typeof value === "string" ? value : (
+                                                                                        <>
+                                                                                            {value.domain}
+                                                                                            <p className="font-sans mt-1 whitespace-pre-wrap">
+                                                                                                <strong>Reason:</strong> {value.exceptionReason}
+                                                                                            </p>
+                                                                                        </>
+                                                                                    )}
                                                                                 </li>
                                                                             ))}
                                                                         </ul>
