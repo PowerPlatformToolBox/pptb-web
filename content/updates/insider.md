@@ -1,13 +1,13 @@
 ---
 title: "Insider"
-date: "2026-10-06"
+date: "2026-11-11"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- Refactor tool directory resolution and add tests for BrowserviewProtocolManager
+- Improved MCP invocation details with status handling and UI updates.
 
 ## Fixes
 
@@ -15,15 +15,15 @@ heroImage: "/images/updates/Insider.png"
 
 ## Developer & Build
 
-- Version: 1.2.7-dev.20261006
+- Version: 1.2.8-dev.20261111
 - Branch: dev
-- Commits: 1 in the last 24 hours
-- Build Date: 37408799960
+- Commits: 3 in the last 24 hours
+- Build Date: 42953458657
 
 ## Notes
 
-- No manual migration needed; existing settings and connections continue to work.
-- This page currently reflects Insider build `v1.2.7-dev.20261006` (and newer).
+- This is an automated Insider build for testing; it may contain bugs, instability, incomplete features, or breaking changes and is not recommended for production use.
+- This page currently reflects Insider build `v1.2.8-dev.20261111` (and newer).
 
 ## Getting an Insider build
 
