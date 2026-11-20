@@ -145,6 +145,9 @@ export function formatFileSize(bytes: number): string {
 // --- GitHub Actions helpers for convert-tool workflow ---
 
 export interface ConvertWorkflowInputs {
+    intake_id: string;
+    intake_revision: string;
+    request_id: string;
     npm_package_name: string;
     display_name: string;
     description: string;
@@ -205,6 +208,7 @@ export async function waitForWorkflowCompletion(params: {
     timeoutMs?: number; // default 180000
     pollIntervalMs?: number; // default 5000
     dispatchedAt?: Date; // timestamp when workflow was dispatched
+    runTitle?: string;
 }) {
     const owner = params.owner;
     const repo = params.repo;
@@ -216,7 +220,7 @@ export async function waitForWorkflowCompletion(params: {
     const dispatchedAt = params.dispatchedAt ?? new Date();
 
     const start = Date.now();
-    let foundRun = false;
+    let runId: number | undefined;
 
     interface WorkflowRun {
         id: number;
@@ -224,6 +228,7 @@ export async function waitForWorkflowCompletion(params: {
         status: string;
         conclusion: string | null;
         html_url: string;
+        display_title?: string;
     }
 
     const toWorkflowResult = async (run: WorkflowRun) => {
@@ -258,18 +263,16 @@ export async function waitForWorkflowCompletion(params: {
     };
 
     while (Date.now() - start < timeoutMs) {
-        // First, look for in-progress or queued runs created after dispatch
-        if (!foundRun) {
+        if (runId === undefined) {
             const inProgressUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs?branch=${encodeURIComponent(branch)}&per_page=5`;
             const res = await ghFetch(inProgressUrl, token);
             if (res.ok) {
                 const json = await res.json();
                 const recentRun = json.workflow_runs?.find((run: WorkflowRun) => {
-                    const runCreated = new Date(run.created_at);
-                    return runCreated >= dispatchedAt;
+                    return params.runTitle ? run.display_title === params.runTitle : new Date(run.created_at) >= dispatchedAt;
                 });
                 if (recentRun) {
-                    foundRun = true;
+                    runId = recentRun.id;
                     // If already completed, return conclusion
                     if (recentRun.status === "completed") {
                         return await toWorkflowResult(recentRun);
@@ -278,17 +281,11 @@ export async function waitForWorkflowCompletion(params: {
             }
         } else {
             // Once found, check for completion
-            const completedUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs?branch=${encodeURIComponent(branch)}&status=completed&per_page=5`;
-            const res = await ghFetch(completedUrl, token);
+            const runUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}`;
+            const res = await ghFetch(runUrl, token);
             if (res.ok) {
-                const json = await res.json();
-                const completedRun = json.workflow_runs?.find((run: WorkflowRun) => {
-                    const runCreated = new Date(run.created_at);
-                    return runCreated >= dispatchedAt;
-                });
-                if (completedRun) {
-                    return await toWorkflowResult(completedRun);
-                }
+                const run: WorkflowRun = await res.json();
+                if (run.status === "completed") return await toWorkflowResult(run);
             }
         }
         await new Promise((r) => setTimeout(r, pollIntervalMs));
@@ -308,6 +305,7 @@ export async function runConvertToolWorkflow(params: { owner: string; repo: stri
         timeoutMs: params.timeoutMs,
         pollIntervalMs: params.pollIntervalMs,
         dispatchedAt,
+        runTitle: `Convert intake ${params.inputs.request_id}`,
     });
     return result;
 }

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getDiscordActor, notifyDiscordAfterResponse, toDiscordTool, truncate } from "@/lib/discord-notify";
+import { fetchIntakeManifest, validateIntakeVersion } from "@/lib/intake-package";
 import { sendEmail } from "@/lib/resend";
+import { isValidSemver } from "@/lib/version-extraction";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -18,7 +20,9 @@ function getSupabaseClient() {
 
 interface ReviewRequest {
     intakeId: string;
-    action: "approve" | "reject" | "needs_changes";
+    action: "approve" | "reject" | "needs_changes" | "review_version";
+    version: string;
+    revision: string;
     reviewerNotes?: string;
 }
 
@@ -58,10 +62,38 @@ export async function POST(request: NextRequest) {
 
         // Parse request body
         const body = (await request.json()) as ReviewRequest;
-        const { intakeId, action, reviewerNotes } = body;
+        const { intakeId, action, version, revision, reviewerNotes } = body;
 
-        if (!intakeId || !action) {
-            return NextResponse.json({ error: "intakeId and action are required" }, { status: 400 });
+        if (typeof intakeId !== "string" || typeof version !== "string" || typeof revision !== "string" || !action) {
+            return NextResponse.json({ error: "Intake ID, version, revision and action are required." }, { status: 400 });
+        }
+
+        if (action === "review_version") {
+            if (!isValidSemver(version)) return NextResponse.json({ error: "Select an exact npm version." }, { status: 400 });
+            const { data: intake, error } = await supabase
+                .from("tool_intakes").select("package_name, version, updated_at, status, conversion_receipt").eq("id", intakeId).maybeSingle();
+            if (error) throw error;
+            if (!intake) return NextResponse.json({ error: "Tool intake not found." }, { status: 404 });
+            if (intake.updated_at !== revision || intake.version === version || intake.conversion_receipt || !["pending_review", "approved", "needs_changes"].includes(intake.status)) {
+                return NextResponse.json({ error: "This intake has changed or already published. Refresh it before selecting a version." }, { status: 409 });
+            }
+            let validated;
+            try {
+                validated = await validateIntakeVersion(intake.package_name, version);
+            } catch (error) {
+                console.warn("Could not validate selected intake version:", error);
+                return NextResponse.json({ error: `Could not load and validate ${intake.package_name}@${version}. Check that it is still published on npm.` }, { status: 502 });
+            }
+            if ("error" in validated) return NextResponse.json({ error: validated.error }, { status: 400 });
+            const { data: refreshed, error: refreshError } = await supabase.rpc("refresh_tool_intake_version", {
+                p_intake_id: intakeId,
+                p_revision: revision,
+                p_values: validated.values,
+                p_contributors: validated.contributors,
+            });
+            if (refreshError) throw refreshError;
+            if (!refreshed) return NextResponse.json({ error: "This intake changed during validation. Refresh it and try again." }, { status: 409 });
+            return NextResponse.json({ success: true, message: `${version} is pending review.` });
         }
 
         const validActions = ["approve", "reject", "needs_changes"];
@@ -84,15 +116,21 @@ export async function POST(request: NextRequest) {
                 reviewer_notes: reviewerNotes || null,
                 reviewed_by: userId,
                 reviewed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
             })
             .eq("id", intakeId)
+            .eq("version", version)
+            .eq("updated_at", revision)
+            .in("status", ["pending_review", "needs_changes", "rejected"])
+            .is("conversion_receipt", null)
             .select("*, submitted_by")
-            .single();
+            .maybeSingle();
 
         if (updateError) {
             console.error("Error updating intake:", updateError);
             return NextResponse.json({ error: "Failed to update tool intake" }, { status: 500 });
         }
+        if (!updatedIntake) return NextResponse.json({ error: "This intake has changed. Refresh it before reviewing." }, { status: 409 });
 
         // Notify submitter when changes are requested
         if (action === "needs_changes") {
@@ -168,6 +206,19 @@ export async function GET(request: NextRequest) {
         // Get query parameters
         const { searchParams } = new URL(request.url);
         const status = searchParams.get("status");
+        const intakeId = searchParams.get("latestFor");
+        if (intakeId) {
+            const { data: intake, error } = await supabase.from("tool_intakes").select("package_name").eq("id", intakeId).maybeSingle();
+            if (error) throw error;
+            if (!intake) return NextResponse.json({ error: "Tool intake not found." }, { status: 404 });
+            try {
+                const latest = await fetchIntakeManifest(intake.package_name);
+                return NextResponse.json({ version: latest.version });
+            } catch (error) {
+                console.warn("Could not check npm latest for intake:", error);
+                return NextResponse.json({ error: "Could not check the latest version on npm." }, { status: 502 });
+            }
+        }
 
         let query = supabase
             .from("tool_intakes")

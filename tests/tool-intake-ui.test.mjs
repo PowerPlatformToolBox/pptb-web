@@ -13,11 +13,11 @@ const compiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 
-function mountReview(cspExceptions) {
+function mountReview(cspExceptions, overrides = {}) {
     const intake = {
         id: "intake-id", package_name: "test-tool", version: "1.0.0", display_name: "Test Tool",
         description: "Test submission", license: "MIT", contributors: [], configurations: {},
-        status: "pending_review", created_at: "2026-11-04", csp_exceptions: cspExceptions,
+        status: "pending_review", created_at: "2026-11-04", csp_exceptions: cspExceptions, ...overrides,
     };
     const states = [[intake], false, null, "pending_review", null, "", false, true, "token"];
     let index = 0;
@@ -44,12 +44,33 @@ function mountReview(cspExceptions) {
         },
     });
     return {
+        showLatest(version) {
+            states[9] = { id: intake.id, version };
+        },
         tree() {
             index = 0;
             return exports.default();
         },
     };
 }
+
+test("approved intake keeps conversion pinned and offers independent review for a different version", () => {
+    const ui = mountReview(null, { version: "1.1.0", status: "approved" });
+    findButton(ui.tree(), "Review").props.onClick();
+    ui.showLatest("1.2.0");
+    const tree = ui.tree();
+    assert.ok(findButton(tree, "Convert approved 1.1.0"));
+    assert.ok(findButton(tree, "Review 1.2.0"));
+    assert.match(renderToStaticMarkup(tree), /existing approval does not carry over/);
+});
+
+test("an already-published intake offers finalization, not replacement", () => {
+    const ui = mountReview(null, { version: "1.1.0", status: "approved", conversion_receipt: { version: "1.1.0" } });
+    findButton(ui.tree(), "Review").props.onClick();
+    ui.showLatest("1.2.0");
+    assert.ok(findButton(ui.tree(), "Finalize 1.1.0"));
+    assert.equal(findButton(ui.tree(), "Review 1.2.0"), null);
+});
 
 function findButton(tree, label) {
     if (!tree || typeof tree !== "object") return null;
