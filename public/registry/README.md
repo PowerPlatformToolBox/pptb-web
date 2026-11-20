@@ -10,6 +10,8 @@ Tools are automatically synced to the ToolBox marketplace.
 
 Submit your tool via [GitHub Issues](../../issues/new/choose).
 
+See the [Marketplace Policy](https://powerplatformtoolbox.com/policy/marketplace) for tool lifecycle states and the process for requesting deprecation or retirement.
+
 ## Registry URL
 
 `https://powerplatformtoolbox.com/registry/registry.json`

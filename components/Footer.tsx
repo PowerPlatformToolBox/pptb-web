@@ -22,6 +22,7 @@ export function Footer() {
                             <NavLink href="/security">Security</NavLink>
                             <NavLink href="/versions">Versions</NavLink>
                             <NavLink href="/team#alumni">Project Alumni</NavLink>
+                            <NavLink href="/policy/marketplace">Marketplace Policy</NavLink>
                             <NavLink href="/policy/privacy">Privacy Policy</NavLink>
                             <NavLink href="/policy/terms">Terms of Service</NavLink>
                         </div>
