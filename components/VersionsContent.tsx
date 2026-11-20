@@ -58,13 +58,13 @@ export function VersionsContent() {
     const stableReleases = releases.filter((r) => !isInsiderRelease(r));
     const insiderReleases = releases.filter((r) => isInsiderRelease(r));
 
-    const tabBaseClasses = "px-4 sm:px-6 py-3 text-base sm:text-lg font-semibold text-slate-700 border-b-2 border-transparent transition-colors whitespace-nowrap";
+    const tabBaseClasses = "px-3 py-2 text-sm font-semibold text-slate-600 transition-colors whitespace-nowrap";
 
     return (
         <TabGroup>
-            <TabList className="flex gap-2 sm:gap-4 border-b border-slate-200 mb-8 justify-center overflow-x-auto">
-                <Tab className={`${tabBaseClasses} hover:text-blue data-[selected]:border-blue data-[selected]:text-blue`}>Stable Release</Tab>
-                <Tab className={`${tabBaseClasses} hover:text-purple data-[selected]:border-purple data-[selected]:text-purple`}>Insider Release</Tab>
+            <TabList className="mb-6 flex w-fit gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                <Tab className={`${tabBaseClasses} rounded-md border-0 hover:bg-slate-50 hover:text-blue-700 data-[selected]:bg-blue-50 data-[selected]:text-blue-800`}>Stable release</Tab>
+                <Tab className={`${tabBaseClasses} rounded-md border-0 hover:bg-slate-50 hover:text-blue-700 data-[selected]:bg-blue-50 data-[selected]:text-blue-800`}>Insider release</Tab>
             </TabList>
 
             <TabPanels>

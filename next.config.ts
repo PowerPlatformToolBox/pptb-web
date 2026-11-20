@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 
+const immutableAssetCacheHeader =
+    process.env.NODE_ENV === "production"
+        ? [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }]
+        : [];
+
 const nextConfig: NextConfig = {
     images: {
         unoptimized: true,
@@ -38,10 +43,7 @@ const nextConfig: NextConfig = {
                 // Specific headers for static assets to prevent 403 errors
                 source: "/_next/static/:path*",
                 headers: [
-                    {
-                        key: "Cache-Control",
-                        value: "public, max-age=31536000, immutable",
-                    },
+                    ...immutableAssetCacheHeader,
                     {
                         key: "Access-Control-Allow-Origin",
                         value: "*",
@@ -68,10 +70,7 @@ const nextConfig: NextConfig = {
                 // Headers for Next.js image optimization
                 source: "/_next/image/:path*",
                 headers: [
-                    {
-                        key: "Cache-Control",
-                        value: "public, max-age=31536000, immutable",
-                    },
+                    ...immutableAssetCacheHeader,
                     {
                         key: "Access-Control-Allow-Origin",
                         value: "*",
@@ -82,10 +81,7 @@ const nextConfig: NextConfig = {
                 // Headers for all JavaScript and CSS chunks
                 source: "/_next/:path*.js",
                 headers: [
-                    {
-                        key: "Cache-Control",
-                        value: "public, max-age=31536000, immutable",
-                    },
+                    ...immutableAssetCacheHeader,
                     {
                         key: "Access-Control-Allow-Origin",
                         value: "*",
@@ -108,10 +104,7 @@ const nextConfig: NextConfig = {
                 // Headers for CSS files
                 source: "/_next/:path*.css",
                 headers: [
-                    {
-                        key: "Cache-Control",
-                        value: "public, max-age=31536000, immutable",
-                    },
+                    ...immutableAssetCacheHeader,
                     {
                         key: "Access-Control-Allow-Origin",
                         value: "*",

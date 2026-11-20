@@ -221,31 +221,30 @@ export default function SubmitToolPage() {
     };
 
     return (
-        <main>
-            <Container className="mt-8 sm:mt-16 pb-16">
+        <main className="min-h-screen bg-slate-50 pb-16">
+            <Container className="py-8 sm:py-12">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl">
-                        {/* Back button */}
-                        <Link href="/dashboard" className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8">
+                        <Link href="/dashboard" className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-blue-700">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Back to Dashboard
+                            Back to dashboard
                         </Link>
 
-                        {/* Page Header */}
-                        <div className="mb-8">
-                            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Submit a New Tool</h1>
-                            <p className="mt-4 text-lg text-slate-600">
+                        <div className="mb-6 border-b border-slate-200 pb-6">
+                            <p className="text-sm font-semibold text-blue-700">Marketplace contribution</p>
+                            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Submit a tool</h1>
+                            <p className="mt-2 text-sm text-slate-600">
                                 Submit your npm package to be added to the Power Platform ToolBox. We&apos;ll validate your package and review it for inclusion.
                             </p>
                         </div>
 
                         {/* Info Box */}
                         <SlideIn direction="up" delay={0.3}>
-                            <div className="card p-6 mb-8 bg-blue-50 border border-blue-200">
-                                <h2 className="font-semibold text-blue-900 mb-2">Validate Your Tool</h2>
-                                <p className="text-sm text-blue-800">
+                            <div className="mb-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <h2 className="font-semibold text-slate-900 mb-2">Before you submit</h2>
+                                <p className="text-sm text-slate-600">
                                     Check the{" "}
                                     <a
                                         href="https://docs.powerplatformtoolbox.com/tool-development/validation#what-is-validated"
@@ -271,8 +270,8 @@ export default function SubmitToolPage() {
 
                         {/* Submission Form */}
                         <SlideIn direction="up" delay={0.4}>
-                            <form onSubmit={handleSubmit} className="card p-8">
-                                <h2 className="text-xl font-semibold text-slate-900 mb-6">Submit Your Package</h2>
+                            <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                                <h2 className="text-lg font-semibold text-slate-900 mb-6">Package details</h2>
 
                                 <div className="mb-6">
                                     <label htmlFor="packageName" className="block text-sm font-medium text-slate-700 mb-2">
@@ -455,7 +454,7 @@ export default function SubmitToolPage() {
                         {/* Success Message */}
                         {success && (
                             <SlideIn direction="up" delay={0.1}>
-                                <div className="card p-6 mb-8 bg-green-50 border border-green-200">
+                                <div className="mb-5 rounded-xl border border-green-200 bg-white p-5 shadow-sm">
                                     <div className="flex items-start gap-3">
                                         <div className="shrink-0">
                                             <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -474,7 +473,7 @@ export default function SubmitToolPage() {
                                                 Status: <span className="font-medium capitalize">{success.status.replace(/_/g, " ")}</span>
                                             </p>
                                             {success.warnings.length > 0 && (
-                                                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                                <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
                                                     <p className="text-sm font-medium text-yellow-800">Warnings:</p>
                                                     <ul className="text-sm text-yellow-700 list-disc list-inside mt-1">
                                                         {success.warnings.map((warning, index) => (
@@ -492,7 +491,7 @@ export default function SubmitToolPage() {
                         {/* Error Message */}
                         {error && (
                             <SlideIn direction="up" delay={0.1}>
-                                <div className="card p-6 mb-8 bg-red-50 border border-red-200">
+                                <div className="mb-5 rounded-xl border border-red-200 bg-white p-5 shadow-sm">
                                     <div className="flex items-start gap-3">
                                         <div className="shrink-0">
                                             <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -535,7 +534,7 @@ export default function SubmitToolPage() {
 
                         {/* Manifest Documentation */}
                         <SlideIn direction="up" delay={0.5}>
-                            <div className="mt-8 card p-6">
+                            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <h2 className="text-lg font-semibold text-slate-900">Tool manifest</h2>
                                 <p className="mt-2 text-sm text-slate-600">
                                     See the latest package structure and requirements in the{" "}

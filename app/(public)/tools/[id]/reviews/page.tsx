@@ -130,10 +130,10 @@ export default function ToolReviewsPage() {
 
     if (loading) {
         return (
-            <main>
-                <Container className="mt-16 sm:mt-32">
+            <main className="min-h-screen bg-slate-50">
+                <Container className="py-12 sm:py-16">
                     <div className="text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
                         <p className="mt-4 text-slate-600">Loading reviews...</p>
                     </div>
                 </Container>
@@ -142,31 +142,30 @@ export default function ToolReviewsPage() {
     }
 
     return (
-        <main>
-            <Container className="mt-8 sm:mt-16">
+        <main className="min-h-screen bg-slate-50">
+            <Container className="py-8 sm:py-12">
                 <FadeIn direction="up" delay={0.2}>
-                    <div className="mx-auto max-w-3xl">
-                        {/* Back button */}
-                        <Link href={`/tools/${toolId}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8">
+                    <div className="mx-auto max-w-4xl">
+                        <Link href={`/tools/${toolId}`} className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-blue-700">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Back to Tool
+                            Back to tool
                         </Link>
 
-                        {/* Header */}
-                        <header className="mb-12">
-                            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl mb-2">Reviews for {toolName}</h1>
-                            <p className="text-lg text-slate-600">See what users think about this tool</p>
+                        <header className="mb-8 border-b border-slate-200 pb-6">
+                            <p className="text-sm font-semibold text-blue-700">Community feedback</p>
+                            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Reviews for {toolName}</h1>
+                            <p className="mt-2 text-sm text-slate-600">See what users think about this tool.</p>
                         </header>
 
-                        {permissionError && <p role="alert" className="mb-6 text-sm text-red-700">{permissionError}</p>}
+                        {permissionError && <p role="alert" className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{permissionError}</p>}
                         {error ? (
-                            <div className="card p-12 text-center" role="alert">
+                            <div className="rounded-xl border border-red-200 bg-white p-8 text-center" role="alert">
                                 <p className="text-slate-600 text-lg">{error}</p>
                             </div>
                         ) : ratings.length === 0 ? (
-                            <div className="card p-12 text-center">
+                            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
                                 <p className="text-slate-600 text-lg mb-4">No reviews yet</p>
                                 <p className="text-slate-500 mb-6">Be the first to share your experience with this tool</p>
                                 <Link href={`/rate-tool?toolId=${toolId}`} className="inline-block btn-primary">
@@ -174,10 +173,9 @@ export default function ToolReviewsPage() {
                                 </Link>
                             </div>
                         ) : (
-                            <div className="space-y-8">
-                                {/* Rating Summary */}
-                                <div className="card p-8 shadow-lg">
-                                    <h2 className="text-2xl font-semibold text-slate-900 mb-6">Rating Summary</h2>
+                            <div className="space-y-6">
+                                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                                    <h2 className="text-lg font-semibold text-slate-900 mb-6">Rating summary</h2>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
                                         {/* Overall Rating */}
@@ -207,13 +205,12 @@ export default function ToolReviewsPage() {
                                     </div>
                                 </div>
 
-                                {/* Reviews List */}
                                 <div>
-                                    <h2 className="text-2xl font-semibold text-slate-900 mb-6">User Reviews</h2>
+                                    <h2 className="text-lg font-semibold text-slate-900 mb-4">User reviews</h2>
                                     <div className="space-y-4">
                                         {ratings.map((rating) => (
                                             <FadeIn key={rating.id} direction="up" delay={0.1}>
-                                                <div className="card p-6 shadow-md hover:shadow-lg transition-shadow">
+                                                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 sm:p-6">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div>
                                                             <h3 className="font-semibold text-slate-900">{rating.userName?.trim() && !rating.userName.includes("@") ? rating.userName : "Anonymous reviewer"}</h3>

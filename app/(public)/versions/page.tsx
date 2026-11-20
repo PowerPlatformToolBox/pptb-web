@@ -12,13 +12,14 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function VersionsPage() {
     return (
-        <main className="py-20">
-            <Container>
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl mb-4">
-                        Download Power Platform ToolBox
+        <main className="min-h-screen bg-slate-50 pb-16">
+            <Container className="py-8 sm:py-12">
+                <div className="mb-8 border-b border-slate-200 pb-6">
+                    <p className="text-sm font-semibold text-blue-700">Power Platform ToolBox</p>
+                    <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                        Download versions
                     </h1>
-                    <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                    <p className="mt-2 max-w-2xl text-sm text-slate-600">
                         Choose from stable releases for production use or insider builds to get the latest features and improvements.
                     </p>
                 </div>

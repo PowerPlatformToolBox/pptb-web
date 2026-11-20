@@ -163,22 +163,22 @@ export default function IdeasPage() {
     }
 
     return (
-        <main className="py-10 sm:py-16">
-            <Container>
+        <main className="min-h-screen bg-slate-50 pb-16">
+            <Container className="py-8 sm:py-12">
                 <div className="mx-auto max-w-5xl">
-                    <header className="border-b border-slate-200 pb-8">
+                    <header className="border-b border-slate-200 pb-6">
                         <div className="flex items-center gap-3 text-blue-700">
-                            <LightBulbIcon className="h-7 w-7" aria-hidden="true" />
-                            <span className="text-sm font-semibold uppercase">Community ideas</span>
+                            <LightBulbIcon className="h-5 w-5" aria-hidden="true" />
+                            <span className="text-sm font-semibold">Community ideas</span>
                         </div>
-                        <h1 className="mt-4 text-4xl font-bold text-slate-900 sm:text-5xl">Ideas</h1>
-                        <p className="mt-4 max-w-2xl text-lg text-slate-600">Help shape PPTB Desktop, the PPTB VSCode Extension, and community-built tools. Share an idea or vote for one.</p>
-                        <p className="mt-3 text-sm text-slate-500">Maintainers manage idea statuses here. Linked GitHub issues are the source of truth for PPTB implementation progress.</p>
+                        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Ideas</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-slate-600">Help shape PPTB Desktop, the PPTB VSCode Extension, and community-built tools. Share an idea or vote for one.</p>
+                        <p className="mt-2 text-xs text-slate-500">Maintainers manage idea statuses here. Linked GitHub issues are the source of truth for PPTB implementation progress.</p>
                     </header>
 
-                    <div className="grid gap-12 py-10 lg:grid-cols-[minmax(0,1fr)_19rem]">
+                    <div className="grid gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_19rem]">
                         <section aria-labelledby="ideas-heading" className="min-w-0">
-                            <h2 id="ideas-heading" className="text-2xl font-semibold text-slate-900">
+                            <h2 id="ideas-heading" className="text-lg font-semibold text-slate-900">
                                 Ideas from the community
                             </h2>
                             <p className="mt-1 text-sm text-slate-500">Most upvoted first</p>
@@ -196,7 +196,7 @@ export default function IdeasPage() {
                             <div className="mt-4 flex flex-wrap gap-4">
                                 <label className="text-sm font-medium text-slate-700">
                                     Idea type
-                                    <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as IdeaType | "all")} className="mt-1 block rounded-md border-slate-300">
+                                    <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as IdeaType | "all")} className="mt-1 block rounded-lg border-slate-300 bg-white text-sm text-slate-700 focus:border-blue-600 focus:ring-blue-600">
                                         <option value="all">All types</option>
                                         {Object.entries(IDEA_TYPES).map(([value, label]) => (
                                             <option key={value} value={value}>
@@ -207,7 +207,7 @@ export default function IdeasPage() {
                                 </label>
                                 <label className="text-sm font-medium text-slate-700">
                                     Status
-                                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as IdeaStatus | "all")} className="mt-1 block rounded-md border-slate-300">
+                                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as IdeaStatus | "all")} className="mt-1 block rounded-lg border-slate-300 bg-white text-sm text-slate-700 focus:border-blue-600 focus:ring-blue-600">
                                         <option value="all">All statuses</option>
                                         {Object.entries(IDEA_STATUSES).map(([value, label]) => (
                                             <option key={value} value={value}>
@@ -241,9 +241,9 @@ export default function IdeasPage() {
                                 </p>
                             )}
                             {!loading && !listError && filterIdeas(ideas, typeFilter, statusFilter).length === 0 && <p className="mt-6 text-slate-600">No ideas match these filters.</p>}
-                            <div className="mt-6 divide-y divide-slate-200 border-y border-slate-200">
+                            <div className="mt-5 space-y-3">
                                 {filterIdeas(ideas, typeFilter, statusFilter).map((idea) => (
-                                    <article id={`idea-${idea.id}`} key={idea.id} className="flex scroll-mt-24 gap-4 py-6 sm:gap-6">
+                                    <article id={`idea-${idea.id}`} key={idea.id} className="flex scroll-mt-24 gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:gap-5 sm:p-5">
                                         <button
                                             type="button"
                                             onClick={() => void changeVote(idea)}
@@ -251,7 +251,7 @@ export default function IdeasPage() {
                                             title={!canVoteForIdea(idea.status) ? "Votes cannot be changed for this idea" : idea.has_upvoted ? "Remove your vote" : "Upvote this idea"}
                                             aria-label={`${idea.has_upvoted ? "Remove your vote for" : "Upvote"} ${idea.title}`}
                                             aria-pressed={idea.has_upvoted}
-                                            className={`flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-md border text-sm font-semibold transition ${idea.has_upvoted ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-300 text-slate-700 hover:border-blue-600 hover:text-blue-700 disabled:opacity-50"}`}
+                                            className={`flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-lg border text-sm font-semibold transition ${idea.has_upvoted ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-300 bg-white text-slate-700 hover:border-blue-600 hover:text-blue-700 disabled:opacity-50"}`}
                                         >
                                             <ArrowUpIcon className="h-5 w-5" aria-hidden="true" />
                                             {idea.upvotes}
@@ -272,8 +272,8 @@ export default function IdeasPage() {
                             </div>
                         </section>
 
-                        <section aria-labelledby="submit-heading">
-                            <h2 id="submit-heading" className="text-2xl font-semibold text-slate-900">
+                        <section aria-labelledby="submit-heading" className="h-fit rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-24">
+                            <h2 id="submit-heading" className="text-lg font-semibold text-slate-900">
                                 Share an idea
                             </h2>
                             <p className="mt-2 text-sm text-slate-600">What would make your Power Platform work easier?</p>
@@ -295,7 +295,7 @@ export default function IdeasPage() {
                                             required
                                             value={ideaType}
                                             onChange={(event) => setIdeaType(event.target.value as IdeaType | "")}
-                                            className="mt-1 w-full rounded-md border-slate-300"
+                                            className="mt-1 w-full rounded-lg border-slate-300 text-sm focus:border-blue-600 focus:ring-blue-600"
                                         >
                                             <option value="" disabled>
                                                 Choose an idea type
@@ -317,7 +317,7 @@ export default function IdeasPage() {
                                             maxLength={120}
                                             value={title}
                                             onChange={(event) => setTitle(event.target.value)}
-                                            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 focus:border-blue-600 focus:ring-blue-600"
+                                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:ring-blue-600"
                                         />
                                     </div>
                                     <div>
@@ -331,7 +331,7 @@ export default function IdeasPage() {
                                             rows={5}
                                             value={description}
                                             onChange={(event) => setDescription(event.target.value)}
-                                            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 focus:border-blue-600 focus:ring-blue-600"
+                                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:ring-blue-600"
                                         />
                                     </div>
                                     <div>
@@ -343,7 +343,7 @@ export default function IdeasPage() {
                                             type="email"
                                             value={email}
                                             onChange={(event) => setEmail(event.target.value)}
-                                            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 focus:border-blue-600 focus:ring-blue-600"
+                                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:ring-blue-600"
                                         />
                                     </div>
                                     {actionError && (
@@ -359,7 +359,7 @@ export default function IdeasPage() {
                                     <button
                                         type="submit"
                                         disabled={!supabase || !userId || submitting}
-                                        className="rounded-md bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         {submitting ? "Submitting..." : "Submit idea"}
                                     </button>

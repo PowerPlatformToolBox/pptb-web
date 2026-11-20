@@ -164,8 +164,8 @@ export default function RateToolPage() {
 
     if (loading) {
         return (
-            <main>
-                <Container className="mt-16 sm:mt-32">
+            <main className="min-h-screen bg-slate-50">
+                <Container className="py-12 sm:py-16">
                     <div className="text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
                         <p className="mt-4 text-slate-600">Loading...</p>
@@ -182,34 +182,32 @@ export default function RateToolPage() {
     const issuesUrl = getToolIssuesUrl(tool.repository);
 
     return (
-        <main>
-            <Container className="mt-2 sm:mt-4">
+        <main className="min-h-screen bg-slate-50">
+            <Container className="py-8 sm:py-12">
                 <FadeIn direction="up" delay={0.2}>
                     <div className="mx-auto max-w-2xl">
-                        {/* Back button */}
-                        <Link href={`/tools/${tool.id}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8">
+                        <Link href={`/tools/${tool.id}`} className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-blue-700">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Back to {tool.name}
+                            Back to tool
                         </Link>
 
-                        {/* Tool Header */}
-                        <div className="card p-8 mb-8">
-                            <div className="flex items-center gap-4 mb-4">
-                                <span className="text-5xl">
-                                    <Image src={tool.icon} alt={tool.name} width={32} height={32} className="rounded" />
-                                </span>
+                        <div className="mb-6 border-b border-slate-200 pb-6">
+                            <div className="flex items-start gap-4">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+                                    <Image src={tool.icon} alt="" width={40} height={40} className="rounded object-contain" />
+                                </div>
                                 <div>
-                                    <h1 className="text-3xl font-bold text-slate-900">{tool.name}</h1>
-                                    <p className="text-slate-600">{tool.description}</p>
+                                    <p className="text-sm font-semibold text-blue-700">Leave feedback</p>
+                                    <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{tool.name}</h1>
+                                    <p className="mt-2 text-sm text-slate-600">{tool.description}</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Rating Form */}
                         {success ? (
-                            <div className="card p-8 text-center">
+                            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
                                 <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-green-100">
                                     <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -220,11 +218,11 @@ export default function RateToolPage() {
                                 <p className="text-sm text-slate-500 mt-4">Redirecting...</p>
                             </div>
                         ) : (
-                            <form onSubmit={handleSubmit} className="card p-8">
-                                <h2 className="text-2xl font-semibold text-slate-900 mb-6">Rate this tool</h2>
+                            <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                                <h2 className="text-lg font-semibold text-slate-900 mb-6">Rate this tool</h2>
 
                                 {error && (
-                                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
                                         <p className="text-sm text-red-800">{error}</p>
                                     </div>
                                 )}
@@ -234,7 +232,7 @@ export default function RateToolPage() {
                                     <label className="block text-sm font-medium text-slate-700 mb-3">
                                         Your Rating <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1 sm:gap-2">
                                         {[1, 2, 3, 4, 5].map((star) => (
                                             <button
                                                 key={star}
@@ -242,9 +240,11 @@ export default function RateToolPage() {
                                                 onClick={() => setRating(star)}
                                                 onMouseEnter={() => setHoverRating(star)}
                                                 onMouseLeave={() => setHoverRating(0)}
-                                                className="transition-transform hover:scale-110 focus:outline-none"
+                                                aria-label={`Rate ${star} ${star === 1 ? "star" : "stars"}`}
+                                                aria-pressed={rating === star}
+                                                className="rounded-md p-1 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                                             >
-                                                <svg className={`h-12 w-12 ${star <= (hoverRating || rating) ? "text-amber-500 fill-current" : "text-slate-300"}`} viewBox="0 0 20 20">
+                                                <svg className={`h-10 w-10 sm:h-12 sm:w-12 ${star <= (hoverRating || rating) ? "text-amber-500 fill-current" : "text-slate-300"}`} viewBox="0 0 20 20">
                                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                                 </svg>
                                             </button>
