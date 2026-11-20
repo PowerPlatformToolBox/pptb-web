@@ -17,7 +17,7 @@
         "@heroicons/react": "^2.2.0",
         "@pptb/validate": "^1.0.5",
         "@react-email/components": "^1.0.12",
-        "@react-email/render": "^2.1.0",
+        "@react-email/render": "^2.2.0",
         "@supabase/supabase-js": "2.116.0",
         "@tailwindcss/postcss": "^4.1.11",
         "@vercel/analytics": "^1.5.0",
