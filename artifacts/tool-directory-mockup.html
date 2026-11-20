@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Power Platform ToolBox — Tool Directory Mockup</title>
+        <style>
+            :root {
+                color-scheme: light;
+                font-family:
+                    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                color: #172033;
+                background: #f5f8fc;
+                font-synthesis: none;
+                text-rendering: optimizeLegibility;
+                -webkit-font-smoothing: antialiased;
+                --blue: #2864ea;
+                --muted: #64748b;
+                --line: #e2e8f0;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+            }
+
+            button,
+            input,
+            select {
+                font: inherit;
+            }
+
+            .topbar {
+                height: 66px;
+                background: #fff;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .nav {
+                width: min(1240px, calc(100% - 48px));
+                height: 100%;
+                margin: auto;
+                display: flex;
+                align-items: center;
+                gap: 34px;
+                color: #48566c;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            .logo {
+                width: 35px;
+                height: 35px;
+                margin-right: 14px;
+                display: grid;
+                place-items: center;
+                border-radius: 11px;
+                color: #fff;
+                background: linear-gradient(140deg, #3676ff, #8958ef);
+                font-size: 19px;
+                font-weight: 800;
+            }
+
+            .nav .active {
+                color: var(--blue);
+            }
+
+            .avatar {
+                width: 33px;
+                height: 33px;
+                margin-left: auto;
+                display: grid;
+                place-items: center;
+                border: 2px solid #dbeafe;
+                border-radius: 50%;
+                background: #e9edff;
+                color: #4338ca;
+                font-size: 12px;
+                font-weight: 800;
+            }
+
+            main {
+                width: min(1240px, calc(100% - 48px));
+                margin: 0 auto;
+                padding: 38px 0 64px;
+            }
+
+            .heading {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 24px;
+                margin-bottom: 22px;
+            }
+
+            h1 {
+                margin: 0;
+                font-size: clamp(26px, 3vw, 34px);
+                letter-spacing: -0.045em;
+                line-height: 1.15;
+            }
+
+            .subheading {
+                margin: 7px 0 0;
+                color: var(--muted);
+                font-size: 14px;
+            }
+
+            .suggest {
+                flex: 0 0 auto;
+                color: var(--blue);
+                font-size: 13px;
+                font-weight: 700;
+                text-decoration: none;
+            }
+
+            .toolbar {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 18px;
+            }
+
+            .search {
+                min-width: 180px;
+                height: 46px;
+                flex: 1;
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 0 15px;
+                border: 1px solid #d7e0ed;
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 2px 6px #1e293b0a;
+                color: #94a3b8;
+            }
+
+            .search input {
+                width: 100%;
+                border: 0;
+                outline: 0;
+                color: #172033;
+                font-size: 14px;
+            }
+
+            .search input::placeholder {
+                color: #94a3b8;
+            }
+
+            .filter-button,
+            .sort select {
+                height: 46px;
+                border: 1px solid #d7e0ed;
+                border-radius: 10px;
+                background: #fff;
+                color: #334155;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            .filter-button {
+                padding: 0 16px;
+            }
+
+            .quickviews {
+                display: flex;
+                gap: 7px;
+                overflow-x: auto;
+                padding: 0 0 15px;
+                border-bottom: 1px solid var(--line);
+                scrollbar-width: thin;
+            }
+
+            .quickview {
+                min-height: 36px;
+                flex: 0 0 auto;
+                padding: 0 14px;
+                border: 1px solid transparent;
+                border-radius: 8px;
+                background: transparent;
+                color: #58667c;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 650;
+            }
+
+            .quickview.selected {
+                border-color: #dbeafe;
+                background: #eaf2ff;
+                color: #2458d3;
+            }
+
+            .quickview .count {
+                margin-left: 4px;
+                color: #94a3b8;
+                font-size: 11px;
+            }
+
+            .categories {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                overflow-x: auto;
+                padding: 14px 0 12px;
+                scrollbar-width: none;
+            }
+
+            .category {
+                flex: 0 0 auto;
+                padding: 7px 11px;
+                border: 1px solid #e0e7f0;
+                border-radius: 7px;
+                background: #fff;
+                color: #56657a;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            .category.selected {
+                border-color: #bad1ff;
+                background: #eef4ff;
+                color: #2458d3;
+            }
+
+            .resultsbar {
+                min-height: 42px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            .resultsbar strong {
+                color: #334155;
+                font-weight: 700;
+            }
+
+            .sort {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .sort select {
+                height: 34px;
+                padding: 0 28px 0 10px;
+                font-weight: 500;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 16px;
+                padding-top: 6px;
+            }
+
+            .card {
+                min-height: 210px;
+                display: flex;
+                flex-direction: column;
+                padding: 17px;
+                border: 1px solid #e2e8f0;
+                border-radius: 13px;
+                background: #fff;
+                box-shadow: 0 3px 12px #17203308;
+                transition:
+                    transform 140ms ease,
+                    box-shadow 140ms ease,
+                    border-color 140ms ease;
+            }
+
+            .card[hidden] {
+                display: none;
+            }
+
+            .card:hover {
+                transform: translateY(-2px);
+                border-color: #bfceff;
+                box-shadow: 0 12px 28px #17203312;
+            }
+
+            .badges {
+                min-height: 24px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                margin-bottom: 12px;
+            }
+
+            .badge {
+                padding: 4px 8px;
+                border-radius: 999px;
+                background: #edf4ff;
+                color: #3264c8;
+                font-size: 10px;
+                font-weight: 700;
+            }
+
+            .badge.verified {
+                background: #e9f8ef;
+                color: #168047;
+            }
+
+            .badge.new {
+                background: #fff4df;
+                color: #a45b08;
+            }
+
+            .cardtitle {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+            }
+
+            .icon {
+                width: 46px;
+                height: 46px;
+                flex: 0 0 auto;
+                display: grid;
+                place-items: center;
+                border-radius: 11px;
+                background: linear-gradient(145deg, #edf4ff, #f3edff);
+                font-size: 24px;
+            }
+
+            .name {
+                margin: 0 0 3px;
+                color: #1e293b;
+                font-size: 15px;
+                font-weight: 750;
+                letter-spacing: -0.02em;
+            }
+
+            .byline {
+                color: #8793a6;
+                font-size: 11px;
+            }
+
+            .description {
+                display: -webkit-box;
+                min-height: 39px;
+                overflow: hidden;
+                margin: 14px 0 15px;
+                color: #5b687d;
+                font-size: 12px;
+                line-height: 1.6;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
+            }
+
+            .stats {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                margin-top: auto;
+                padding-top: 11px;
+                border-top: 1px solid #edf0f5;
+                color: #738096;
+                font-size: 11px;
+            }
+
+            .stats span {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .stats .open {
+                margin-left: auto;
+                color: #2864ea;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .pagination {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 7px;
+                margin-top: 23px;
+                color: #748197;
+                font-size: 12px;
+            }
+
+            .page {
+                width: 32px;
+                height: 32px;
+                border: 1px solid #e0e7f0;
+                border-radius: 7px;
+                background: #fff;
+                color: #526078;
+            }
+
+            .page.current {
+                border-color: var(--blue);
+                background: var(--blue);
+                color: white;
+            }
+
+            .page.next {
+                width: auto;
+                padding: 0 12px;
+            }
+
+            .pagination-note {
+                margin: 0 0 0 10px;
+            }
+
+            @media (max-width: 1050px) {
+                .grid {
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                }
+
+                .nav {
+                    gap: 20px;
+                }
+            }
+
+            @media (max-width: 760px) {
+                .topbar {
+                    height: 58px;
+                }
+
+                .nav,
+                main {
+                    width: min(100% - 32px, 620px);
+                }
+
+                .nav {
+                    gap: 18px;
+                    font-size: 12px;
+                }
+
+                .nav .optional {
+                    display: none;
+                }
+
+                .logo {
+                    margin-right: 2px;
+                }
+
+                main {
+                    padding-top: 26px;
+                }
+
+                .heading {
+                    align-items: flex-start;
+                }
+
+                .subheading {
+                    max-width: 350px;
+                    font-size: 13px;
+                }
+
+                .grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 12px;
+                }
+
+                .card {
+                    min-height: 215px;
+                    padding: 14px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .nav,
+                main {
+                    width: calc(100% - 28px);
+                }
+
+                .nav {
+                    gap: 14px;
+                }
+
+                .heading {
+                    margin-bottom: 17px;
+                }
+
+                h1 {
+                    font-size: 25px;
+                }
+
+                .subheading {
+                    font-size: 12px;
+                }
+
+                .suggest {
+                    max-width: 82px;
+                    padding-top: 4px;
+                    text-align: right;
+                    line-height: 1.4;
+                }
+
+                .filter-button {
+                    padding: 0 12px;
+                }
+
+                .grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .card {
+                    min-height: 190px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <nav class="topbar" aria-label="Main navigation">
+            <div class="nav">
+                <div class="logo" aria-label="Power Platform ToolBox">P</div>
+                <span class="active">Tools</span>
+                <span>Ideas</span>
+                <span>Features</span>
+                <span class="optional">About</span>
+                <span class="optional">Team</span>
+                <span class="optional">Updates</span>
+                <span class="optional">Community⌄</span>
+                <div class="avatar" aria-label="Profile">D</div>
+            </div>
+        </nav>
+
+        <main>
+            <header class="heading">
+                <div>
+                    <h1>Power Platform tools</h1>
+                    <p class="subheading">Find the right tool for your next project.</p>
+                </div>
+                <a class="suggest" href="#">+ Suggest a tool</a>
+            </header>
+
+            <div class="toolbar">
+                <label class="search">
+                    <span aria-hidden="true">⌕</span>
+                    <input id="search" type="search" placeholder="Search all 75 tools..." aria-label="Search all tools" />
+                </label>
+                <button class="filter-button" type="button">☷ &nbsp; Filters</button>
+            </div>
+
+            <nav class="quickviews" aria-label="Featured tool views">
+                <button class="quickview selected" data-view="all">All tools <span class="count">75</span></button>
+                <button class="quickview" data-view="new">New &amp; Updated <span class="count">8</span></button>
+                <button class="quickview" data-view="verified">Verified <span class="count">24</span></button>
+                <button class="quickview" data-view="popular">Most Popular <span class="count">12</span></button>
+            </nav>
+
+            <nav class="categories" aria-label="Tool categories">
+                <button class="category selected" data-category="all">All categories</button>
+                <button class="category" data-category="Data">Data</button>
+                <button class="category" data-category="Migration">Migration</button>
+                <button class="category" data-category="Environments">Environments</button>
+                <button class="category" data-category="Development">Development</button>
+                <button class="category" data-category="Diagrams">Diagrams</button>
+                <button class="category" data-category="Solutions">Solutions</button>
+                <button class="category" data-category="Troubleshooting">Troubleshooting</button>
+            </nav>
+
+            <div class="resultsbar">
+                <span><strong id="result-count">75 tools</strong></span>
+                <label class="sort">Sort by
+                    <select aria-label="Sort tools">
+                        <option>Featured</option>
+                        <option>Most downloaded</option>
+                        <option>Top rated</option>
+                        <option>Recently updated</option>
+                        <option>A–Z</option>
+                    </select>
+                </label>
+            </div>
+
+            <section class="grid" id="tool-grid" aria-label="Tools">
+                <article class="card" data-name="Bulk Data Studio" data-category="Data Migration" data-flags="popular verified">
+                    <div class="badges"><span class="badge">Data</span><span class="badge">Migration</span><span class="badge verified">✓ Verified</span></div>
+                    <div class="cardtitle"><div class="icon">🗃️</div><div><h2 class="name">Bulk Data Studio</h2><div class="byline">by LinkeD365, Rappen</div></div></div>
+                    <p class="description">Run bulk data operations with flexible mapping, preview, and progress tracking.</p>
+                    <div class="stats"><span>↓ 18.2k</span><span>★ 4.9</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="Environment Manager" data-category="Environments Troubleshooting" data-flags="popular verified">
+                    <div class="badges"><span class="badge">Environments</span><span class="badge">Troubleshooting</span><span class="badge verified">✓ Verified</span></div>
+                    <div class="cardtitle"><div class="icon">🌐</div><div><h2 class="name">Environment Manager</h2><div class="byline">by LinkeD365, MscrmTools</div></div></div>
+                    <p class="description">Manage environment settings and compare configuration across instances.</p>
+                    <div class="stats"><span>↓ 14.6k</span><span>★ 4.8</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="ERD Generator" data-category="Development Diagrams" data-flags="new verified">
+                    <div class="badges"><span class="badge">Development</span><span class="badge">Diagrams</span><span class="badge new">Recently updated</span></div>
+                    <div class="cardtitle"><div class="icon">🧩</div><div><h2 class="name">ERD Generator</h2><div class="byline">by Power Maverick</div></div></div>
+                    <p class="description">Create entity relationship diagrams from Dataverse metadata in a few clicks.</p>
+                    <div class="stats"><span>↓ 3.8k</span><span>★ 4.7</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="Solution Components Mover" data-category="Solutions Migration" data-flags="popular">
+                    <div class="badges"><span class="badge">Solutions</span><span class="badge">Migration</span></div>
+                    <div class="cardtitle"><div class="icon">📦</div><div><h2 class="name">Solution Components Mover</h2><div class="byline">by Community contributors</div></div></div>
+                    <p class="description">Move selected solution components between environments with confidence.</p>
+                    <div class="stats"><span>↓ 9.1k</span><span>★ 4.6</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="FetchXML Builder" data-category="Development Data" data-flags="popular verified">
+                    <div class="badges"><span class="badge">Development</span><span class="badge">Data</span><span class="badge verified">✓ Verified</span></div>
+                    <div class="cardtitle"><div class="icon">⌘</div><div><h2 class="name">FetchXML Builder</h2><div class="byline">by Jonas Rapp</div></div></div>
+                    <p class="description">Build, test, and share FetchXML queries with a visual query designer.</p>
+                    <div class="stats"><span>↓ 8.4k</span><span>★ 4.8</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="Power Platform CLI Helper" data-category="Development Troubleshooting" data-flags="new">
+                    <div class="badges"><span class="badge">Development</span><span class="badge new">New</span></div>
+                    <div class="cardtitle"><div class="icon">⚡</div><div><h2 class="name">Power Platform CLI Helper</h2><div class="byline">by Community contributors</div></div></div>
+                    <p class="description">Quickly run common CLI tasks and keep project workflows close at hand.</p>
+                    <div class="stats"><span>↓ 1.2k</span><span>★ 4.5</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="Metadata Browser" data-category="Data Development" data-flags="verified">
+                    <div class="badges"><span class="badge">Data</span><span class="badge">Development</span><span class="badge verified">✓ Verified</span></div>
+                    <div class="cardtitle"><div class="icon">🔎</div><div><h2 class="name">Metadata Browser</h2><div class="byline">by Power Platform ToolBox</div></div></div>
+                    <p class="description">Explore tables, columns, relationships, and other Dataverse metadata.</p>
+                    <div class="stats"><span>↓ 6.7k</span><span>★ 4.7</span><span class="open">View tool →</span></div>
+                </article>
+
+                <article class="card" data-name="Connection Reference Helper" data-category="Solutions Environments" data-flags="new">
+                    <div class="badges"><span class="badge">Solutions</span><span class="badge">Environments</span><span class="badge new">Recently updated</span></div>
+                    <div class="cardtitle"><div class="icon">🔗</div><div><h2 class="name">Connection Reference Helper</h2><div class="byline">by Community contributors</div></div></div>
+                    <p class="description">Inspect and update connection references across your solutions.</p>
+                    <div class="stats"><span>↓ 980</span><span>★ 4.4</span><span class="open">View tool →</span></div>
+                </article>
+            </section>
+
+            <div class="pagination" aria-label="Pagination">
+                <button class="page current" type="button">1</button>
+                <button class="page" type="button">2</button>
+                <button class="page" type="button">3</button>
+                <span>…</span>
+                <button class="page" type="button">7</button>
+                <button class="page next" type="button">Next →</button>
+                <p class="pagination-note">Showing 1–12 of 75</p>
+            </div>
+        </main>
+
+        <script>
+            const search = document.querySelector("#search");
+            const cards = [...document.querySelectorAll(".card")];
+            const resultCount = document.querySelector("#result-count");
+            let selectedView = "all";
+            let selectedCategory = "all";
+
+            function updateResults() {
+                const query = search.value.trim().toLowerCase();
+                let visible = 0;
+                for (const card of cards) {
+                    const matchesSearch = `${card.dataset.name} ${card.textContent}`.toLowerCase().includes(query);
+                    const categories = card.dataset.category.split(" ");
+                    const matchesCategory = selectedCategory === "all" || categories.includes(selectedCategory);
+                    const flags = card.dataset.flags.split(" ");
+                    const matchesView = selectedView === "all" || flags.includes(selectedView);
+                    const matches = matchesSearch && matchesCategory && matchesView;
+                    card.hidden = !matches;
+                    if (matches) visible += 1;
+                }
+                resultCount.textContent = query || selectedCategory !== "all" || selectedView !== "all" ? `${visible} matching sample tools` : "75 tools";
+            }
+
+            search.addEventListener("input", updateResults);
+
+            document.querySelectorAll(".quickview").forEach((button) => {
+                button.addEventListener("click", () => {
+                    document.querySelector(".quickview.selected").classList.remove("selected");
+                    button.classList.add("selected");
+                    selectedView = button.dataset.view;
+                    updateResults();
+                });
+            });
+
+            document.querySelectorAll(".category").forEach((button) => {
+                button.addEventListener("click", () => {
+                    document.querySelector(".category.selected").classList.remove("selected");
+                    button.classList.add("selected");
+                    selectedCategory = button.dataset.category;
+                    updateResults();
+                });
+            });
+        </script>
+    </body>
+</html>
