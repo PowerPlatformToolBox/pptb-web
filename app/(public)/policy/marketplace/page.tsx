@@ -36,12 +36,12 @@ export default function MarketplacePolicy() {
 
             <h2 className="text-xl font-semibold mt-8 mb-2">Publisher requests and responsibilities</h2>
             <p className="mb-4 text-gray-700">
-                A publisher should request a status change through the{" "}
-                <a href="https://github.com/PowerPlatformToolBox/pptb-web/issues/new/choose" className="text-blue-600 underline">
-                    Marketplace GitHub issue process
+                To request a tool status change, reach out in the{" "}
+                <a href="https://discord.gg/efwAu9sXyJ" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                    PPTB Discord server
                 </a>
-                . Include the tool name and ID, requested status, reason, effective date, expected retirement date if known, replacement tool or migration guidance if available,
-                compatibility and update impact, and how existing users will be notified.
+                {" "}and tag the @TeamMember role. Include the tool name and ID, requested status, reason, effective date, expected retirement date if known, replacement tool or
+                migration guidance if available, compatibility and update impact, and how existing users will be notified.
             </p>
             <p className="mb-4 text-gray-700">
                 Publishers are responsible for accurate lifecycle information and for notifying their users through their normal release notes or support channels. Give reasonable
