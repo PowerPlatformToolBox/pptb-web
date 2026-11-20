@@ -13,6 +13,7 @@ import remarkGfm from "remark-gfm";
 import { Container } from "@/components/Container";
 import { VerifiedCheckmark } from "@/components/VerifiedCheckmark";
 import { FadeIn } from "@/components/animations";
+import { formatSiteTitle } from "@/lib/metadata";
 
 interface Tool {
     id: string;
@@ -140,6 +141,10 @@ export default function ToolDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [readmeContent, setReadmeContent] = useState<string>("");
     const [loadingReadme, setLoadingReadme] = useState(false);
+
+    useEffect(() => {
+        if (tool) document.title = formatSiteTitle(tool.name);
+    }, [tool]);
 
     useEffect(() => {
         if (!toolId) {

@@ -9,6 +9,7 @@ import { FadeIn } from "@/components/animations";
 import { ReviewAuthorReply } from "@/components/ReviewAuthorReply";
 import { ReviewText } from "@/components/ReviewText";
 import { formatDate } from "@/lib/date";
+import { formatSiteTitle } from "@/lib/metadata";
 import type { PublicRating as Rating } from "@/lib/reviews";
 import { useSupabase } from "@/lib/useSupabase";
 
@@ -32,6 +33,10 @@ export default function ToolReviewsPage() {
     const { supabase } = useSupabase();
     const [canReply, setCanReply] = useState(false);
     const [permissionError, setPermissionError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (toolName) document.title = formatSiteTitle(`Reviews for ${toolName}`);
+    }, [toolName]);
 
     useEffect(() => {
         if (!supabase || !toolId) return;
