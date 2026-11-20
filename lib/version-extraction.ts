@@ -43,19 +43,18 @@ export function isValidSemver(version: string): boolean {
  */
 export async function extractVersionInfo(
     packageName: string,
+    exact?: { version: string; tarballUrl: string },
 ): Promise<{ success: true; data: VersionInfo } | { success: false; error: string; validation?: { errors: string[]; warnings: string[] } }> {
     try {
-        // Fetch package metadata (tarball URL) via shared helper
-        const metadataResult = await fetchNpmPackageMetadata(packageName);
-
-        if (!metadataResult.success) {
-            return { success: false, error: metadataResult.error };
+        let tarballUrl = exact?.tarballUrl;
+        if (!tarballUrl) {
+            const metadataResult = await fetchNpmPackageMetadata(packageName);
+            if (!metadataResult.success) return { success: false, error: metadataResult.error };
+            tarballUrl = metadataResult.data.tarballUrl;
         }
 
-        const { tarballUrl } = metadataResult.data;
-
         // Download the tarball
-        const tarballResponse = await fetch(tarballUrl);
+        const tarballResponse = await fetch(tarballUrl, exact ? { redirect: "error", signal: AbortSignal.timeout(20_000) } : undefined);
         if (!tarballResponse.ok) {
             return { success: false, error: `Failed to download tarball: HTTP ${tarballResponse.status}` };
         }
@@ -83,6 +82,18 @@ export async function extractVersionInfo(
             });
 
             const packageDir = path.join(extractDir, "package");
+
+            if (exact) {
+                const manifest = JSON.parse(await fs.promises.readFile(path.join(packageDir, "package.json"), "utf-8"));
+                if (manifest.name !== packageName || manifest.version !== exact.version) {
+                    return { success: false, error: "The npm tarball does not match the selected package and version." };
+                }
+                const entryPoint = await fs.promises.lstat(path.join(packageDir, "dist", "index.html")).catch((error: NodeJS.ErrnoException) => {
+                    if (error.code !== "ENOENT") throw error;
+                    return null;
+                });
+                if (!entryPoint?.isFile()) return { success: false, error: "dist/index.html is required but not found in the selected package." };
+            }
 
             // Read package.json → features.minAPI
             const packageJsonPath = path.join(packageDir, "package.json");

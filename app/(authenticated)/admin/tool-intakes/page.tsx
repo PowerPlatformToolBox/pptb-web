@@ -51,6 +51,8 @@ interface ToolIntake {
     reviewer_notes: string | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
+    review_history?: { version: string; status: string; reviewer_notes: string | null; reviewed_at: string }[];
+    conversion_receipt?: { version: string } | null;
     created_at: string;
     updated_at: string;
     categories?: Category[];
@@ -70,6 +72,8 @@ export default function AdminToolIntakesPage() {
     const [actionLoading, setActionLoading] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [authToken, setAuthToken] = useState<string>("");
+    const [npmVersion, setNpmVersion] = useState<{ id: string; version?: string; error?: string } | null>(null);
+    const [workflowNotice, setWorkflowNotice] = useState<{ message?: string; url?: string } | null>(null);
 
     const refreshIntakes = async (token: string) => {
         try {
@@ -144,9 +148,32 @@ export default function AdminToolIntakesPage() {
         initPage();
     }, [statusFilter, supabase]);
 
-    async function handleReviewAction(intakeId: string, action: "approve" | "reject" | "needs_changes") {
+    const selectedId = selectedIntake?.id;
+    useEffect(() => {
+        if (!selectedId || !authToken) return;
+        const controller = new AbortController();
+        async function checkNpmVersion(intakeId: string) {
+            try {
+                const response = await fetch(`/api/admin/tool-intakes?latestFor=${encodeURIComponent(intakeId)}`, {
+                    headers: { Authorization: `Bearer ${authToken}` },
+                    signal: controller.signal,
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                if (!controller.signal.aborted) setNpmVersion({ id: intakeId, version: data.version });
+            } catch {
+                if (!controller.signal.aborted) setNpmVersion({ id: intakeId, error: "Could not check the latest version on npm." });
+            }
+        }
+        void checkNpmVersion(selectedId);
+        return () => controller.abort();
+    }, [selectedId, authToken]);
+
+    async function handleReviewAction(intake: ToolIntake, action: "approve" | "reject" | "needs_changes" | "review_version", version = intake.version) {
         if (!authToken) return;
 
+        setError(null);
+        setWorkflowNotice(null);
         setActionLoading(true);
         try {
             const response = await fetch("/api/admin/tool-intakes", {
@@ -156,8 +183,10 @@ export default function AdminToolIntakesPage() {
                     Authorization: `Bearer ${authToken}`,
                 },
                 body: JSON.stringify({
-                    intakeId,
+                    intakeId: intake.id,
                     action,
+                    version,
+                    revision: intake.updated_at,
                     reviewerNotes: reviewNotes,
                 }),
             });
@@ -169,7 +198,8 @@ export default function AdminToolIntakesPage() {
             }
 
             // Refresh the list
-            await refreshIntakes(authToken);
+            if (action === "review_version" && statusFilter !== "pending_review") setStatusFilter("pending_review");
+            else await refreshIntakes(authToken);
             setSelectedIntake(null);
             setReviewNotes("");
         } catch (err) {
@@ -180,9 +210,11 @@ export default function AdminToolIntakesPage() {
         }
     }
 
-    async function handleConvertToTool(intakeId: string) {
+    async function handleConvertToTool(intake: ToolIntake) {
         if (!authToken) return;
 
+        setError(null);
+        setWorkflowNotice(null);
         setActionLoading(true);
         try {
             const response = await fetch("/api/admin/tool-intakes/convert", {
@@ -191,10 +223,13 @@ export default function AdminToolIntakesPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${authToken}`,
                 },
-                body: JSON.stringify({ intakeId }),
+                body: JSON.stringify({ intakeId: intake.id, version: intake.version, revision: intake.updated_at }),
             });
 
             const data = await response.json();
+            if (data.warning || (!response.ok && data.workflowUrl)) {
+                setWorkflowNotice({ message: data.warning, url: data.workflowUrl });
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || "Failed to convert intake to tool");
@@ -278,9 +313,12 @@ export default function AdminToolIntakesPage() {
                             <p className="mt-4 text-lg text-slate-600">Review and manage tool submission requests from the community.</p>
                         </div>
 
-                        {error && (
-                            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-sm text-red-800">{error}</p>
+                        {(error || workflowNotice?.message) && (
+                            <div role="alert" className={`mb-6 rounded-lg border p-4 text-sm ${error ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                                <p>{error || workflowNotice?.message}</p>
+                                {workflowNotice?.url?.startsWith("https://github.com/PowerPlatformToolBox/tool-management/actions/runs/") && (
+                                    <a className="mt-1 inline-block underline" href={workflowNotice.url}>View conversion workflow</a>
+                                )}
                             </div>
                         )}
 
@@ -374,7 +412,12 @@ export default function AdminToolIntakesPage() {
                                                 </div>
                                                 <div className="ml-4">
                                                     <button
-                                                        onClick={() => setSelectedIntake(selectedIntake?.id === intake.id ? null : intake)}
+                                                        onClick={() => {
+                                                            setNpmVersion(null);
+                                                            setReviewNotes("");
+                                                            setSelectedIntake(selectedIntake?.id === intake.id ? null : intake);
+                                                        }}
+                                                        disabled={actionLoading}
                                                         className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
                                                     >
                                                         {selectedIntake?.id === intake.id ? "Close" : "Review"}
@@ -386,6 +429,40 @@ export default function AdminToolIntakesPage() {
                                             {selectedIntake?.id === intake.id && (
                                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                                     <h4 className="font-medium text-slate-900 mb-3">Review Actions</h4>
+                                                    <div className="mb-4 space-y-2 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                                                        <p>{intake.status === "approved" ? "Approved version" : "Intake version"}: <strong>{intake.version || "Missing"}</strong></p>
+                                                        {npmVersion?.id === intake.id && npmVersion.version ? (
+                                                            <p>Latest on npm: <strong>{npmVersion.version}</strong></p>
+                                                        ) : (
+                                                            <p>{npmVersion?.id === intake.id ? npmVersion.error : "Checking the latest version on npm..."}</p>
+                                                        )}
+                                                        {npmVersion?.id === intake.id && npmVersion.version && npmVersion.version !== intake.version &&
+                                                            !intake.conversion_receipt && ["approved", "pending_review", "needs_changes"].includes(intake.status) && (
+                                                            <>
+                                                                <p>Selecting another version sends it to Pending Review. The existing approval does not carry over.</p>
+                                                                <button
+                                                                    onClick={() => handleReviewAction(intake, "review_version", npmVersion.version)}
+                                                                    disabled={actionLoading}
+                                                                    className="rounded border border-blue-600 px-3 py-1.5 font-medium text-blue-700 disabled:opacity-50"
+                                                                >
+                                                                    {`Review ${npmVersion.version}`}
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    {!!intake.review_history?.length && (
+                                                        <details className="mb-4 text-sm text-slate-700">
+                                                            <summary className="cursor-pointer font-medium">Previous reviews</summary>
+                                                            <ul className="ml-4 mt-2 list-disc space-y-2">
+                                                                {intake.review_history.map((review, index) => (
+                                                                    <li key={`${review.reviewed_at}-${index}`}>
+                                                                        {review.version}: {review.status.replaceAll("_", " ")} ({new Date(review.reviewed_at).toLocaleDateString()})
+                                                                        {review.reviewer_notes && <p className="whitespace-pre-wrap">{review.reviewer_notes}</p>}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </details>
+                                                    )}
                                                     {intake.version ? (
                                                         <PackageIconPreview packageName={intake.package_name} version={intake.version} />
                                                     ) : (
@@ -534,30 +611,30 @@ export default function AdminToolIntakesPage() {
                                                     <div className="flex flex-wrap gap-3">
                                                         {intake.status === "approved" ? (
                                                             <button
-                                                                onClick={() => handleConvertToTool(intake.id)}
-                                                                disabled={actionLoading}
+                                                                onClick={() => handleConvertToTool(intake)}
+                                                                disabled={actionLoading || !intake.version}
                                                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                                             >
-                                                                {actionLoading ? "Processing..." : "🚀 Convert to Tool"}
+                                                                {actionLoading ? "Processing..." : intake.conversion_receipt ? `Finalize ${intake.version}` : `Convert approved ${intake.version}`}
                                                             </button>
-                                                        ) : (
+                                                        ) : intake.status !== "converted_to_tool" && (
                                                             <>
                                                                 <button
-                                                                    onClick={() => handleReviewAction(intake.id, "approve")}
+                                                                    onClick={() => handleReviewAction(intake, "approve")}
                                                                     disabled={actionLoading}
                                                                     className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                                                                 >
                                                                     {actionLoading ? "Processing..." : "✓ Approve"}
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleReviewAction(intake.id, "needs_changes")}
+                                                                    onClick={() => handleReviewAction(intake, "needs_changes")}
                                                                     disabled={actionLoading}
                                                                     className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
                                                                 >
                                                                     {actionLoading ? "Processing..." : "⚠ Request Changes"}
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleReviewAction(intake.id, "reject")}
+                                                                    onClick={() => handleReviewAction(intake, "reject")}
                                                                     disabled={actionLoading}
                                                                     className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
                                                                 >

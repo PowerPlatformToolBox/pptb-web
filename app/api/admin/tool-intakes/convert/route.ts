@@ -1,260 +1,138 @@
+import { randomUUID } from "node:crypto";
 import { runConvertToolWorkflow } from "@/lib/github-api";
+import { fetchIntakeManifest } from "@/lib/intake-package";
 import { sendEmail } from "@/lib/resend";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Create Supabase client with service role for server-side operations
-function getSupabaseClient() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return null;
-    }
-
-    return createClient(supabaseUrl, supabaseServiceKey);
-}
-
-interface ConvertRequest {
-    intakeId: string;
-}
-
 export async function POST(request: NextRequest) {
     try {
-        const supabase = getSupabaseClient();
+        const url = process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!url || !serviceKey) return NextResponse.json({ error: "Database connection not configured" }, { status: 500 });
+        const supabase = createClient(url, serviceKey);
 
-        if (!supabase) {
-            return NextResponse.json({ error: "Database connection not configured" }, { status: 500 });
+        const authorization = request.headers.get("authorization");
+        if (!authorization?.startsWith("Bearer ")) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+        const { data: { user }, error: authError } = await supabase.auth.getUser(authorization.slice(7));
+        if (authError || !user) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+        const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+        if (!role) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+
+        const { intakeId, version, revision } = await request.json();
+        if (typeof intakeId !== "string" || typeof version !== "string" || typeof revision !== "string") {
+            return NextResponse.json({ error: "Intake ID, approved version and revision are required." }, { status: 400 });
         }
-
-        // Verify admin authorization
-        const authHeader = request.headers.get("authorization");
-        let userId: string | null = null;
-        let isAdmin = false;
-
-        if (authHeader?.startsWith("Bearer ")) {
-            const token = authHeader.slice(7);
-            const {
-                data: { user },
-                error: authError,
-            } = await supabase.auth.getUser(token);
-
-            if (!authError && user) {
-                userId = user.id;
-
-                // Check if user has admin role
-                const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single();
-
-                isAdmin = !!roleData;
-            }
-        }
-
-        if (!userId || !isAdmin) {
-            return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
-        }
-
-        // Parse request body
-        const body = (await request.json()) as ConvertRequest;
-        const { intakeId } = body;
-
-        if (!intakeId) {
-            return NextResponse.json({ error: "intakeId is required" }, { status: 400 });
-        }
-
-        // Fetch the approved intake with categories & contributors (normalized)
-        const { data: intake, error: fetchError } = await supabase
+        const { data: intake, error: intakeError } = await supabase
             .from("tool_intakes")
-            .select(
-                `
-                *,
-                tool_intake_categories(
-                    category_id
-                ),
-                tool_intake_contributors(
-                    contributor_id,
-                    contributors(id,name,profile_url)
-                )
-            `,
-            )
+            .select("*, tool_intake_contributors(contributors(name))")
             .eq("id", intakeId)
-            .single();
-
-        if (fetchError || !intake) {
-            return NextResponse.json({ error: "Tool intake not found" }, { status: 404 });
+            .maybeSingle();
+        if (intakeError) throw intakeError;
+        if (!intake) return NextResponse.json({ error: "Tool intake not found." }, { status: 404 });
+        if (
+            (intake.status !== "approved" && intake.status !== "converted_to_tool") ||
+            intake.version !== version ||
+            (intake.updated_at !== revision && intake.status !== "converted_to_tool")
+        ) {
+            return NextResponse.json({ error: "This intake has changed. Refresh it and check the approved version before converting." }, { status: 409 });
         }
 
-        if (intake.status !== "approved") {
-            return NextResponse.json({ error: `Cannot convert intake with status "${intake.status}". Only approved intakes can be converted.` }, { status: 400 });
-        }
-
-        // Trigger GitHub Actions workflow to build and publish the tool and wait for completion
-        const ghToken = process.env.GH_PAT_TOKEN;
-        if (!ghToken) {
-            return NextResponse.json({ error: "GitHub token not configured" }, { status: 500 });
-        }
-
-        const repoOwner = "PowerPlatformToolBox";
-        const repoName = "tool-management";
-        const expectedVersion = intake.version || "1.0.0";
-        const authorString =
-            (intake.tool_intake_contributors || [])
-                .map((tic: { contributors?: { name?: string | null } }) => tic.contributors?.name)
-                .filter(Boolean)
-                .join(", ") || "";
-
-        const workflowResult = await runConvertToolWorkflow({
-            owner: repoOwner,
-            repo: repoName,
-            token: ghToken,
-            inputs: {
-                npm_package_name: intake.package_name,
-                display_name: intake.display_name,
-                description: intake.description,
-                icon: intake.icon || "",
-                readme_url: intake.configurations?.readmeUrl || "",
-                version: expectedVersion,
-                license: intake.license || "MIT",
-                csp_exceptions: intake.csp_exceptions ? JSON.stringify(intake.csp_exceptions) : "",
-                submitted_by: intake.submitted_by || "",
-                features: intake.features ? JSON.stringify(intake.features) : "",
-                authors: authorString,
-                repository: intake.configurations?.repository || "",
-                website: intake.configurations?.website || "",
-                minAPI: intake.features?.minAPI || "",
-            },
-            ref: "main",
-            timeoutMs: 180000,
-            pollIntervalMs: 30000,
-        });
-
-        if (workflowResult.conclusion !== "success") {
-            return NextResponse.json({ error: workflowResult.failureReason ?? "Conversion workflow did not complete successfully.", workflowUrl: workflowResult.htmlUrl }, { status: 500 });
-        }
-
-        // Fetch the tool created by the workflow (upsert) using unique packagename
-        const { data: newTool, error: fetchToolError } = await supabase.from("tools").select("id, packagename, name, current_release_id").eq("packagename", intake.package_name).single();
-        if (fetchToolError || !newTool) {
-            console.error("Tool not found after workflow upsert:", fetchToolError);
-            return NextResponse.json({ error: "Tool not found after workflow" }, { status: 500 });
-        }
-
-        if (!newTool.current_release_id) {
-            return NextResponse.json({ error: "Conversion workflow succeeded, but the tool has no current release. Check the workflow's release synchronization." }, { status: 500 });
-        }
-
-        const { data: currentRelease, error: fetchReleaseError } = await supabase.from("tool_releases").select("id, version").eq("tool_id", newTool.id).eq("id", newTool.current_release_id).single();
-
-        if (fetchReleaseError || !currentRelease) {
-            console.error("Current release not found after workflow:", fetchReleaseError);
-            return NextResponse.json({ error: "Conversion workflow succeeded, but the tool's current release could not be loaded." }, { status: 500 });
-        }
-
-        if (currentRelease.version !== expectedVersion) {
-            return NextResponse.json(
-                { error: `Conversion workflow succeeded, but the current release is version "${currentRelease.version}" instead of the expected "${expectedVersion}".` },
-                { status: 500 },
-            );
-        }
-
-        const { error: mcpError } = intake.mcp_enabled
-            ? await supabase.from("tool_release_features").upsert({ release_id: newTool.current_release_id, feature_key: "mcpEnabled", value: "true" })
-            : await supabase.from("tool_release_features").delete().eq("release_id", newTool.current_release_id).eq("feature_key", "mcpEnabled");
-        if (mcpError) {
-            console.error("Failed to store MCP status for converted intake:", mcpError);
-            return NextResponse.json({ error: "Failed to store MCP status" }, { status: 500 });
-        }
-
-        // // Backfill fields not set by workflow (non-fatal on failure)
-        // const updates: Partial<{
-        //     readmeurl: string;
-        //     license: string;
-        //     csp_exceptions: unknown;
-        //     user_id: string;
-        // }> = {};
-        // if (intake.configurations?.readmeUrl) updates.readmeurl = intake.configurations.readmeUrl;
-        // if (intake.license) updates.license = intake.license;
-        // if (intake.csp_exceptions) updates.csp_exceptions = intake.csp_exceptions;
-        // if (intake.submitted_by) updates.user_id = intake.submitted_by;
-        // // repository/website backfill omitted until schema fields confirmed
-        // if (Object.keys(updates).length > 0) {
-        //     const { error: backfillError } = await supabase.from("tools").update(updates).eq("id", newTool.id);
-        //     if (backfillError) {
-        //         console.warn("Non-fatal: failed to backfill some tool fields", backfillError);
-        //     }
-        // }
-
-        // // Insert contributor relationships for the new tool
-        // const toolContributorRelations =
-        //     intakeWithContrib.tool_intake_contributors?.map((tic: { contributor_id: number }) => ({
-        //         tool_id: newTool.id,
-        //         contributor_id: tic.contributor_id,
-        //     })) || [];
-        // if (toolContributorRelations.length > 0) {
-        //     const { error: toolContribError } = await supabase.from("tool_contributors").insert(toolContributorRelations);
-        //     if (toolContribError) {
-        //         console.error("Error inserting tool contributors:", toolContribError);
-        //     }
-        // }
-
-        // Insert category relationships for the new tool
-        const intakeWithCategories = intake as typeof intake & {
-            tool_intake_categories?: Array<{ category_id: number }>;
-        };
-        const categoryIds = intakeWithCategories.tool_intake_categories?.map((tic: { category_id: number }) => tic.category_id) || [];
-        if (categoryIds.length > 0) {
-            const toolCategoryRelations = categoryIds.map((categoryId: number) => ({
-                tool_id: newTool.id,
-                category_id: categoryId,
-            }));
-
-            const { error: categoryError } = await supabase.from("tool_categories").insert(toolCategoryRelations);
-
-            if (categoryError) {
-                console.error("Error inserting tool categories:", categoryError);
-                // Don't fail the conversion if categories fail - they can be added manually
+        let workflow: Awaited<ReturnType<typeof runConvertToolWorkflow>> | undefined;
+        if (!intake.conversion_receipt && intake.status === "approved") {
+            const { data: existingTool, error: lookupError } = await supabase
+                .from("tools").select("id").eq("packagename", intake.package_name).maybeSingle();
+            if (lookupError) throw lookupError;
+            if (existingTool) {
+                return NextResponse.json({
+                    error: "This package already has a marketplace listing without a matching conversion receipt. Resolve the existing listing before converting; it was not changed.",
+                }, { status: 409 });
             }
-        }
 
-        // Update intake status to converted
-        const { error: updateError } = await supabase
-            .from("tool_intakes")
-            .update({
-                status: "converted_to_tool",
-                updated_at: new Date().toISOString(),
-            })
-            .eq("id", intakeId);
+            try {
+                const manifest = await fetchIntakeManifest(intake.package_name, version);
+                if (manifest.version !== version) throw new Error("npm did not return the approved version.");
+            } catch (error) {
+                console.warn("Could not verify approved intake version:", error);
+                return NextResponse.json({
+                    error: `Could not verify ${intake.package_name}@${version} on npm. Retry if npm is unavailable, or select a published version for fresh review.`,
+                }, { status: 409 });
+            }
 
-        if (updateError) {
-            console.error("Error updating intake status:", updateError);
-            // Tool was created but intake status update failed - log but don't fail
-        }
-
-        // Send email notification to submitter
-        if (intake.submitted_by) {
-            const toolLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://www.powerplatformtoolbox.com"}/tools/${newTool.id}`;
-            await sendEmail({
-                type: "tool-conversion-success",
-                supabase,
-                data: {
-                    submitterId: intake.submitted_by,
-                    toolName: intake.display_name || intake.package_name,
-                    packageName: intake.package_name,
-                    toolLink,
+            const token = process.env.GH_PAT_TOKEN;
+            if (!token) return NextResponse.json({ error: "GitHub token not configured." }, { status: 500 });
+            const authors = (intake.tool_intake_contributors || [])
+                .map((link: { contributors?: { name?: string | null } }) => link.contributors?.name)
+                .filter(Boolean)
+                .join(", ");
+            workflow = await runConvertToolWorkflow({
+                owner: "PowerPlatformToolBox",
+                repo: "tool-management",
+                token,
+                inputs: {
+                    intake_id: intakeId,
+                    intake_revision: revision,
+                    request_id: randomUUID(),
+                    npm_package_name: intake.package_name,
+                    display_name: intake.display_name,
+                    description: intake.description,
+                    icon: intake.icon || "",
+                    readme_url: intake.configurations?.readmeUrl || "",
+                    version,
+                    license: intake.license || "MIT",
+                    csp_exceptions: intake.csp_exceptions ? JSON.stringify(intake.csp_exceptions) : "",
+                    submitted_by: intake.submitted_by || "",
+                    features: intake.features ? JSON.stringify(intake.features) : "",
+                    authors,
+                    repository: intake.configurations?.repository || "",
+                    website: intake.configurations?.website || "",
+                    minAPI: intake.min_api || intake.features?.minAPI || "",
                 },
+                ref: "main",
+                timeoutMs: 180_000,
+                pollIntervalMs: 5_000,
             });
+        }
+
+        const { data: result, error: finalizeError } = await supabase.rpc("finalize_tool_intake_conversion", { p_intake_id: intakeId, p_version: version });
+        if (finalizeError) throw finalizeError;
+        if (!result) {
+            if (workflow?.conclusion !== "success" && workflow?.failureReason) {
+                return NextResponse.json({
+                    error: `${workflow.failureReason} Check the workflow before retrying. If it has published, retrying will resume finalization.`,
+                    workflowUrl: workflow.htmlUrl,
+                }, { status: workflow.conclusion ? 502 : 504 });
+            }
+            return NextResponse.json({
+                error: `Could not finalize the approved ${version} release. Check the workflow result and current marketplace release; neither will be overwritten by a retry.`,
+                workflowUrl: workflow?.htmlUrl,
+            }, { status: 409 });
+        }
+
+        if (result.finalized_now && intake.submitted_by) {
+            const toolLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://www.powerplatformtoolbox.com"}/tools/${result.tool_id}`;
+            try {
+                await sendEmail({
+                    type: "tool-conversion-success",
+                    supabase,
+                    data: { submitterId: intake.submitted_by, toolName: intake.display_name || intake.package_name, packageName: intake.package_name, toolLink },
+                });
+            } catch (error) {
+                console.error("Intake converted, but its notification failed:", error);
+            }
         }
 
         return NextResponse.json({
             success: true,
             message: "Tool created successfully",
-            data: {
-                toolId: newTool.id,
-                name: newTool.name,
-                status: "converted_to_tool",
-            },
+            warning: workflow?.conclusion && workflow.conclusion !== "success"
+                ? "The marketplace release was published, but a follow-up workflow step failed. Check the workflow; do not republish the release."
+                : undefined,
+            workflowUrl: workflow?.htmlUrl,
+            data: { toolId: result.tool_id, releaseId: result.release_id, version: result.version, name: intake.display_name, status: "converted_to_tool" },
         });
     } catch (error) {
         console.error("Error converting intake to tool:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json({ error: "Could not complete conversion. Refresh the intake and retry to resume if it has already published." }, { status: 500 });
     }
 }

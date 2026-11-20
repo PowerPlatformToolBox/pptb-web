@@ -16,3 +16,12 @@ Use Supabase dashboard/SQL editor and the deployed web app; staging is optional.
 2. Phase 7: after any approved contract migration, follow `TOOLS_NORMALIZATION_PHASE_7_POST_DELETE_VALIDATION.md` before declaring completion. Record screenshots or results and monitor application errors for the agreed observation window.
 
 Run `npm run lint`, `npx tsc --noEmit` and `npm run build` locally for web changes. SQL scripts must be executed manually in your Supabase project; this repository does not have a local PostgreSQL client or database configured for SQL runtime tests.
+
+## Version-pinned intake conversion
+
+Pause intake conversions during rollout. Apply the [versioned intake migration](../supabase/migrations/20261120043100_versioned_tool_intake.sql) to staging (after `resubmit_tool_intake` and `publish_tool_release` are installed), then deploy the companion `tool-management` conversion workflow to `main` and deploy the web app. Roll out to production in the same order after validation.
+
+1. Submit a test package at `1.1.0`, publish `1.2.0` to npm, then open the intake. The panel should show both versions. **Convert approved 1.1.0** must list only `1.1.0`; also verify its approved categories, contributor links, and MCP flag.
+2. With a separate intake, use **Review 1.2.0**. Verify that it preserves categories and the linked idea, reloads manifest metadata and contributors from `1.2.0`, saves the previous decision in **Previous reviews**, and requires a fresh approval. A stale browser tab must not be able to approve or publish the replaced version.
+3. If the approved version is unavailable, conversion must stop before publishing and must not use `latest`. Simulate a lost response after publishing: retry must use the recorded release ID without publishing again. Verify that a different current release causes a conflict, not a rollback.
+4. An intake affected by the previous workflow may already have a listing but no conversion receipt. Check the listing manually; if its current release was not approved, make it unavailable pending review and reconcile the existing listing before retrying. Do not fabricate a receipt or rerun conversion over the existing listing.
