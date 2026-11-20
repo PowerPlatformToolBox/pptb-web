@@ -26,7 +26,7 @@ export async function GET() {
         const { data, error } = await supabase
             .from("tools")
             .select(
-                `id, name, description, icon, status,
+                `id, name, description, icon, status, created_at,
                 tool_analytics (downloads, rating, mau),
                 tool_categories (categories (name)),
                 tool_contributors (contributors (name))`,
@@ -68,6 +68,7 @@ export async function GET() {
                 enabled_for_power_platform_api: catalogByToolId.get(tool.id)?.enabled_for_power_platform_api ?? false,
                 mcp_enabled: catalogByToolId.get(tool.id)?.mcp_enabled ?? false,
                 published_at: catalogByToolId.get(tool.id)?.published_at ?? null,
+                created_at: tool.created_at,
                 tool_maturity: { status: maturityByToolId.get(tool.id) || "unverified" },
             }))
             .sort((first, second) => {
