@@ -12,6 +12,10 @@ const previewImage = {
 
 const defaultTwitterCard = "summary_large_image" as const;
 
+export function formatSiteTitle(title: string): string {
+    return `${title} | Power Platform ToolBox - PPTB`;
+}
+
 export const defaultOpenGraph: NonNullable<Metadata["openGraph"]> = {
     type: "website",
     images: [previewImage],
