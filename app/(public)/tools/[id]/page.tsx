@@ -4,16 +4,101 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useState } from "react";
 
 import "github-markdown-css/github-markdown-light.css";
-import Markdown from "react-markdown";
+import GithubSlugger from "github-slugger";
+import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { Container } from "@/components/Container";
 import { VerifiedCheckmark } from "@/components/VerifiedCheckmark";
 import { FadeIn } from "@/components/animations";
 import { formatSiteTitle } from "@/lib/metadata";
+
+interface ReadmeNode {
+    type: string;
+    tagName?: string;
+    value?: string;
+    properties?: Record<string, unknown>;
+    children?: ReadmeNode[];
+}
+
+function rehypeGithubSlug() {
+    return (tree: ReadmeNode) => {
+        const slugger = new GithubSlugger();
+        const addHeadingIds = (node: ReadmeNode) => {
+            if (/^h[1-6]$/.test(node.tagName ?? "")) {
+                const text = (node.children ?? []).map(getReadmeNodeText).join("").trim() || "section";
+                node.properties = { ...node.properties, id: slugger.slug(text) };
+            }
+            node.children?.forEach(addHeadingIds);
+        };
+        addHeadingIds(tree);
+    };
+}
+
+function getReadmeNodeText(node: ReadmeNode): string {
+    return node.value ?? (node.children ?? []).map(getReadmeNodeText).join("");
+}
+
+function scrollToReadmeFragment(event: MouseEvent<HTMLAnchorElement>, href?: string) {
+    if (!href?.startsWith("#") || href.length < 2) return;
+
+    const fragment = href.slice(1);
+    let decodedFragment = fragment;
+    try {
+        decodedFragment = decodeURIComponent(fragment);
+    } catch {
+        // Use the literal fragment if the URL contains malformed escaping.
+    }
+
+    const readme = event.currentTarget.closest("[data-readme-content]");
+    const headings = Array.from(readme?.querySelectorAll<HTMLElement>("[id]") ?? []);
+    const targetId = [fragment, decodedFragment, new GithubSlugger().slug(decodedFragment)].find((id) => headings.some((heading) => heading.id === id));
+    const target = targetId ? headings.find((heading) => heading.id === targetId) : undefined;
+    if (!target) return;
+
+    event.preventDefault();
+    target.focus({ preventScroll: true });
+    window.scrollTo({
+        top: window.scrollY + target.getBoundingClientRect().top - 96,
+        behavior: "smooth",
+    });
+}
+
+function ReadmeMarkdown({ markdown }: { markdown: string }) {
+    const heading = (level: 1 | 2 | 3 | 4 | 5 | 6, className: string) =>
+        function MarkdownHeading({ children, id }: { children?: ReactNode; id?: string }) {
+            const Heading = `h${level}` as const;
+            return (
+                <Heading id={id} tabIndex={-1} className={`scroll-mt-24 ${className}`}>
+                    {children}
+                </Heading>
+            );
+        };
+    const components: Components = {
+        h1: heading(1, "text-3xl font-semibold tracking-tight text-slate-900"),
+        h2: heading(2, "text-2xl font-semibold tracking-tight text-slate-900"),
+        h3: heading(3, "text-xl font-semibold text-slate-900"),
+        h4: heading(4, "text-lg font-semibold text-slate-900"),
+        h5: heading(5, "text-base font-semibold text-slate-900"),
+        h6: heading(6, "text-sm font-semibold text-slate-900"),
+        a: ({ href, children, ...props }) => (
+            <a href={href} {...props} onClick={(event) => scrollToReadmeFragment(event, href)}>
+                {children}
+            </a>
+        ),
+    };
+
+    return (
+        <div data-readme-content className="markdown-body break-words">
+            <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeGithubSlug]} components={components}>
+                {markdown}
+            </Markdown>
+        </div>
+    );
+}
 
 interface Tool {
     id: string;
@@ -219,7 +304,7 @@ export default function ToolDetailsPage() {
     if (loading) {
         return (
             <main>
-                <Container className="mt-16 sm:mt-32">
+                <Container className="pt-16 sm:pt-24">
                     <div className="text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
                         <p className="mt-4 text-slate-600">Loading tool details...</p>
@@ -234,222 +319,180 @@ export default function ToolDetailsPage() {
     }
 
     return (
-        <main>
-            <Container className="mt-2 sm:mt-4">
+        <main className="bg-slate-50 pb-16">
+            <Container className="pt-6 sm:pt-8">
                 <FadeIn direction="up" delay={0.2}>
-                    <div className="mx-auto max-w-2xl lg:max-w-5xl">
+                    <div className="mx-auto max-w-7xl">
                         {/* Back button */}
-                        <Link href="/tools" className="inline-flex items-center gap-2 text-blue-600 hover:text-purple-600 transition-colors mb-8">
+                        <Link href="/tools" className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-blue-700">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Back to Tools
+                            All tools
                         </Link>
 
                         {/* Tool Header */}
-                        <header className="mb-8 space-y-4">
-                            <div className="flex items-center gap-4 sm:gap-6">
-                                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-blue-50 to-purple-50 sm:h-20 sm:w-20">
-                                    {tool.icon && tool.icon.startsWith("http") ? (
-                                        <Image src={tool.icon} alt={`${tool.name} icon`} width={64} height={64} className="h-12 w-12 object-contain sm:h-16 sm:w-16" />
-                                    ) : (
-                                        <span className="text-4xl sm:text-5xl">{tool.icon || "📦"}</span>
-                                    )}
+                        <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                            <div className="flex flex-col gap-5">
+                                <div className="flex min-w-0 items-start gap-4">
+                                    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-blue-50 to-purple-50 sm:h-16 sm:w-16">
+                                        {tool.icon && tool.icon.startsWith("http") ? (
+                                            <Image src={tool.icon} alt={`${tool.name} icon`} width={48} height={48} className="h-12 w-12 object-contain" />
+                                        ) : (
+                                            <span className="text-3xl">{tool.icon || "📦"}</span>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{tool.name}</h1>
+                                            {tool.tool_maturity?.status === "verified" && <VerifiedCheckmark className="h-5 w-5" />}
+                                        </div>
+                                        {tool.contributors && tool.contributors.length > 0 && <p className="mt-1 text-sm text-slate-500">by {tool.contributors.join(", ")}</p>}
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{tool.name}</h1>
-                                    {tool.tool_maturity?.status === "verified" && <VerifiedCheckmark className="h-6 w-6 sm:h-7 sm:w-7" />}
+                                <div className="flex flex-wrap gap-2 sm:pl-20">
+                                    {tool.categories.map((category) => (
+                                        <span key={category} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                                            {category}
+                                        </span>
+                                    ))}
+                                    {tool.mcp_enabled && <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800">MCP enabled</span>}
                                 </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 sm:gap-3">
-                                {tool.categories.map((category) => (
-                                    <span key={category} className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">
-                                        {category}
+                                <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:pl-20">{tool.description}</p>
+                                <div className="flex flex-wrap items-center gap-2 sm:pl-20">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const protocolUrl = `pptb://install?toolId=${tool.id}&toolName=${encodeURIComponent(tool.name)}`;
+                                            window.location.href = protocolUrl;
+                                        }}
+                                        className="hidden items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:inline-flex"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Open in PPTB
+                                    </button>
+                                    <Link
+                                        href={`/tools/${tool.id}/reviews`}
+                                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                                    >
+                                        See reviews
+                                    </Link>
+                                    <Link
+                                        href={`/rate-tool?toolId=${tool.id}`}
+                                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                                    >
+                                        Leave a review
+                                    </Link>
+                                    <span className="text-xs text-slate-500 sm:hidden">
+                                        Desktop app ·{" "}
+                                        <Link href="/versions" className="font-semibold text-blue-700 hover:underline">
+                                            Get PPTB
+                                        </Link>
                                     </span>
-                                ))}
-                                {tool.mcp_enabled && <span className="rounded border border-teal-200 bg-teal-50 px-3 py-1 text-sm font-medium text-teal-800">MCP Enabled</span>}
+                                </div>
                             </div>
-                            <p className="text-lg text-slate-600 mb-4">{tool.description}</p>
+
+                            <div className="mt-6 grid grid-cols-3 border-t border-slate-200 pt-5">
+                                <div className="px-2 sm:px-4">
+                                    <p className="text-xs text-slate-500">Downloads</p>
+                                    <p className="mt-1 text-base font-semibold text-slate-900">{tool.downloads.toLocaleString()}</p>
+                                </div>
+                                <Link href={`/tools/${tool.id}/reviews`} className="border-x border-slate-200 px-3 transition hover:text-blue-700 sm:px-5">
+                                    <p className="text-xs text-slate-500">Rating</p>
+                                    <p className="mt-1 text-base font-semibold text-slate-900">
+                                        <span className="text-amber-500">★</span> {tool.rating > 0 ? tool.rating.toFixed(1) : "--"}
+                                    </p>
+                                </Link>
+                                <div className="px-3 sm:px-5">
+                                    <p className="text-xs text-slate-500">Monthly users</p>
+                                    <p className="mt-1 text-base font-semibold text-slate-900">{tool.mau ? tool.mau.toLocaleString() : "0"}</p>
+                                </div>
+                            </div>
                         </header>
 
-                        {/* Action Buttons */}
-                        <div className="flex flex-wrap gap-3 mb-12">
-                            <button
-                                onClick={() => {
-                                    const protocolUrl = `pptb://install?toolId=${tool.id}&toolName=${encodeURIComponent(tool.name)}`;
-                                    window.location.href = protocolUrl;
-                                }}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-400 text-white font-medium rounded-lg hover:bg-blue-500 transition-colors shadow-sm hover:shadow-md cursor-pointer"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Install
-                            </button>
-
-                            <Link
-                                href={`/rate-tool?toolId=${tool.id}`}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-amber-300 text-slate-800 font-medium rounded-lg hover:bg-amber-400 transition-colors shadow-sm hover:shadow-md"
-                            >
-                                <svg className="h-5 w-5 fill-current" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                                Leave a Review
-                            </Link>
-
-                            <Link
-                                href={`/tools/${tool.id}/reviews`}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-300 text-slate-800 font-medium rounded-lg hover:bg-slate-400 transition-colors shadow-sm hover:shadow-md"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                See Reviews
-                            </Link>
-                        </div>
-
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-12">
-                            <div className="card p-6 bg-linear-to-br from-purple-50 to-purple-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="rounded-full bg-purple-600 p-3">
-                                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-purple-900">Total Downloads</p>
-                                        <p className="text-2xl font-bold text-purple-900">{tool.downloads.toLocaleString()}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="card p-6 bg-linear-to-br from-amber-50 to-amber-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="rounded-full bg-amber-600 p-3">
-                                        <svg className="h-6 w-6 text-white fill-current" viewBox="0 0 20 20" aria-hidden="true">
-                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-amber-900">Average Rating</p>
-                                        <p className="text-2xl font-bold text-amber-900">{tool.rating > 0 ? tool.rating.toFixed(1) : "--"}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="card p-6 bg-linear-to-br from-blue-50 to-blue-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="rounded-full bg-blue-600 p-3">
-                                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                                            />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-blue-900">Total MAU</p>
-                                        <p className="text-2xl font-bold text-blue-900">{tool.mau ? tool.mau.toLocaleString() : "0"}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Tool Details Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                        <div className="mt-5 grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
                             {/* Main Content */}
-                            <div className="lg:col-span-2 space-y-8">
-                                <div className="card p-8 shadow-lg hover:shadow-xl transition-shadow">
-                                    <h2 className="text-2xl font-semibold text-slate-900 mb-4">About</h2>
-                                    {loadingReadme ? (
-                                        <div className="flex items-center gap-2 text-slate-600">
-                                            <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
-                                            <span>Loading documentation...</span>
-                                        </div>
-                                    ) : readmeContent ? (
-                                        <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-pre:bg-slate-100 markdown-body">
-                                            <Markdown remarkPlugins={[remarkGfm]}>{readmeContent}</Markdown>
-                                        </div>
-                                    ) : (
-                                        <p className="text-slate-700 leading-relaxed">{tool.longDescription || tool.description}</p>
-                                    )}
-                                </div>
+                            <div className="min-w-0 lg:col-span-2">
+                                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                                    <h2 className="text-xl font-semibold text-slate-900">About this tool</h2>
+                                    <div className="mt-5">
+                                        {loadingReadme ? (
+                                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
+                                                <span>Loading documentation...</span>
+                                            </div>
+                                        ) : readmeContent ? (
+                                            <ReadmeMarkdown markdown={readmeContent} />
+                                        ) : (
+                                            <p className="text-sm leading-6 text-slate-600">{tool.longDescription || tool.description}</p>
+                                        )}
+                                    </div>
+                                </section>
                             </div>
 
                             {/* Sidebar */}
-                            <div className="space-y-8">
-                                <div className="card p-6 shadow-md hover:shadow-lg transition-shadow">
-                                    <h3 className="font-semibold text-slate-900 mb-4">Tool Information</h3>
-                                    <dl className="space-y-3 text-sm">
+                            <aside className="space-y-4">
+                                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <h2 className="text-base font-semibold text-slate-900">Tool information</h2>
+                                    <dl className="mt-4 divide-y divide-slate-100 text-sm">
                                         {tool.version && (
-                                            <>
+                                            <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
                                                 <dt className="text-slate-500">Version</dt>
-                                                <dd className="text-slate-900 font-medium">{tool.version}</dd>
-                                            </>
+                                                <dd className="text-right font-medium text-slate-900">{tool.version}</dd>
+                                            </div>
                                         )}
                                         {tool.repository && (
-                                            <>
-                                                <dt className="text-slate-500">Repository</dt>
-                                                <dd className="text-slate-900 font-medium">
-                                                    <a
-                                                        href={tool.repository}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-blue-600 hover:text-purple-600 hover:underline transition-colors"
-                                                    >
-                                                        View on GitHub
+                                            <div className="flex items-center justify-between gap-4 py-3">
+                                                <dt className="text-slate-500">Source</dt>
+                                                <dd>
+                                                    <a href={tool.repository} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 hover:underline">
+                                                        View repository
                                                     </a>
                                                 </dd>
-                                            </>
+                                            </div>
                                         )}
                                         {tool.website && (
-                                            <>
+                                            <div className="flex items-center justify-between gap-4 py-3">
                                                 <dt className="text-slate-500">Website</dt>
-                                                <dd className="text-slate-900 font-medium">
-                                                    <a href={tool.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-purple-600 hover:underline transition-colors">
-                                                        Visit Website
+                                                <dd>
+                                                    <a href={tool.website} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 hover:underline">
+                                                        Visit website
                                                     </a>
                                                 </dd>
-                                            </>
+                                            </div>
                                         )}
                                         {tool.contributors && tool.contributors.length > 0 && (
-                                            <>
+                                            <div className="py-3">
                                                 <dt className="text-slate-500">Contributors</dt>
-                                                <dd className="text-slate-900 font-medium">{tool.contributors.join(", ")}</dd>
-                                            </>
+                                                <dd className="mt-1 break-words font-medium text-slate-900">{tool.contributors.join(", ")}</dd>
+                                            </div>
                                         )}
-                                        {tool.lastUpdated && (
-                                            <>
-                                                <dt className="text-slate-500">Last Updated</dt>
-                                                <dd className="text-slate-900 font-medium">
+                                        {tool.lastUpdated && Number.isFinite(new Date(tool.lastUpdated).getTime()) && (
+                                            <div className="flex items-center justify-between gap-4 py-3">
+                                                <dt className="text-slate-500">Last updated</dt>
+                                                <dd className="text-right font-medium text-slate-900">
                                                     {new Date(tool.lastUpdated).toLocaleDateString("en-US", {
                                                         year: "numeric",
-                                                        month: "long",
+                                                        month: "short",
                                                         day: "numeric",
                                                     })}
                                                 </dd>
-                                            </>
+                                            </div>
                                         )}
                                     </dl>
-                                </div>
+                                </section>
 
-                                <div className="card p-6 text-center bg-linear-to-br from-blue-50 to-purple-50 shadow-lg relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-br from-blue-300/20 to-purple-300/20 rounded-full blur-2xl"></div>
-                                    <h3 className="font-semibold text-slate-900 mb-2 relative z-10">Download PPTB</h3>
-                                    <p className="text-sm text-slate-600 mb-4 relative z-10">Get the desktop app to use this tool</p>
-                                    <Link href="/" className="inline-block btn-outline w-full relative z-10">
-                                        <span className="flex items-center justify-center gap-2">
-                                            Download Now
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                            </svg>
-                                        </span>
+                                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <h2 className="text-base font-semibold text-slate-900">Use this tool</h2>
+                                    <p className="mt-2 text-sm leading-5 text-slate-600">Power Platform ToolBox is a desktop app for Windows, macOS, and Linux.</p>
+                                    <Link href="/versions" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline">
+                                        Get PPTB for desktop <span aria-hidden="true">→</span>
                                     </Link>
-                                </div>
-                            </div>
+                                </section>
+                            </aside>
                         </div>
                     </div>
                 </FadeIn>
