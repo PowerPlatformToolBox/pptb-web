@@ -1,13 +1,13 @@
 ---
 title: "Insider"
-date: "2026-11-11"
+date: "2026-11-21"
 description: "Rolling release notes for Insider (dev) builds — all _-dev._ versions map here."
 heroImage: "/images/updates/Insider.png"
 ---
 
 ## Highlights
 
-- Improved MCP invocation details with status handling and UI updates.
+- docs: update README with development server instructions and Electron rebuild steps; update pnpm workspace for electron dependency management (#784)
 
 ## Fixes
 
@@ -15,15 +15,15 @@ heroImage: "/images/updates/Insider.png"
 
 ## Developer & Build
 
-- Version: 1.2.8-dev.20261111
+- Version: 1.2.9-dev.20261121
 - Branch: dev
-- Commits: 3 in the last 24 hours
-- Build Date: 42953458657
+- Commits: 1 in the last 24 hours
+- Build Date: 44865727608
 
 ## Notes
 
 - This is an automated Insider build for testing; it may contain bugs, instability, incomplete features, or breaking changes and is not recommended for production use.
-- This page currently reflects Insider build `v1.2.8-dev.20261111` (and newer).
+- This page currently reflects Insider build `v1.2.9-dev.20261121` (and newer).
 
 ## Getting an Insider build
 
